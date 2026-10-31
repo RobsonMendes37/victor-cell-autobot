@@ -294,6 +294,7 @@ async def get_whatsapp_qrcode():
                     "instanceName": settings.EVOLUTION_INSTANCE_NAME,
                     "token": settings.EVOLUTION_API_KEY,
                     "qrcode": True,
+                    "integration": "WHATSAPP-BAILEYS",
                 }
                 c_res = await client.post(create_url, json=payload, headers=headers)
                 if c_res.status_code in [200, 201]:

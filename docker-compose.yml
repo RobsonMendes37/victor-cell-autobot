@@ -47,6 +47,8 @@ services:
       - WEBHOOK_GLOBAL_URL=http://pecas-backend:8000/webhook
       - WEBHOOK_GLOBAL_ENABLED=true
       - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
+      - CONFIG_SESSION_PHONE_CLIENT=Chrome
+      - CONFIG_SESSION_PHONE_NAME=Chrome
     volumes:
       - evolution_instances:/evolution/instances
     depends_on:
