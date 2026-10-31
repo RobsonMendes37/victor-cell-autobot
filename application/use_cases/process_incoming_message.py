@@ -205,6 +205,7 @@ class ProcessIncomingMessageUseCase:
             "status": "SUCCESS",
             "intent": intent,
             "replied": bool(reply_text),
+            "reply": reply_text,
             "order_created": order_created,
             "target_sku": target_sku,
         }

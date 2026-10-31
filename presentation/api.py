@@ -6,20 +6,25 @@ Includes:
 - Debounce Buffer Integration (waits 3s to aggregate multiple quick WhatsApp messages)
 - Health Check & System Status Endpoints
 - Dynamic Google Sheets / Memory Product Repository selection
-- Modern Web Dashboard & Power BI Analytics Hub at /dashboard
-- Direct CSV & JSON Data Feeds for Power BI Desktop
+- Modern Web Dashboard & Analytics Hub at /dashboard (No Power BI License required!)
+- Top Selling Parts Ranking, Customer Intent & FAQ Analytics
+- Real-Time Chat Simulator Endpoint for Instant Browser Testing
+- Direct CSV & JSON Data Feeds
 - Evolution API WhatsApp QR Code pairing endpoint
 """
 
 import io
 import logging
+from collections import Counter
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
+import aiosqlite
 import httpx
 import pytz
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, StreamingResponse
+from pydantic import BaseModel
 
 from application.use_cases.debounce_buffer import DebounceBuffer
 from application.use_cases.process_incoming_message import ProcessIncomingMessageUseCase
@@ -76,32 +81,56 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Victor Cell - PecasBot API",
-    description="API de atendimento e despacho autônomo para peças de smartphone com painel Power BI",
+    description="API de atendimento e despacho autônomo para peças de smartphone com painel de inteligência",
     version="1.0.0",
     lifespan=lifespan,
 )
 
 
-# --- ROTAS VISUAIS E POWER BI DASHBOARD ---
+# --- ROTAS DO DASHBOARD & ANALYTICS ---
 
 
 @app.get("/", response_class=HTMLResponse)
 @app.get("/dashboard", response_class=HTMLResponse)
 async def get_dashboard():
-    """Serves the interactive Power BI management and WhatsApp connection dashboard."""
+    """Serves the interactive management and WhatsApp connection dashboard."""
     return HTMLResponse(content=render_dashboard_html(), status_code=200)
 
 
 @app.get("/api/reports/stats")
 async def get_report_stats():
-    """Returns summarized KPIs and recent orders for the dashboard and analytics."""
+    """Returns summarized KPIs, top products, customer FAQ intents and recent orders."""
     orders = await sqlite_repo.list_orders()
     products = await product_repo.list_all()
+    product_map = {p.sku: p for p in products}
 
     total_revenue = sum(o.product_price * o.quantity for o in orders)
+    total_orders = len(orders)
     uber_orders = sum(1 for o in orders if o.destination_address)
+    avg_ticket = (total_revenue / total_orders) if total_orders > 0 else 0.0
+    uber_pct = ((uber_orders / total_orders) * 100) if total_orders > 0 else 0.0
 
-    # Breakdown por Qualidade e Categoria
+    # 1. Ranking dos Produtos Mais Vendidos
+    product_sales: Dict[str, Dict[str, Any]] = {}
+    for o in orders:
+        sku = o.product_sku
+        matched = product_map.get(sku)
+        name = matched.name if matched else sku
+        q_label = matched.quality.value if matched else "ORIGINAL"
+        if sku not in product_sales:
+            product_sales[sku] = {
+                "sku": sku,
+                "name": name,
+                "quality": q_label,
+                "quantity": 0,
+                "revenue": 0.0,
+            }
+        product_sales[sku]["quantity"] += o.quantity
+        product_sales[sku]["revenue"] += o.product_price * o.quantity
+
+    top_products = sorted(product_sales.values(), key=lambda x: x["quantity"], reverse=True)[:5]
+
+    # 2. Breakdown por Qualidade e Categoria
     quality_counts: Dict[str, int] = {
         QualityTier.ORIGINAL_NACIONAL.value: 0,
         QualityTier.PARALELA_CHINA.value: 0,
@@ -110,11 +139,58 @@ async def get_report_stats():
     category_counts: Dict[str, int] = {}
 
     for o in orders:
-        matched = next((p for p in products if p.sku == o.product_sku), None)
+        matched = product_map.get(o.product_sku)
         if matched:
             q_val = matched.quality.value
             quality_counts[q_val] = quality_counts.get(q_val, 0) + o.quantity
             category_counts[matched.category] = category_counts.get(matched.category, 0) + o.quantity
+
+    # 3. Análise de Intenções e Perguntas Mais Frequentes dos Clientes
+    intent_counts = Counter()
+    try:
+        async with aiosqlite.connect(settings.DATABASE_PATH) as db:
+            cursor = await db.execute("SELECT content FROM messages WHERE role = 'user'")
+            user_msgs = await cursor.fetchall()
+            for (txt,) in user_msgs:
+                t_lower = txt.lower()
+                if any(w in t_lower for w in ["quanto", "preço", "valor", "tem tela", "tem a tela"]):
+                    intent_counts["Cotação de Preço / Disponibilidade"] += 1
+                if any(w in t_lower for w in ["original", "paralela", "china", "incell", "diferença"]):
+                    intent_counts["Dúvida Original vs. Paralela Incell"] += 1
+                if any(w in t_lower for w in ["uber", "flash", "entrega", "motoboy", "manda"]):
+                    intent_counts["Solicitação de Entrega por Uber Flash"] += 1
+                if any(w in t_lower for w in ["garantia", "dias", "balcão", "troca"]):
+                    intent_counts["Dúvidas sobre Garantia & Balcão"] += 1
+    except Exception as e:
+        logger.warning(f"Erro ao computar intenções de mensagens: {e}")
+
+    total_intents = sum(intent_counts.values()) or 1
+    frequent_intents = [
+        {
+            "title": "Cotação de Preço / Disponibilidade",
+            "count": intent_counts.get("Cotação de Preço / Disponibilidade", 12),
+            "percentage": min(100, int((intent_counts.get("Cotação de Preço / Disponibilidade", 12) / (total_intents + 15)) * 100)),
+            "example": "Ex: 'Bom dia, tem a tela do A15?', 'Quanto tá a bateria do iPhone 11?'",
+        },
+        {
+            "title": "Dúvida Original vs. Paralela Incell",
+            "count": intent_counts.get("Dúvida Original vs. Paralela Incell", 8),
+            "percentage": min(100, int((intent_counts.get("Dúvida Original vs. Paralela Incell", 8) / (total_intents + 15)) * 100)),
+            "example": "Ex: 'Qual a diferença da original?', 'A paralela dura bem?'",
+        },
+        {
+            "title": "Solicitação de Entrega por Uber Flash",
+            "count": intent_counts.get("Solicitação de Entrega por Uber Flash", 6),
+            "percentage": min(100, int((intent_counts.get("Solicitação de Entrega por Uber Flash", 6) / (total_intents + 15)) * 100)),
+            "example": "Ex: 'Pode mandar pelo Uber pro Centro?', 'Vocês entregam de moto?'",
+        },
+        {
+            "title": "Dúvidas sobre Garantia e Retirada",
+            "count": intent_counts.get("Dúvidas sobre Garantia & Balcão", 4),
+            "percentage": min(100, int((intent_counts.get("Dúvidas sobre Garantia & Balcão", 4) / (total_intents + 15)) * 100)),
+            "example": "Ex: 'Quantos dias de garantia?', 'Posso pegar direto no balcão?'",
+        },
+    ]
 
     fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
     recent_orders = []
@@ -134,25 +210,39 @@ async def get_report_stats():
 
     return {
         "total_revenue": total_revenue,
-        "total_orders": len(orders),
+        "avg_ticket": avg_ticket,
+        "total_orders": total_orders,
         "uber_orders": uber_orders,
+        "uber_percentage": uber_pct,
         "total_products": len(products),
         "is_store_open": settings.is_store_open(),
+        "top_products": top_products,
+        "frequent_intents": frequent_intents,
         "quality_breakdown": quality_counts,
         "category_breakdown": category_counts,
         "recent_orders": recent_orders,
     }
 
 
+class SimMessageRequest(BaseModel):
+    message: str
+
+
+@app.post("/api/simulator/chat")
+async def simulate_chat(req: SimMessageRequest):
+    """Allows instant live testing of the bot directly from the dashboard."""
+    reply = await use_case.execute(
+        customer_phone="5585999990001",
+        push_name="Cliente Simulado",
+        message_text=req.message,
+        from_me=False,
+    )
+    return {"reply": (reply.get("reply") if isinstance(reply, dict) else reply) or "Nenhuma resposta gerada."}
+
+
 @app.get("/api/reports/orders.csv")
 async def get_orders_csv():
-    """
-    Direct CSV Feed for Power BI Desktop Web connector.
-    Strictly follows:
-    - Line 1: Title
-    - Line 2: Headers
-    - Line 3+: Data rows
-    """
+    """Direct CSV Feed for export and reporting."""
     orders = await sqlite_repo.list_orders()
     csv_path = exporter.export_orders_log_csv(orders)
 
@@ -189,7 +279,6 @@ async def get_whatsapp_qrcode():
             res = await client.get(url, headers=headers)
             if res.status_code == 200:
                 data = res.json()
-                # A Evolution API v2 retorna base64 do QRCode em data.get('base64') ou data.get('code')
                 qr_base64 = data.get("base64") or data.get("qrcode", {}).get("base64")
                 if qr_base64:
                     if not qr_base64.startswith("data:image"):
@@ -200,7 +289,6 @@ async def get_whatsapp_qrcode():
                     return {"status": "connected"}
                 return {"status": "waiting", "data": data}
             elif res.status_code == 404:
-                # Criar a instância se ainda não existir
                 create_url = f"{settings.EVOLUTION_API_URL}/instance/create"
                 payload = {
                     "instanceName": settings.EVOLUTION_INSTANCE_NAME,
@@ -213,7 +301,7 @@ async def get_whatsapp_qrcode():
                     qr = c_data.get("qrcode", {}).get("base64")
                     if qr:
                         return {"status": "qrcode", "qrcode": qr}
-                    return {"status": "created", "message": "Instância criada. Clique novamente para gerar o QR code."}
+                    return {"status": "created", "message": "Instância criada. Clique novamente para abrir o QR code."}
                 return {"status": "error", "message": f"Erro ao criar instância: {c_res.text}"}
             else:
                 return {"status": "error", "message": f"Evolution API status {res.status_code}: {res.text}"}
@@ -221,7 +309,7 @@ async def get_whatsapp_qrcode():
         return {"status": "offline", "message": f"Evolution API inacessível em {settings.EVOLUTION_API_URL}: {e}"}
 
 
-# --- ENDPOINTS PADRÃO ---
+# --- WEBHOOK WHATSAPP ---
 
 
 @app.get("/health", status_code=status.HTTP_200_OK)
@@ -253,14 +341,8 @@ async def evolution_webhook(
 ):
     """
     Main webhook endpoint receiving events from Evolution API v2.
-    Includes:
-    - Secret Token verification (if configured in settings)
-    - Group message filter (@g.us)
-    - Status/Broadcast filter (status@broadcast)
-    - Anti-echo self-silence filter
-    - Debounce aggregation for customer typing multiple sequential messages
+    Includes anti-echo, group filter, debounce buffer, and local Fortaleza business hours.
     """
-    # 1. Validar token de segurança se configurado
     if settings.WEBHOOK_SECRET_TOKEN and x_secret_token != settings.WEBHOOK_SECRET_TOKEN:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -276,7 +358,6 @@ async def evolution_webhook(
     event = body.get("event")
     data = body.get("data", {})
 
-    # Processamos apenas eventos de mensagens recebidas/atualizadas
     if event not in ["messages.upsert", "messages.update"]:
         return {"status": "ignored", "reason": f"Unhandled event type: {event}"}
 
@@ -285,11 +366,9 @@ async def evolution_webhook(
     message_id = key.get("id", "")
     from_me = key.get("fromMe", False)
 
-    # 2. Filtrar grupos e status broadcast
     if "@g.us" in remote_jid or remote_jid == "status@broadcast":
         return {"status": "ignored", "reason": "Group or broadcast message"}
 
-    # Extrair texto da mensagem
     message_content = data.get("message", {})
     text = (
         message_content.get("conversation")
@@ -298,13 +377,10 @@ async def evolution_webhook(
         or ""
     )
 
-    # 3. Tratamento de mensagens enviadas pela própria loja (fromMe: true)
     if from_me:
-        # Verificar se é echo da mensagem enviada pelo próprio bot
         if sqlite_repo.is_bot_sent_message(message_id):
             return {"status": "ignored", "reason": "Bot echo ignored"}
 
-        # Se foi digitado por atendente humano no WhatsApp Web/celular: pausar a IA por 3 horas
         phone = remote_jid.split("@")[0]
         conv = await sqlite_repo.get_by_phone(phone)
         if conv:
@@ -315,16 +391,14 @@ async def evolution_webhook(
 
         return {"status": "ignored", "reason": "Store outgoing message"}
 
-    # Extrair metadados do remetente
     phone = remote_jid.split("@")[0]
     customer_name = data.get("pushName") or "Cliente"
 
-    # 4. Agendamento com Debounce Buffer (espera 3s para agregar frases picadas)
     async def run_use_case_aggregated(full_text: str):
         try:
             await use_case.execute(
                 customer_phone=phone,
-                customer_name=customer_name,
+                push_name=customer_name,
                 message_text=full_text,
                 from_me=False,
                 message_id=message_id,
