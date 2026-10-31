@@ -17,10 +17,7 @@ class DebounceBuffer:
         self._tasks: Dict[str, asyncio.Task] = {}
 
     async def enqueue(
-        self,
-        customer_phone: str,
-        text: str,
-        callback: Callable[[str, str], Awaitable[Any]]
+        self, customer_phone: str, text: str, callback: Callable[[str, str], Awaitable[Any]]
     ) -> None:
         """
         Enqueues incoming text. If another message arrives before wait_seconds,
@@ -41,16 +38,16 @@ class DebounceBuffer:
         )
 
     async def _process_after_delay(
-        self,
-        customer_phone: str,
-        callback: Callable[[str, str], Awaitable[Any]]
+        self, customer_phone: str, callback: Callable[[str, str], Awaitable[Any]]
     ):
         try:
             await asyncio.sleep(self.wait_seconds)
             messages = self._buffers.pop(customer_phone, [])
             if messages:
                 combined_text = "\n".join(messages).strip()
-                logger.info(f"Processando buffer de {len(messages)} mensagens agregadas para {customer_phone}")
+                logger.info(
+                    f"Processando buffer de {len(messages)} mensagens agregadas para {customer_phone}"
+                )
                 await callback(customer_phone, combined_text)
         except asyncio.CancelledError:
             pass  # Normal when timer is reset by a new incoming message

@@ -28,7 +28,7 @@ class MemoryProductRepository(ProductRepositoryInterface):
                 has_frame=True,
                 price=190.00,
                 stock_quantity=4,
-                warranty_days=90
+                warranty_days=90,
             ),
             Product(
                 sku="TEL-SAM-A15-CHIN",
@@ -39,7 +39,7 @@ class MemoryProductRepository(ProductRepositoryInterface):
                 has_frame=False,
                 price=95.00,
                 stock_quantity=12,
-                warranty_days=30
+                warranty_days=30,
             ),
             Product(
                 sku="TEL-TAB-A8-1LINHA",
@@ -50,7 +50,7 @@ class MemoryProductRepository(ProductRepositoryInterface):
                 has_frame=False,
                 price=140.00,
                 stock_quantity=3,
-                warranty_days=60
+                warranty_days=60,
             ),
             Product(
                 sku="CON-TAB-A8-ORIG",
@@ -61,7 +61,7 @@ class MemoryProductRepository(ProductRepositoryInterface):
                 has_frame=False,
                 price=25.00,
                 stock_quantity=15,
-                warranty_days=90
+                warranty_days=90,
             ),
             Product(
                 sku="BAT-SAM-A15-ORIG",
@@ -72,7 +72,7 @@ class MemoryProductRepository(ProductRepositoryInterface):
                 has_frame=False,
                 price=110.00,
                 stock_quantity=5,
-                warranty_days=90
+                warranty_days=90,
             ),
         ]
         for p in sample_items:
@@ -85,10 +85,7 @@ class MemoryProductRepository(ProductRepositoryInterface):
         return self._products.get(sku)
 
     async def search(
-        self,
-        query: str,
-        quality: Optional[QualityTier] = None,
-        has_frame: Optional[bool] = None
+        self, query: str, quality: Optional[QualityTier] = None, has_frame: Optional[bool] = None
     ) -> List[Product]:
         q = query.lower().strip()
         matches = []

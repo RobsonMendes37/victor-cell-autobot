@@ -69,8 +69,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
-                "SELECT * FROM conversations WHERE customer_phone = ?",
-                (clean_phone,)
+                "SELECT * FROM conversations WHERE customer_phone = ?", (clean_phone,)
             )
             row = await cursor.fetchone()
 
@@ -88,13 +87,11 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                     human_resumed_at=human_resumed_at,
                     human_silence_duration_hours=row["human_silence_duration_hours"],
                     active_sku=row["active_sku"],
-                    notes=row["notes"]
+                    notes=row["notes"],
                 )
             else:
                 new_conv = Conversation(
-                    id=clean_phone,
-                    customer_phone=clean_phone,
-                    state=ConversationState.AI_ACTIVE
+                    id=clean_phone, customer_phone=clean_phone, state=ConversationState.AI_ACTIVE
                 )
                 await self.save(new_conv)
                 return new_conv
@@ -102,12 +99,11 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
     async def save(self, conversation: Conversation) -> None:
         clean_phone = "".join(filter(str.isdigit, conversation.customer_phone))
         human_resumed_str = (
-            conversation.human_resumed_at.isoformat()
-            if conversation.human_resumed_at
-            else None
+            conversation.human_resumed_at.isoformat() if conversation.human_resumed_at else None
         )
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("""
+            await db.execute(
+                """
                 INSERT INTO conversations (
                     customer_phone, id, state, last_activity_at,
                     human_resumed_at, human_silence_duration_hours, active_sku, notes
@@ -119,16 +115,18 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                     human_silence_duration_hours = excluded.human_silence_duration_hours,
                     active_sku = excluded.active_sku,
                     notes = excluded.notes
-            """, (
-                clean_phone,
-                conversation.id,
-                conversation.state.value,
-                conversation.last_activity_at.isoformat(),
-                human_resumed_str,
-                conversation.human_silence_duration_hours,
-                conversation.active_sku,
-                conversation.notes
-            ))
+            """,
+                (
+                    clean_phone,
+                    conversation.id,
+                    conversation.state.value,
+                    conversation.last_activity_at.isoformat(),
+                    human_resumed_str,
+                    conversation.human_silence_duration_hours,
+                    conversation.active_sku,
+                    conversation.notes,
+                ),
+            )
             await db.commit()
 
     # --- Implementação de Pedidos ---
@@ -136,7 +134,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
     async def save_order(self, order: ReservationOrder) -> str:
         await self.init_db()
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("""
+            await db.execute(
+                """
                 INSERT INTO orders (
                     id, customer_phone, customer_name, product_sku,
                     quantity, product_price, destination_address,
@@ -145,18 +144,20 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 ON CONFLICT(id) DO UPDATE SET
                     status = excluded.status,
                     destination_address = excluded.destination_address
-            """, (
-                order.id,
-                order.customer_phone,
-                order.customer_name,
-                order.product_sku,
-                order.quantity,
-                order.product_price,
-                order.destination_address,
-                order.status.value,
-                order.created_at.isoformat(),
-                order.expires_at.isoformat()
-            ))
+            """,
+                (
+                    order.id,
+                    order.customer_phone,
+                    order.customer_name,
+                    order.product_sku,
+                    order.quantity,
+                    order.product_price,
+                    order.destination_address,
+                    order.status.value,
+                    order.created_at.isoformat(),
+                    order.expires_at.isoformat(),
+                ),
+            )
             await db.commit()
         return order.id
 
@@ -168,18 +169,20 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             rows = await cursor.fetchall()
             orders = []
             for r in rows:
-                orders.append(ReservationOrder(
-                    id=r["id"],
-                    customer_phone=r["customer_phone"],
-                    customer_name=r["customer_name"],
-                    product_sku=r["product_sku"],
-                    quantity=r["quantity"],
-                    product_price=r["product_price"],
-                    destination_address=r["destination_address"],
-                    status=OrderStatus(r["status"]),
-                    created_at=datetime.fromisoformat(r["created_at"]),
-                    expires_at=datetime.fromisoformat(r["expires_at"])
-                ))
+                orders.append(
+                    ReservationOrder(
+                        id=r["id"],
+                        customer_phone=r["customer_phone"],
+                        customer_name=r["customer_name"],
+                        product_sku=r["product_sku"],
+                        quantity=r["quantity"],
+                        product_price=r["product_price"],
+                        destination_address=r["destination_address"],
+                        status=OrderStatus(r["status"]),
+                        created_at=datetime.fromisoformat(r["created_at"]),
+                        expires_at=datetime.fromisoformat(r["expires_at"]),
+                    )
+                )
             return orders
 
     # --- Proteção Contra Auto-Silenciamento (Sent Messages) ---
@@ -192,7 +195,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 "INSERT OR IGNORE INTO sent_messages (message_id, sent_at) VALUES (?, ?)",
-                (message_id, datetime.now(timezone.utc).isoformat())
+                (message_id, datetime.now(timezone.utc).isoformat()),
             )
             await db.commit()
 
@@ -203,8 +206,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         await self.init_db()
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(
-                "SELECT 1 FROM sent_messages WHERE message_id = ?",
-                (message_id,)
+                "SELECT 1 FROM sent_messages WHERE message_id = ?", (message_id,)
             )
             row = await cursor.fetchone()
             return row is not None

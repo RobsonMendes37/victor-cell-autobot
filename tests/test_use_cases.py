@@ -15,7 +15,7 @@ async def test_quote_sets_active_sku(use_case, test_sqlite):
         customer_phone=phone,
         message_text="Opa, você tem a tela do A15 original com aro?",
         from_me=False,
-        push_name="Oficina Alpha"
+        push_name="Oficina Alpha",
     )
     assert res["status"] == "SUCCESS"
     assert res["intent"] == "QUOTE"
@@ -36,16 +36,14 @@ async def test_order_uses_active_sku_context_bug_fix(use_case, test_sqlite):
 
     # 1. Cotação do A15
     await use_case.execute(
-        customer_phone=phone,
-        message_text="Quanto tá a tela do A15 original?",
-        from_me=False
+        customer_phone=phone, message_text="Quanto tá a tela do A15 original?", from_me=False
     )
 
     # 2. Confirmação sem citar o nome da peça ("pode separar essa")
     res = await use_case.execute(
         customer_phone=phone,
         message_text="Pode separar essa! Manda o Uber pra Rua Floriano Peixoto, 1250 - Centro",
-        from_me=False
+        from_me=False,
     )
 
     assert res["status"] == "SUCCESS"
@@ -78,7 +76,7 @@ async def test_bot_echo_does_not_pause_ai_bug_fix(use_case, test_sqlite):
         customer_phone=phone,
         message_text="Opa meu amigo, temos sim!",
         from_me=True,
-        message_id=bot_msg_id
+        message_id=bot_msg_id,
     )
 
     assert res["status"] == "SKIPPED_BOT_ECHO"
@@ -99,7 +97,7 @@ async def test_human_owner_message_pauses_ai(use_case, test_sqlite):
         customer_phone=phone,
         message_text="Oi Marcos, vou verificar aqui na prateleira",
         from_me=True,
-        message_id=human_msg_id
+        message_id=human_msg_id,
     )
 
     assert res["status"] == "PAUSED_BY_HUMAN_INTERVENTION"
@@ -116,9 +114,7 @@ async def test_manual_bot_resume(use_case, test_sqlite):
     await test_sqlite.save(conv)
 
     res = await use_case.execute(
-        customer_phone=phone,
-        message_text="#bot pode assumir",
-        from_me=True
+        customer_phone=phone, message_text="#bot pode assumir", from_me=True
     )
     assert res["status"] == "AI_RESUMED"
     conv_after = await test_sqlite.get_or_create(phone)

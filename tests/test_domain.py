@@ -22,7 +22,7 @@ def test_product_in_stock():
         quality=QualityTier.ORIGINAL_NACIONAL,
         has_frame=True,
         price=150.0,
-        stock_quantity=3
+        stock_quantity=3,
     )
     assert p.is_in_stock is True
 
@@ -63,7 +63,7 @@ def test_order_expiration():
         product_sku="TEL-SAM-A15-ORIG",
         quantity=1,
         product_price=190.0,
-        destination_address="Rua A, 100"
+        destination_address="Rua A, 100",
     )
     assert order.is_expired is False
 

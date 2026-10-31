@@ -19,7 +19,7 @@ class MemoryConversationRepository(ConversationRepositoryInterface):
             self._conversations[customer_phone] = Conversation(
                 id=str(uuid.uuid4()),
                 customer_phone=customer_phone,
-                state=ConversationState.AI_ACTIVE
+                state=ConversationState.AI_ACTIVE,
             )
         return self._conversations[customer_phone]
 

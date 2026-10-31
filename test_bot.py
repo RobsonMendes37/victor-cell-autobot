@@ -1,18 +1,21 @@
 """
-Test Script to verify PecasBot business flows locally.
-Executes automated tests on the presentation and application layers.
+Interactive Test and Verification Script for Victor Cell PecasBot.
+Validates all business flows, anti-loop safeguards, and Power BI CSV export.
 """
 
 import asyncio
 
-from presentation.api import order_repo, use_case
+from infrastructure.repositories.memory_product_repository import MemoryProductRepository
+from infrastructure.repositories.sheets_exporter import SheetsExporter
+from presentation.api import sqlite_repo, use_case
 
 
 async def run_tests():
-    print("=" * 60)
-    print("🧪 INICIANDO BATERIA DE TESTES DO PECASBOT")
-    print("=" * 60)
+    print("=" * 65)
+    print("🧪 INICIANDO BATERIA DE TESTES - VICTOR CELL PECASBOT")
+    print("=" * 65)
 
+    await sqlite_repo.init_db()
     customer_phone = "5585991234567"
 
     # Teste 1: Cotação de Tela A15 Original
@@ -21,59 +24,115 @@ async def run_tests():
         customer_phone=customer_phone,
         message_text="Opa, tem tela do A15 original com aro?",
         from_me=False,
-        push_name="Marcos Celulares"
+        push_name="Marcos Celulares",
     )
     assert res1["status"] == "SUCCESS"
     assert res1["intent"] == "QUOTE"
-    print("✅ TESTE 1 PASSOU: Cotação respondida com sucesso.")
+    assert res1["target_sku"] == "TEL-SAM-A15-ORIG"
+    print("✅ TESTE 1 PASSOU: Cotação respondida e SKU A15 registrado na sessão.")
 
-    # Teste 2: Pedido de Separação com Despacho via Uber Flash
-    print("\n[TESTE 2] Cliente pede para separar e despachar por Uber Flash...")
+    # Teste 2: "Por favor" sem endereço NÃO cria pedido falso com endereço "por favor"
+    print("\n[TESTE 2] Cliente diz 'separa por favor' sem passar endereço...")
     res2 = await use_case.execute(
         customer_phone=customer_phone,
-        message_text="Pode separar essa! Manda o Uber pra Rua Floriano Peixoto, 1250 - Centro",
+        message_text="Separa uma do A15 por favor!",
         from_me=False,
-        push_name="Marcos Celulares"
+        push_name="Marcos Celulares",
     )
     assert res2["status"] == "SUCCESS"
-    assert res2["order_created"] is True
-    orders = order_repo.list_orders()
-    assert len(orders) >= 1
-    latest_order = orders[-1]
-    print(f"✅ TESTE 2 PASSOU: Pedido criado #{latest_order.id} com endereço '{latest_order.destination_address}' e alerta ao caixa gerado.")
+    assert res2["order_created"] is False, "Não deve criar pedido sem endereço real!"
+    print("✅ TESTE 2 PASSOU: 'Por favor' não foi confundido com endereço; bot pediu o endereço.")
 
-    # Teste 3: Transbordo Humano - Dono da loja intervém no celular (from_me=True)
-    print("\n[TESTE 3] Dono da loja responde no WhatsApp pelo celular...")
+    # Teste 3: Pergunta de frete ("quanto fica o Uber?") NÃO cria pedido falso
+    print("\n[TESTE 3] Cliente pergunta apenas o valor do Uber...")
     res3 = await use_case.execute(
-        customer_phone=customer_phone,
-        message_text="Opa Marcos, o Luan do caixa já tá cotando seu Uber!",
-        from_me=True
+        customer_phone="5585988887777",
+        message_text="Quanto fica o Uber até o centro?",
+        from_me=False,
+        push_name="Cliente Dúvida",
     )
-    assert res3["status"] == "PAUSED_BY_HUMAN_INTERVENTION"
+    assert res3["status"] == "SUCCESS"
+    assert res3["intent"] == "GENERAL_QUESTION"
+    assert res3["order_created"] is False
+    print("✅ TESTE 3 PASSOU: Dúvida sobre Uber explicada sem criar pedido indevido.")
 
-    # Teste 4: Cliente manda nova mensagem com o bot pausado
-    print("\n[TESTE 4] Cliente manda nova mensagem enquanto o humano está atendendo...")
+    # Teste 4: Cliente envia endereço real e cria pedido da peça certa (A15)
+    print(
+        "\n[TESTE 4] Cliente confirma com endereço real: 'Rua Floriano Peixoto, 1250 - Centro'..."
+    )
     res4 = await use_case.execute(
         customer_phone=customer_phone,
-        message_text="Beleza, aguardo o Pix!",
-        from_me=False
+        message_text="Manda pro endereço Rua Floriano Peixoto, 1250 - Centro",
+        from_me=False,
+        push_name="Marcos Celulares",
     )
-    assert res4["status"] == "SKIPPED_HUMAN_IN_CONTROL"
-    print("✅ TESTE 3 & 4 PASSOU: IA foi silenciada e não interferiu na conversa do dono.")
+    assert res4["status"] == "SUCCESS"
+    assert res4["order_created"] is True
+    assert res4["target_sku"] == "TEL-SAM-A15-ORIG"
 
-    # Teste 5: Dono reativa o bot com #bot
-    print("\n[TESTE 5] Dono envia comando #bot para reativar o atendimento automático...")
+    orders = await sqlite_repo.list_orders()
+    assert len(orders) >= 1
+    latest = orders[0]
+    assert latest.product_sku == "TEL-SAM-A15-ORIG"
+    assert "Floriano Peixoto" in latest.destination_address
+    print(
+        f"✅ TESTE 4 PASSOU: Pedido #{latest.id} criado com a peça correta (A15 Original - R$ {latest.product_price:.2f})."
+    )
+
+    # Teste 5: Eco do próprio bot não silencia a IA
+    print("\n[TESTE 5] Webhook recebe eco da própria resposta do bot (fromMe=true)...")
+    await sqlite_repo.record_sent_message("bot_msg_echo_01")
     res5 = await use_case.execute(
         customer_phone=customer_phone,
-        message_text="#bot atendimento liberado",
-        from_me=True
+        message_text="Opa, perfeito! Já deixo separada...",
+        from_me=True,
+        message_id="bot_msg_echo_01",
     )
-    assert res5["status"] == "AI_RESUMED"
-    print("✅ TESTE 5 PASSOU: IA reativada com sucesso.")
+    assert res5["status"] == "SKIPPED_BOT_ECHO"
+    print("✅ TESTE 5 PASSOU: Eco do bot ignorado, IA continua ativa.")
 
-    print("\n" + "=" * 60)
-    print("🎉 TODOS OS 5 TESTES DE ARQUITETURA PASSARAM COM SUCESSO!")
-    print("=" * 60)
+    # Teste 6: Dono da loja responde no WhatsApp pelo celular
+    print("\n[TESTE 6] Dono da loja intervém no celular pessoal...")
+    res6 = await use_case.execute(
+        customer_phone=customer_phone,
+        message_text="Opa Marcos, já tô levando a tela pro balcão!",
+        from_me=True,
+        message_id="human_msg_real_01",
+    )
+    assert res6["status"] == "PAUSED_BY_HUMAN_INTERVENTION"
+    print("✅ TESTE 6 PASSOU: Intervenção humana detectada, IA silenciada.")
+
+    # Teste 7: Reativação com comando #bot
+    print("\n[TESTE 7] Dono reativa com #bot...")
+    res7 = await use_case.execute(
+        customer_phone=customer_phone,
+        message_text="#bot atendimento liberado",
+        from_me=True,
+    )
+    assert res7["status"] == "AI_RESUMED"
+    print("✅ TESTE 7 PASSOU: IA reativada pelo dono.")
+
+    # Teste 8: Exportação da Planilha para Power BI (Linha 1 Título, Linha 2 Colunas, Linha 3 Dados)
+    print("\n[TESTE 8] Exportando catálogo e logs para formato Google Sheets / Power BI...")
+    exporter = SheetsExporter(output_dir="data")
+    prod_repo = MemoryProductRepository()
+    all_products = await prod_repo.list_all()
+    cat_path = exporter.export_catalog_csv(all_products)
+    log_path = exporter.export_orders_log_csv(orders)
+
+    with open(cat_path, "r", encoding="utf-8-sig") as f:
+        lines = [f.readline().strip() for _ in range(3)]
+        assert "Victor Cell" in lines[0], "Linha 1 deve ser o Título do Projeto"
+        assert "SKU,Produto" in lines[1], "Linha 2 deve ser o cabeçalho das colunas"
+        assert "TEL-SAM-A15-ORIG" in lines[2], "Linha 3 deve conter o primeiro registro de dados"
+
+    print(
+        f"✅ TESTE 8 PASSOU: Planilhas geradas em {cat_path} e {log_path} seguindo o layout exato para Power BI."
+    )
+
+    print("\n" + "=" * 65)
+    print("🎉 TODOS OS 8 TESTES PASSARAM COM 100% DE SUCESSO!")
+    print("=" * 65)
 
 
 if __name__ == "__main__":

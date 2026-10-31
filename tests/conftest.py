@@ -49,5 +49,5 @@ def use_case(test_sqlite, product_repo, mock_gateway, ai_service):
         order_repo=test_sqlite,
         messaging_gateway=mock_gateway,
         ai_service=ai_service,
-        sqlite_repo=test_sqlite
+        sqlite_repo=test_sqlite,
     )

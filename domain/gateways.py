@@ -23,10 +23,7 @@ class MessagingGatewayInterface(ABC):
 class AIServiceInterface(ABC):
     @abstractmethod
     async def process_and_reply(
-        self,
-        conversation: Conversation,
-        user_message: str,
-        catalog_context: str
+        self, conversation: Conversation, user_message: str, catalog_context: str
     ) -> Dict[str, Any]:
         """
         Processes inbound message with context, calls tools if needed,

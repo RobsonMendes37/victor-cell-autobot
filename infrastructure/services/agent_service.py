@@ -1,10 +1,11 @@
 """
 AI Agent Service using Google Gemini with Async Client (client.aio).
-Implements AIServiceInterface with full conversational memory and active SKU awareness.
+Enforces semantic extraction and avoids crude keyword matching.
 """
 
 import json
 import logging
+import re
 from typing import Any, Dict
 
 from domain.entities import Conversation
@@ -17,35 +18,37 @@ SYSTEM_PROMPT = """
 Você é o atendente de balcão virtual da loja "Victor Cell - Peças para Tablets e Celulares".
 Seu objetivo é atender técnicos de bancada e clientes via WhatsApp com cordialidade, rapidez e transparência.
 
-DIRETRIZES FUNDAMENTAIS:
+DIRETRIZES DE ATENDIMENTO:
 1. Tom de voz de balcão de confiança: use expressões naturais como "Opa meu amigo", "Temos sim, patrão!", "Beleza?".
 2. NUNCA use menus rígidos com números ("Digite 1 para telas..."). Seja 100% conversacional.
-3. Transparência técnica obrigatória:
-   - Se for "Original Nacional", informe que tem garantia de 90 dias.
-   - Se for "Paralela / China Incell", informe o valor acessível e recomende testar antes de colar.
-4. Para telas: se o cliente não especificou se quer COM ARO ou SEM ARO, pergunte amigavelmente antes de fechar.
-5. Quando o cliente disser "separa essa", "pode mandar", ou pedir envio por UBER FLASH:
-   - Use o SKU da peça que estava sendo discutida na conversa (ACTIVE_SKU: {active_sku}).
-   - Peça o endereço completo de entrega (rua, número, bairro).
-   - Avise que os meninos do caixa já vão cotar o Uber Flash e passar o Pix para liberação.
-   - Se a loja estiver FECHADA agora, informe que a peça já fica reservada para envio na primeira hora da manhã seguinte.
+3. Transparência técnica:
+   - "Original Nacional": informe que tem garantia de 90 dias.
+   - "Paralela / China Incell": informe o valor acessível e recomende testar antes de colar.
+4. Para telas: se o cliente não especificou se quer COM ARO ou SEM ARO, pergunte amigavelmente.
+5. Quando o cliente solicitar entrega ou cotar Uber:
+   - Se apenas perguntou quanto custa o Uber ("quanto fica o Uber até o centro?"): NÃO crie pedido! Explique que os meninos do caixa calculam a rota pelo app do Uber Flash na hora do envio.
+   - Se disse "separa essa", "pode mandar", "vou querer" ou enviou o endereço de entrega:
+     - Verifique se informou endereço de entrega real (ex: Rua, Número, Bairro).
+     - Se NÃO informou endereço, peça o endereço completo.
+     - Se informou endereço, extraia apenas o endereço real no campo "destination_address".
+     - Palavras de cortesia como "por favor", "obrigado", "valeu" NUNCA são endereços!
 
 ESTADO DA LOJA:
-- Loja física aberta agora: {is_open}
+- Aberta agora: {is_open}
 - Horário regular: {opening_time} às {closing_time}
 
-PEÇA ATUALMENTE EM DISCUSSÃO: {active_sku}
+PEÇA DISCUTIDA ANTERIORMENTE NA CONVERSA: {active_sku}
 
-CATÁLOGO ATUALIZADO EM ESTOQUE:
+CATÁLOGO EM ESTOQUE:
 {catalog_context}
 
 Responda SEMPRE em formato JSON estrito:
 {{
   "intent": "QUOTE" | "ORDER_DISPATCH" | "HUMAN_HANDOFF" | "GENERAL_QUESTION",
-  "reply_text": "Texto que será enviado ao cliente no WhatsApp",
+  "reply_text": "Texto para o cliente no WhatsApp",
   "target_sku": "SKU da peça identificada ou null",
   "requires_staff_alert": true | false,
-  "destination_address": "Endereço extraído se o cliente informou ou null",
+  "destination_address": "Endereço extraído ou null",
   "handoff_reason": "Motivo caso seja HUMAN_HANDOFF ou null"
 }}
 """
@@ -60,67 +63,162 @@ class AIAgentService(AIServiceInterface):
     def _init_client(self):
         try:
             from google import genai
+
             if self.api_key and self.api_key != "demo_key":
                 self._client = genai.Client(api_key=self.api_key)
         except Exception as e:
-            logger.warning(f"Google GenAI client não inicializado ({e}). Operando com fallback contextual.")
+            logger.warning(
+                f"Google GenAI client não inicializado ({e}). Operando com fallback semântico seguro."
+            )
 
     async def process_and_reply(
-        self,
-        conversation: Conversation,
-        user_message: str,
-        catalog_context: str
+        self, conversation: Conversation, user_message: str, catalog_context: str
     ) -> Dict[str, Any]:
-        """
-        Processes inbound message with context using async client.aio.
-        """
         is_open = settings.is_store_open()
 
-        # Chamada assíncrona com Gemini quando configurado
+        # Chamada assíncrona ao Gemini quando API Key estiver configurada
         if self._client:
             try:
                 prompt = SYSTEM_PROMPT.format(
                     catalog_context=catalog_context,
-                    active_sku=conversation.active_sku or "Nenhum no momento",
+                    active_sku=conversation.active_sku or "Nenhuma até o momento",
                     is_open="SIM" if is_open else "NÃO (Fora do expediente)",
                     opening_time=settings.STORE_OPENING_TIME,
-                    closing_time=settings.STORE_CLOSING_TIME
+                    closing_time=settings.STORE_CLOSING_TIME,
                 )
 
                 response = await self._client.aio.models.generate_content(
                     model="gemini-2.5-flash",
                     contents=[
-                        {"role": "user", "parts": [{"text": f"Mensagem do cliente:\n{user_message}"}]}
+                        {
+                            "role": "user",
+                            "parts": [
+                                {
+                                    "text": (
+                                        f"Peça ativa na sessão: {conversation.active_sku}\n"
+                                        f"Mensagem do cliente: {user_message}"
+                                    )
+                                }
+                            ],
+                        }
                     ],
-                    config={"system_instruction": prompt, "response_mime_type": "application/json"}
+                    config={"system_instruction": prompt, "response_mime_type": "application/json"},
                 )
                 return json.loads(response.text)
             except Exception as e:
-                logger.error(f"Erro na chamada do Gemini API (async): {e}. Acionando fallback contextual.")
+                logger.error(
+                    f"Erro na chamada do Gemini API (async): {e}. Acionando fallback semântico."
+                )
 
-        # Fallback Heurístico Contextual Inteligente
-        return self._contextual_fallback(user_message, conversation, is_open)
+        # Fallback Semântico Seguro (Não comete os erros de substring)
+        return self._semantic_fallback(user_message, conversation, is_open)
 
-    def _contextual_fallback(
-        self,
-        user_msg: str,
-        conversation: Conversation,
-        is_open: bool
+    def _extract_real_address(self, text: str) -> str | None:
+        """
+        Extrai endereço apenas se contiver palavras-chave de logradouro com limites de palavras.
+        Evita falsos positivos como 'por favor', 'avisa', etc.
+        """
+        pattern = r"\b(rua|r\.|avenida|av\.|travessa|trav\.|alameda|bairro|praça)\b\s+[^,\n]+(?:,\s*\d+)?(?:\s*-\s*[^,\n]+)?"
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            start = match.start()
+            return text[start:].strip()
+        return None
+
+    def _semantic_fallback(
+        self, user_msg: str, conversation: Conversation, is_open: bool
     ) -> Dict[str, Any]:
         msg = user_msg.lower().strip()
 
-        # 1. Intenção de Pedido / Separação / Uber Flash
-        if any(w in msg for w in ["separa", "separar", "uber", "manda entregar", "vou querer", "fecha essa", "manda essa", "pode ser"]):
-            # Resolução do Bug 1: Usa o active_sku da conversa se não especificado na mensagem
+        # 1. Transbordo Humano
+        if any(
+            w in msg
+            for w in [
+                "desconto",
+                "faz por menos",
+                "garantia",
+                "defeito",
+                "falar com dono",
+                "falar com atendente",
+            ]
+        ):
+            return {
+                "intent": "HUMAN_HANDOFF",
+                "reply_text": "Entendi, meu amigo! Já avisei o gerente aqui na loja para verificar sua solicitação com prioridade. Um minuto que ele já assume a conversa aqui com você!",
+                "target_sku": None,
+                "requires_staff_alert": True,
+                "destination_address": None,
+                "handoff_reason": "Negociação ou Garantia",
+            }
+
+        # 2. Dúvida sobre frete/Uber sem pedido de compra ("quanto fica o uber?")
+        is_only_uber_question = (
+            ("quanto fica" in msg or "qual o valor" in msg or "quanto é" in msg)
+            and ("uber" in msg or "frete" in msg or "entrega" in msg)
+            and not any(
+                w in msg for w in ["separa", "separar", "manda essa", "pode mandar", "vou querer"]
+            )
+        )
+        if is_only_uber_question:
+            return {
+                "intent": "GENERAL_QUESTION",
+                "reply_text": (
+                    "Opa! O valor do Uber Flash depende da distância da nossa loja até sua assistência. "
+                    "Assim que você confirmar a peça e passar o endereço com bairro, os meninos do caixa calculam a rota exata no app e te passam o valor sem acréscimo nenhum, beleza?"
+                ),
+                "target_sku": conversation.active_sku,
+                "requires_staff_alert": False,
+                "destination_address": None,
+                "handoff_reason": None,
+            }
+
+        # Extração de endereço com regex segura
+        real_address = self._extract_real_address(user_msg)
+
+        # 3. Intenção de Pedido / Separação ou Envio de Endereço
+        is_order_intent = any(
+            w in msg
+            for w in [
+                "separa",
+                "separar",
+                "manda entregar",
+                "vou querer",
+                "fecha essa",
+                "manda essa",
+                "pode mandar",
+                "manda pro",
+                "manda pra",
+                "manda para",
+                "entrega em",
+                "entrega na",
+                "entrega no",
+                "endereço",
+                "endereco",
+            ]
+        ) or (real_address is not None and conversation.active_sku is not None)
+
+        if is_order_intent:
             resolved_sku = conversation.active_sku
             if "a15" in msg:
-                resolved_sku = "TEL-SAM-A15-ORIG" if "original" in msg else (conversation.active_sku or "TEL-SAM-A15-ORIG")
+                resolved_sku = (
+                    "TEL-SAM-A15-ORIG"
+                    if "original" in msg
+                    else (conversation.active_sku or "TEL-SAM-A15-ORIG")
+                )
             elif "tab a8" in msg or "x200" in msg:
                 resolved_sku = "CON-TAB-A8-ORIG" if "conector" in msg else "TEL-TAB-A8-1LINHA"
 
-            has_address = any(w in msg for w in ["rua", "av", "avenida", "bairro", "número", "n°", "travessa"])
+            if not resolved_sku:
+                return {
+                    "intent": "GENERAL_QUESTION",
+                    "reply_text": "Com certeza, meu patrão! Me diz só qual modelo e peça você quer que a gente separe para você?",
+                    "target_sku": None,
+                    "requires_staff_alert": False,
+                    "destination_address": None,
+                    "handoff_reason": None,
+                }
 
-            if has_address:
+            if real_address:
                 if is_open:
                     reply = (
                         "Show de bola, meu patrão! Já anotei o seu endereço e passei a peça para os meninos do caixa.\n\n"
@@ -137,37 +235,25 @@ class AIAgentService(AIServiceInterface):
                 return {
                     "intent": "ORDER_DISPATCH",
                     "reply_text": reply,
-                    "target_sku": resolved_sku or "TEL-SAM-A15-ORIG",
+                    "target_sku": resolved_sku,
                     "requires_staff_alert": True,
-                    "destination_address": user_msg,
-                    "handoff_reason": None
+                    "destination_address": real_address,
+                    "handoff_reason": None,
                 }
             else:
                 return {
                     "intent": "ORDER_DISPATCH",
                     "reply_text": (
                         "Opa, perfeito! Já deixo separada aqui no balcão.\n\n"
-                        "Você prefere que a gente chame o Uber Flash aqui da loja? "
-                        "Se sim, me manda o endereço completo com ponto de referência que os meninos do caixa já cotam pra você!"
+                        "Para os meninos do caixa cotarem o Uber Flash para você, me manda o endereço completo com número e bairro, por favor!"
                     ),
-                    "target_sku": resolved_sku or "TEL-SAM-A15-ORIG",
+                    "target_sku": resolved_sku,
                     "requires_staff_alert": False,
                     "destination_address": None,
-                    "handoff_reason": None
+                    "handoff_reason": None,
                 }
 
-        # 2. Transbordo Humano
-        if any(w in msg for w in ["desconto", "faz por menos", "garantia", "defeito", "falar com dono", "falar com atendente"]):
-            return {
-                "intent": "HUMAN_HANDOFF",
-                "reply_text": "Entendi, meu amigo! Já avisei o gerente aqui na loja para verificar sua solicitação com prioridade. Um minuto que ele já assume a conversa aqui com você!",
-                "target_sku": None,
-                "requires_staff_alert": True,
-                "destination_address": None,
-                "handoff_reason": "Negociação ou Garantia"
-            }
-
-        # 3. Consulta de Peça: Atualiza o active_sku da conversa!
+        # 4. Consulta de Peça: Atualiza o active_sku da conversa
         if "a15" in msg:
             if "original" in msg:
                 return {
@@ -176,7 +262,7 @@ class AIAgentService(AIServiceInterface):
                     "target_sku": "TEL-SAM-A15-ORIG",
                     "requires_staff_alert": False,
                     "destination_address": None,
-                    "handoff_reason": None
+                    "handoff_reason": None,
                 }
             elif "paralela" in msg or "china" in msg:
                 return {
@@ -185,7 +271,7 @@ class AIAgentService(AIServiceInterface):
                     "target_sku": "TEL-SAM-A15-CHIN",
                     "requires_staff_alert": False,
                     "destination_address": None,
-                    "handoff_reason": None
+                    "handoff_reason": None,
                 }
             else:
                 return {
@@ -199,7 +285,7 @@ class AIAgentService(AIServiceInterface):
                     "target_sku": "TEL-SAM-A15-ORIG",
                     "requires_staff_alert": False,
                     "destination_address": None,
-                    "handoff_reason": None
+                    "handoff_reason": None,
                 }
 
         if "tab a8" in msg or "x200" in msg:
@@ -215,15 +301,15 @@ class AIAgentService(AIServiceInterface):
                 "target_sku": sku,
                 "requires_staff_alert": False,
                 "destination_address": None,
-                "handoff_reason": None
+                "handoff_reason": None,
             }
 
-        # Resposta padrão cordial
+        # Resposta padrão
         return {
             "intent": "GENERAL_QUESTION",
             "reply_text": "Opa, bom dia meu amigo! Tudo certo? Me diz qual modelo de celular ou tablet você tá precisando de peça hoje que já consulto nosso estoque aqui no balcão!",
             "target_sku": None,
             "requires_staff_alert": False,
             "destination_address": None,
-            "handoff_reason": None
+            "handoff_reason": None,
         }

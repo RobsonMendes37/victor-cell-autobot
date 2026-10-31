@@ -109,7 +109,9 @@ class Conversation:
 
         if self.state == ConversationState.HUMAN_ACTIVE:
             if self.human_resumed_at:
-                timeout_threshold = self.human_resumed_at + timedelta(hours=self.human_silence_duration_hours)
+                timeout_threshold = self.human_resumed_at + timedelta(
+                    hours=self.human_silence_duration_hours
+                )
                 now = datetime.now(timezone.utc)
                 if now < timeout_threshold:
                     return False  # Still inside human silence window
@@ -151,4 +153,7 @@ class ReservationOrder:
 
     @property
     def is_expired(self) -> bool:
-        return datetime.now(timezone.utc) > self.expires_at and self.status == OrderStatus.PENDING_SEPARATION
+        return (
+            datetime.now(timezone.utc) > self.expires_at
+            and self.status == OrderStatus.PENDING_SEPARATION
+        )

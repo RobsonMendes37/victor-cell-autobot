@@ -1,6 +1,6 @@
 """
 Application Configuration using Pydantic Settings.
-Includes Business Hours logic with local timezone.
+Includes Business Hours logic with local timezone and safe port defaults.
 """
 
 from datetime import datetime, time
@@ -17,7 +17,11 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = "demo_key"
     GEMINI_API_KEY_BACKUP: Optional[str] = None
 
-    EVOLUTION_API_URL: str = "http://localhost:8080"
+    # Portas seguras para não conflitar com 8080 (Java local) nem 3000/3010 (VM Oracle)
+    PORT_BACKEND: int = 8005
+    PORT_EVOLUTION: int = 8085
+
+    EVOLUTION_API_URL: str = "http://localhost:8085"
     EVOLUTION_API_KEY: str = "ChaveSecretaLoja123"
     EVOLUTION_INSTANCE_NAME: str = "victor-cell-01"
 
@@ -30,8 +34,14 @@ class Settings(BaseSettings):
     STORE_CLOSING_TIME: str = "18:00"
     STORE_SAT_CLOSING_TIME: str = "13:00"
 
-    DEBOUNCE_WAIT_SECONDS: float = 5.0
+    DEBOUNCE_WAIT_SECONDS: float = 3.0
     HOLD_HOURS: int = 2
+    ACTIVE_SKU_TIMEOUT_HOURS: int = 2
+
+    def get_local_now(self) -> datetime:
+        """Returns current datetime in Fortaleza timezone."""
+        tz = pytz.timezone(self.STORE_TIMEZONE)
+        return datetime.now(tz)
 
     def is_store_open(self, now_dt: Optional[datetime] = None) -> bool:
         """Checks whether the physical store is open based on Fortaleza timezone."""
@@ -39,7 +49,7 @@ class Settings(BaseSettings):
         local_now = now_dt.astimezone(tz) if now_dt else datetime.now(tz)
 
         weekday = local_now.weekday()  # 0=Segunda, 5=Sábado, 6=Domingo
-        if weekday == 6:  # Domingo
+        if weekday == 6:  # Domingo fechado
             return False
 
         current_time = local_now.time()
@@ -47,9 +57,9 @@ class Settings(BaseSettings):
         open_h, open_m = map(int, self.STORE_OPENING_TIME.split(":"))
         open_time = time(open_h, open_m)
 
-        if weekday == 5:  # Sábado
+        if weekday == 5:  # Sábado até 13h
             close_h, close_m = map(int, self.STORE_SAT_CLOSING_TIME.split(":"))
-        else:  # Seg-Sex
+        else:  # Seg-Sex até 18h
             close_h, close_m = map(int, self.STORE_CLOSING_TIME.split(":"))
         close_time = time(close_h, close_m)
 

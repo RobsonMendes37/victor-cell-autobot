@@ -1,22 +1,29 @@
 """
 Use Case: ProcessIncomingMessageUseCase
 Core orchestrator following Clean Architecture.
-Resolves:
-- Self-silencing loop prevention via is_sent_by_bot check
-- Conversational memory via active_sku persistence
-- Order creation with exact quoted item and hold expiration
+Features:
+- Timezone-aware alert formatting (Fortaleza local time)
+- Memory timeout for active SKU (2 hours)
+- Anti-loop protection against bot's own message echoes
 """
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
-from domain.entities import ConversationState, ReservationOrder
+import pytz
+
+from domain.entities import (
+    ConversationState,
+    ReservationOrder,
+)
 from domain.gateways import AIServiceInterface, MessagingGatewayInterface
 from domain.repositories import (
     ConversationRepositoryInterface,
     OrderRepositoryInterface,
     ProductRepositoryInterface,
 )
+from infrastructure.config import settings
 
 logger = logging.getLogger("ProcessIncomingMessageUseCase")
 
@@ -29,7 +36,7 @@ class ProcessIncomingMessageUseCase:
         order_repo: OrderRepositoryInterface,
         messaging_gateway: MessagingGatewayInterface,
         ai_service: AIServiceInterface,
-        sqlite_repo = None
+        sqlite_repo=None,
     ):
         self.conversation_repo = conversation_repo
         self.product_repo = product_repo
@@ -44,16 +51,13 @@ class ProcessIncomingMessageUseCase:
         message_text: str,
         from_me: bool = False,
         push_name: Optional[str] = None,
-        message_id: Optional[str] = None
+        message_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        Executes business flow when an event arrives from WhatsApp.
-        """
         clean_phone = "".join(filter(str.isdigit, customer_phone))
         if not clean_phone:
             return {"status": "INVALID_PHONE"}
 
-        # 1. Proteção contra Loop: Se foi enviado pelo próprio bot, ignora o eco do webhook
+        # 1. Proteção contra Loop: Se foi enviado pelo próprio bot, ignora o eco
         if from_me and message_id and self.sqlite_repo:
             if await self.sqlite_repo.is_sent_by_bot(message_id):
                 logger.debug(f"Eco de mensagem própria do bot ignorado ({message_id})")
@@ -61,27 +65,39 @@ class ProcessIncomingMessageUseCase:
 
         conversation = await self.conversation_repo.get_or_create(clean_phone)
 
-        # 2. Se a mensagem foi enviada pelo dono/operador humano (celular da loja ou WhatsApp Web)
+        # 2. Se a mensagem foi enviada pelo dono no WhatsApp Web ou aparelho físico
         if from_me:
-            # Comando explícito de reativação da IA pelo dono
             if "#bot" in message_text.lower():
                 conversation.resume_ai()
                 await self.conversation_repo.save(conversation)
                 logger.info(f"IA reativada manualmente para {clean_phone} pelo comando #bot.")
                 return {"status": "AI_RESUMED"}
 
-            # Qualquer outra mensagem enviada pelo humano silencia o bot imediatamente
-            logger.info(f"Intervenção humana detectada no chat de {clean_phone}. Silenciando IA por 3 horas.")
+            logger.info(
+                f"Intervenção humana detectada no chat de {clean_phone}. Silenciando IA por 3 horas."
+            )
             conversation.pause_for_human(duration_hours=3)
             await self.conversation_repo.save(conversation)
             return {"status": "PAUSED_BY_HUMAN_INTERVENTION"}
 
-        # 3. Se a IA estiver em modo de silenciamento ativo (atendente humano no comando)
+        # 3. Se a IA estiver silenciada por atendimento humano em curso
         if not conversation.is_ai_allowed():
-            logger.info(f"Mensagem de {clean_phone} recebida, mas IA está pausada (atendimento humano em curso).")
+            logger.info(
+                f"Mensagem de {clean_phone} recebida, mas IA está pausada (humano no controle)."
+            )
             return {"status": "SKIPPED_HUMAN_IN_CONTROL"}
 
-        # 4. Busca catálogo atualizado para fornecer contexto de estoque
+        # 4. Timeout da peça ativa na memória: se inativo há mais de 2 horas, limpa active_sku
+        now_utc = datetime.now(timezone.utc)
+        if conversation.active_sku and conversation.last_activity_at:
+            if now_utc - conversation.last_activity_at > timedelta(
+                hours=settings.ACTIVE_SKU_TIMEOUT_HOURS
+            ):
+                conversation.active_sku = None
+
+        conversation.last_activity_at = now_utc
+
+        # 5. Carrega catálogo atualizado para fornecer contexto de estoque
         catalog = await self.product_repo.list_all()
         catalog_lines = []
         for p in catalog:
@@ -91,11 +107,11 @@ class ProcessIncomingMessageUseCase:
             )
         catalog_context = "\n".join(catalog_lines)
 
-        # 5. Processamento Cognitivo via IA
+        # 6. Processamento via IA
         ai_decision = await self.ai_service.process_and_reply(
             conversation=conversation,
             user_message=message_text,
-            catalog_context=catalog_context
+            catalog_context=catalog_context,
         )
 
         reply_text = ai_decision.get("reply_text", "")
@@ -104,17 +120,16 @@ class ProcessIncomingMessageUseCase:
         target_sku = ai_decision.get("target_sku") or conversation.active_sku
         destination_address = ai_decision.get("destination_address")
 
-        # Atualiza a memória de peça em discussão se uma foi identificada
         if ai_decision.get("target_sku"):
             conversation.active_sku = ai_decision["target_sku"]
 
-        # 6. Envia resposta cordial ao cliente
+        # 7. Envia resposta cordial ao cliente
         if reply_text:
             await self.messaging_gateway.send_text(clean_phone, reply_text)
 
-        # 7. Se o cliente fechou pedido de separação / Uber Flash, dispara alerta ao caixa
+        # 8. Se o cliente fechou pedido de separação com endereço válido
         order_created = False
-        if intent == "ORDER_DISPATCH" and requires_staff_alert:
+        if intent == "ORDER_DISPATCH" and requires_staff_alert and destination_address:
             final_sku = target_sku or conversation.active_sku or "TEL-SAM-A15-ORIG"
             product = await self.product_repo.get_by_sku(final_sku)
             prod_name = product.name if product else "Peça solicitada pelo cliente"
@@ -126,12 +141,16 @@ class ProcessIncomingMessageUseCase:
                 product_sku=final_sku,
                 quantity=1,
                 product_price=prod_price,
-                destination_address=destination_address or "A combinar pelo WhatsApp"
+                destination_address=destination_address,
             )
             await self.order_repo.save_order(order)
             order_created = True
 
-            # Notificação estruturada para os funcionários do balcão/caixa
+            # Formata validade da reserva no Fuso Horário de Fortaleza (UTC-3)
+            fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
+            expires_local = order.expires_at.astimezone(fortaleza_tz)
+            expires_str = expires_local.strftime("%H:%M")
+
             alert_msg = (
                 f"🚨 *NOVO DESPACHO VIA UBER FLASH REQUISITADO!*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -139,7 +158,7 @@ class ProcessIncomingMessageUseCase:
                 f"• *Cliente:* {order.customer_name} ({clean_phone})\n"
                 f"• *Peça a Separar:* {prod_name} (R$ {prod_price:.2f})\n"
                 f"• *Endereço Entrega:* {order.destination_address}\n"
-                f"• *Validade Reserva:* 2 Horas (até {order.expires_at.strftime('%H:%M')})\n"
+                f"• *Validade Reserva:* 2 Horas (até {expires_str})\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"👉 *AÇÃO DOS MENINOS DO CAIXA:*\n"
                 f"1. Cotar corrida no app do Uber Flash.\n"
@@ -149,18 +168,16 @@ class ProcessIncomingMessageUseCase:
             await self.messaging_gateway.send_internal_staff_alert(alert_msg)
             conversation.state = ConversationState.WAITING_DISPATCH
 
-        # 8. Se houve gatilho de transbordo (reclamação/desconto agressivo)
         elif intent == "HUMAN_HANDOFF":
             conversation.pause_for_human(duration_hours=2)
             handoff_alert = (
                 f"⚠️ *ATENDIMENTO HUMANO SOLICITADO*\n"
                 f"• Cliente: {push_name or 'Cliente'} ({clean_phone})\n"
                 f"• Motivo: {ai_decision.get('handoff_reason', 'Negociação ou Dúvida Técnica')}\n"
-                f"• Última mensagem: \"{message_text}\""
+                f'• Última mensagem: "{message_text}"'
             )
             await self.messaging_gateway.send_internal_staff_alert(handoff_alert)
 
-        # Salva estado atualizado da conversa
         await self.conversation_repo.save(conversation)
 
         return {
@@ -168,5 +185,5 @@ class ProcessIncomingMessageUseCase:
             "intent": intent,
             "replied": bool(reply_text),
             "order_created": order_created,
-            "target_sku": target_sku
+            "target_sku": target_sku,
         }

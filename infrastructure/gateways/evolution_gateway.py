@@ -20,18 +20,12 @@ class EvolutionGateway(MessagingGatewayInterface):
         self.api_key = settings.EVOLUTION_API_KEY
         self.instance = settings.EVOLUTION_INSTANCE_NAME
         self.message_recorder = message_recorder
-        self.headers = {
-            "apikey": self.api_key,
-            "Content-Type": "application/json"
-        }
+        self.headers = {"apikey": self.api_key, "Content-Type": "application/json"}
 
     async def send_text(self, to_phone: str, text: str) -> bool:
         clean_number = "".join(filter(str.isdigit, to_phone))
         url = f"{self.base_url}/message/sendText/{self.instance}"
-        payload = {
-            "number": clean_number,
-            "text": text
-        }
+        payload = {"number": clean_number, "text": text}
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -46,7 +40,9 @@ class EvolutionGateway(MessagingGatewayInterface):
                 logger.warning(f"Evolution API retornou status {res.status_code}: {res.text}")
                 return False
         except Exception as e:
-            logger.error(f"Falha de conexão com Evolution API ({url}): {e}. Operando em modo de simulação.")
+            logger.error(
+                f"Falha de conexão com Evolution API ({url}): {e}. Operando em modo de simulação."
+            )
             print(f"\n[MOCK WA ENVIADO PARA {clean_number}]:\n{text}\n")
             return True
 

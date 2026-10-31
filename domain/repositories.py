@@ -17,10 +17,7 @@ class ProductRepositoryInterface(ABC):
 
     @abstractmethod
     async def search(
-        self,
-        query: str,
-        quality: Optional[QualityTier] = None,
-        has_frame: Optional[bool] = None
+        self, query: str, quality: Optional[QualityTier] = None, has_frame: Optional[bool] = None
     ) -> List[Product]:
         """Searches products by model or name with optional quality/frame filter."""
         pass

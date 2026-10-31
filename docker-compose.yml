@@ -1,10 +1,10 @@
 version: '3.8'
 
 services:
-  # 1. Redis Cache para sessões da Evolution API e debounce
+  # 1. Redis Cache para sessões da Evolution API
   redis:
     image: redis:7-alpine
-    container_name: pecas_redis
+    container_name: victor_cell_redis
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
@@ -12,15 +12,15 @@ services:
     networks:
       - bot_network
 
-  # 2. Gateway do WhatsApp (Evolution API v2 - Open Source)
+  # 2. Gateway do WhatsApp (Evolution API v2 - Porta 8085 para evitar conflitos)
   evolution-api:
     image: atendai/evolution-api:v2.1.2
-    container_name: pecas_evolution
+    container_name: victor_cell_evolution
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${PORT_EVOLUTION:-8085}:8080"
     environment:
-      - SERVER_URL=http://localhost:8080
+      - SERVER_URL=http://localhost:${PORT_EVOLUTION:-8085}
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-ChaveSecretaLoja123}
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379
@@ -34,23 +34,25 @@ services:
     networks:
       - bot_network
 
-  # 3. Backend Python (FastAPI + Google Antigravity + Gemini + Google Sheets)
+  # 3. Backend Python (FastAPI + Gemini + SQLite - Porta 8005)
   pecas-backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: pecas_backend
+    container_name: victor_cell_backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${PORT_BACKEND:-8005}:8000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - EVOLUTION_API_URL=http://evolution-api:8080
       - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-ChaveSecretaLoja123}
+      - EVOLUTION_INSTANCE_NAME=${EVOLUTION_INSTANCE_NAME:-victor-cell-01}
       - CAIXA_STAFF_PHONE=${CAIXA_STAFF_PHONE:-5585999999999}
+      - STORE_TIMEZONE=America/Fortaleza
       - STORE_OPENING_TIME=08:30
       - STORE_CLOSING_TIME=18:00
-      - GOOGLE_SHEET_ID=${GOOGLE_SHEET_ID:-}
+      - DATABASE_PATH=/app/data/pecasbot.db
     volumes:
       - ./data:/app/data
     depends_on:
