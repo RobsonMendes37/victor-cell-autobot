@@ -13,6 +13,8 @@ Includes:
 - Gemini AI Quota Manager, Key Tester & Rate Limit Inspector
 """
 
+from typing import Optional
+
 def render_dashboard_html() -> str:
     return r"""<!DOCTYPE html>
 <html lang="pt-BR">

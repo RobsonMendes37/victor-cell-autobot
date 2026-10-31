@@ -20,7 +20,7 @@ import io
 import logging
 from collections import Counter
 from contextlib import asynccontextmanager
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import aiosqlite
 import httpx
