@@ -1,6 +1,6 @@
 """
 Debounce Buffer Service for Rapid Sequential Messages.
-Combines fragmented WhatsApp messages (e.g., within 5 seconds) into a single turn.
+Combines fragmented WhatsApp messages (e.g., within 3 seconds) into a single turn.
 """
 
 import asyncio
@@ -11,7 +11,7 @@ logger = logging.getLogger("DebounceBuffer")
 
 
 class DebounceBuffer:
-    def __init__(self, wait_seconds: float = 5.0):
+    def __init__(self, wait_seconds: float = 3.0):
         self.wait_seconds = wait_seconds
         self._buffers: Dict[str, List[str]] = {}
         self._tasks: Dict[str, asyncio.Task] = {}
@@ -26,7 +26,8 @@ class DebounceBuffer:
         if customer_phone not in self._buffers:
             self._buffers[customer_phone] = []
 
-        self._buffers[customer_phone].append(text)
+        if text.strip():
+            self._buffers[customer_phone].append(text)
 
         # Cancela timer anterior se ainda estiver em espera
         if customer_phone in self._tasks and not self._tasks[customer_phone].done():
@@ -36,6 +37,15 @@ class DebounceBuffer:
         self._tasks[customer_phone] = asyncio.create_task(
             self._process_after_delay(customer_phone, callback)
         )
+
+    async def add_message(
+        self, phone: str, text_chunk: str, dispatch_callback: Callable[[str], Awaitable[Any]]
+    ) -> None:
+        """Alias for enqueue with direct callback on combined text."""
+        async def wrapper(c_phone: str, combined: str):
+            await dispatch_callback(combined)
+
+        await self.enqueue(customer_phone=phone, text=text_chunk, callback=wrapper)
 
     async def _process_after_delay(
         self, customer_phone: str, callback: Callable[[str, str], Awaitable[Any]]
@@ -50,4 +60,4 @@ class DebounceBuffer:
                 )
                 await callback(customer_phone, combined_text)
         except asyncio.CancelledError:
-            pass  # Normal when timer is reset by a new incoming message
+            pass
