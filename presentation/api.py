@@ -234,8 +234,13 @@ class SimMessageRequest(BaseModel):
 @app.post("/api/simulator/chat")
 async def simulate_chat(req: SimMessageRequest):
     """Allows instant live testing of the bot directly from the dashboard."""
+    sim_phone = "5585999990001"
+    conv = await sqlite_repo.get_or_create(sim_phone)
+    conv.resume_ai()
+    await sqlite_repo.save(conv)
+
     reply = await use_case.execute(
-        customer_phone="5585999990001",
+        customer_phone=sim_phone,
         push_name="Cliente Simulado",
         message_text=req.message,
         from_me=False,
