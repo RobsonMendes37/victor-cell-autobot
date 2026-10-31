@@ -1,13 +1,12 @@
 """
-In-Memory Product Repository with Local Cache.
+In-Memory Product Repository with Stock Control and Reservation Expiration.
 Implements ProductRepositoryInterface.
-Can sync periodically with Google Sheets.
 """
 
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from domain.entities import Product, QualityTier
+from domain.entities import OrderStatus, Product, QualityTier, ReservationOrder
 from domain.repositories import ProductRepositoryInterface
 
 
@@ -85,7 +84,10 @@ class MemoryProductRepository(ProductRepositoryInterface):
         return self._products.get(sku)
 
     async def search(
-        self, query: str, quality: Optional[QualityTier] = None, has_frame: Optional[bool] = None
+        self,
+        query: str,
+        quality: Optional[QualityTier] = None,
+        has_frame: Optional[bool] = None,
     ) -> List[Product]:
         q = query.lower().strip()
         matches = []
@@ -108,3 +110,31 @@ class MemoryProductRepository(ProductRepositoryInterface):
             self._products[sku].last_updated_at = datetime.now(timezone.utc)
             return True
         return False
+
+    async def decrement_stock(self, sku: str, quantity: int = 1) -> bool:
+        """Decrements available stock when an item is reserved."""
+        if sku in self._products:
+            current = self._products[sku].stock_quantity
+            if current >= quantity:
+                self._products[sku].stock_quantity = current - quantity
+                self._products[sku].last_updated_at = datetime.now(timezone.utc)
+                return True
+        return False
+
+    async def increment_stock(self, sku: str, quantity: int = 1) -> bool:
+        """Restores stock when a reservation is cancelled or expired."""
+        if sku in self._products:
+            self._products[sku].stock_quantity += quantity
+            self._products[sku].last_updated_at = datetime.now(timezone.utc)
+            return True
+        return False
+
+    async def release_expired_orders(self, orders: List[ReservationOrder]) -> List[str]:
+        """Scans for expired orders and restores stock."""
+        released_ids = []
+        for o in orders:
+            if o.status == OrderStatus.PENDING_SEPARATION and o.is_expired:
+                o.status = OrderStatus.EXPIRED
+                await self.increment_stock(o.product_sku, o.quantity)
+                released_ids.append(o.id)
+        return released_ids

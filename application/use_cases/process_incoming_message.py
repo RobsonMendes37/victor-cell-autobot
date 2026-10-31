@@ -2,9 +2,11 @@
 Use Case: ProcessIncomingMessageUseCase
 Core orchestrator following Clean Architecture.
 Features:
-- Timezone-aware alert formatting (Fortaleza local time)
-- Memory timeout for active SKU (2 hours)
-- Anti-loop protection against bot's own message echoes
+- Multi-turn conversation history persistence
+- Multimodal support (audio/image)
+- Stock deduction upon reservation
+- Local Fortaleza timezone alerts
+- Loop protection (anti-echo)
 """
 
 import logging
@@ -52,6 +54,8 @@ class ProcessIncomingMessageUseCase:
         from_me: bool = False,
         push_name: Optional[str] = None,
         message_id: Optional[str] = None,
+        media_bytes: Optional[bytes] = None,
+        mime_type: Optional[str] = None,
     ) -> Dict[str, Any]:
         clean_phone = "".join(filter(str.isdigit, customer_phone))
         if not clean_phone:
@@ -65,7 +69,7 @@ class ProcessIncomingMessageUseCase:
 
         conversation = await self.conversation_repo.get_or_create(clean_phone)
 
-        # 2. Se a mensagem foi enviada pelo dono no WhatsApp Web ou aparelho físico
+        # 2. Se a mensagem foi enviada pelo dono no celular pessoal ou WhatsApp Web
         if from_me:
             if "#bot" in message_text.lower():
                 conversation.resume_ai()
@@ -87,7 +91,7 @@ class ProcessIncomingMessageUseCase:
             )
             return {"status": "SKIPPED_HUMAN_IN_CONTROL"}
 
-        # 4. Timeout da peça ativa na memória: se inativo há mais de 2 horas, limpa active_sku
+        # 4. Timeout da peça ativa na memória (limpa após 2 horas de inatividade)
         now_utc = datetime.now(timezone.utc)
         if conversation.active_sku and conversation.last_activity_at:
             if now_utc - conversation.last_activity_at > timedelta(
@@ -97,7 +101,12 @@ class ProcessIncomingMessageUseCase:
 
         conversation.last_activity_at = now_utc
 
-        # 5. Carrega catálogo atualizado para fornecer contexto de estoque
+        # 5. Carrega histórico recente de mensagens (Multi-Turn)
+        recent_history = []
+        if hasattr(self.conversation_repo, "get_recent_messages"):
+            recent_history = await self.conversation_repo.get_recent_messages(clean_phone, limit=8)
+
+        # 6. Carrega catálogo atualizado
         catalog = await self.product_repo.list_all()
         catalog_lines = []
         for p in catalog:
@@ -107,11 +116,14 @@ class ProcessIncomingMessageUseCase:
             )
         catalog_context = "\n".join(catalog_lines)
 
-        # 6. Processamento via IA
+        # 7. Processamento Cognitivo via Gemini
         ai_decision = await self.ai_service.process_and_reply(
             conversation=conversation,
             user_message=message_text,
             catalog_context=catalog_context,
+            history=recent_history,
+            media_bytes=media_bytes,
+            mime_type=mime_type,
         )
 
         reply_text = ai_decision.get("reply_text", "")
@@ -123,11 +135,17 @@ class ProcessIncomingMessageUseCase:
         if ai_decision.get("target_sku"):
             conversation.active_sku = ai_decision["target_sku"]
 
-        # 7. Envia resposta cordial ao cliente
+        # 8. Persiste a mensagem do cliente e a resposta no histórico multi-turn
+        if hasattr(self.conversation_repo, "save_message"):
+            await self.conversation_repo.save_message(clean_phone, "user", message_text)
+            if reply_text:
+                await self.conversation_repo.save_message(clean_phone, "model", reply_text)
+
+        # 9. Envia resposta ao cliente
         if reply_text:
             await self.messaging_gateway.send_text(clean_phone, reply_text)
 
-        # 8. Se o cliente fechou pedido de separação com endereço válido
+        # 10. Se fechou pedido de separação com endereço válido
         order_created = False
         if intent == "ORDER_DISPATCH" and requires_staff_alert and destination_address:
             final_sku = target_sku or conversation.active_sku or "TEL-SAM-A15-ORIG"
@@ -145,6 +163,9 @@ class ProcessIncomingMessageUseCase:
             )
             await self.order_repo.save_order(order)
             order_created = True
+
+            # Baixa automática do estoque
+            await self.product_repo.decrement_stock(final_sku, quantity=1)
 
             # Formata validade da reserva no Fuso Horário de Fortaleza (UTC-3)
             fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)

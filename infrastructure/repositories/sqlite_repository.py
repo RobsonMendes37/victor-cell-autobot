@@ -1,16 +1,24 @@
 """
-SQLite Asynchronous Repository using aiosqlite.
-Persists Conversations, Orders, and Sent Message IDs for loop protection.
+SQLite Asynchronous Repository using aiosqlite with WAL mode enabled.
+Persists Conversations, Orders, Messages (history), and Sent Message IDs.
 """
 
 import os
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import aiosqlite
 
-from domain.entities import Conversation, ConversationState, OrderStatus, ReservationOrder
-from domain.repositories import ConversationRepositoryInterface, OrderRepositoryInterface
+from domain.entities import (
+    Conversation,
+    ConversationState,
+    OrderStatus,
+    ReservationOrder,
+)
+from domain.repositories import (
+    ConversationRepositoryInterface,
+    OrderRepositoryInterface,
+)
 from infrastructure.config import settings
 
 
@@ -20,9 +28,13 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
 
     async def init_db(self) -> None:
-        """Initializes database schema if tables do not exist."""
+        """Initializes database schema and activates WAL mode for high concurrency."""
         async with aiosqlite.connect(self.db_path) as db:
-            # 1. Tabela de Conversas (incluindo active_sku para memória de curto prazo)
+            # Ativa WAL Mode (Write-Ahead Logging) para alta concorrência
+            await db.execute("PRAGMA journal_mode = WAL;")
+            await db.execute("PRAGMA synchronous = NORMAL;")
+
+            # 1. Tabela de Conversas
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS conversations (
                     customer_phone TEXT PRIMARY KEY,
@@ -36,7 +48,21 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 )
             """)
 
-            # 2. Tabela de Pedidos para o Caixa/Expedição
+            # 2. Tabela de Mensagens para Histórico Multi-Turn
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_phone TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    timestamp TEXT NOT NULL
+                )
+            """)
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_messages_phone ON messages(customer_phone, timestamp);
+            """)
+
+            # 3. Tabela de Pedidos para o Caixa/Expedição
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS orders (
                     id TEXT PRIMARY KEY,
@@ -52,7 +78,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 )
             """)
 
-            # 3. Tabela de Mensagens Enviadas pelo Bot (Proteção contra auto-silenciamento)
+            # 4. Tabela de Mensagens Enviadas pelo Bot (Proteção contra loops)
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS sent_messages (
                     message_id TEXT PRIMARY KEY,
@@ -61,7 +87,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             """)
             await db.commit()
 
-    # --- Implementação de Conversas ---
+    # --- Conversas e Histórico Multi-Turn ---
 
     async def get_or_create(self, customer_phone: str) -> Conversation:
         await self.init_db()
@@ -69,7 +95,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
-                "SELECT * FROM conversations WHERE customer_phone = ?", (clean_phone,)
+                "SELECT * FROM conversations WHERE customer_phone = ?",
+                (clean_phone,),
             )
             row = await cursor.fetchone()
 
@@ -91,7 +118,9 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 )
             else:
                 new_conv = Conversation(
-                    id=clean_phone, customer_phone=clean_phone, state=ConversationState.AI_ACTIVE
+                    id=clean_phone,
+                    customer_phone=clean_phone,
+                    state=ConversationState.AI_ACTIVE,
                 )
                 await self.save(new_conv)
                 return new_conv
@@ -129,7 +158,39 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             )
             await db.commit()
 
-    # --- Implementação de Pedidos ---
+    async def save_message(self, customer_phone: str, role: str, content: str) -> None:
+        """Saves a message turn to history."""
+        clean_phone = "".join(filter(str.isdigit, customer_phone))
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO messages (customer_phone, role, content, timestamp)
+                VALUES (?, ?, ?, ?)
+            """,
+                (clean_phone, role, content, datetime.now(timezone.utc).isoformat()),
+            )
+            await db.commit()
+
+    async def get_recent_messages(
+        self, customer_phone: str, limit: int = 8
+    ) -> List[Dict[str, str]]:
+        """Retrieves recent conversation turns for multi-turn context."""
+        clean_phone = "".join(filter(str.isdigit, customer_phone))
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """
+                SELECT role, content FROM messages
+                WHERE customer_phone = ?
+                ORDER BY id DESC LIMIT ?
+            """,
+                (clean_phone, limit),
+            )
+            rows = await cursor.fetchall()
+            # Inverte para ordem cronológica (mais antiga para mais recente)
+            return [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
+
+    # --- Pedidos ---
 
     async def save_order(self, order: ReservationOrder) -> str:
         await self.init_db()
@@ -185,10 +246,9 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 )
             return orders
 
-    # --- Proteção Contra Auto-Silenciamento (Sent Messages) ---
+    # --- Proteção Contra Auto-Silenciamento ---
 
     async def record_sent_message(self, message_id: str) -> None:
-        """Stores a message ID sent by PecasBot to avoid reacting to our own replies."""
         if not message_id:
             return
         await self.init_db()
@@ -200,13 +260,13 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             await db.commit()
 
     async def is_sent_by_bot(self, message_id: str) -> bool:
-        """Returns True if this message ID was generated by our bot."""
         if not message_id:
             return False
         await self.init_db()
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(
-                "SELECT 1 FROM sent_messages WHERE message_id = ?", (message_id,)
+                "SELECT 1 FROM sent_messages WHERE message_id = ?",
+                (message_id,),
             )
             row = await cursor.fetchone()
             return row is not None

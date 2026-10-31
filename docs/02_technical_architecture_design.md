@@ -1,4 +1,6 @@
+
 # RFC-002: Documento de Arquitetura de Software & Design Técnico
+
 ## Arquitetura Limpa, Entidades de Domínio e Fluxo de Integração
 
 ---
@@ -100,11 +102,11 @@ stateDiagram-v2
     AI_ACTIVE --> AI_ACTIVE: Atendimento normal e cotações
     AI_ACTIVE --> WAITING_DISPATCH: Cliente confirmou pedido e passou endereço
     WAITING_DISPATCH --> AI_ACTIVE: Caixa confirmou envio de Uber
-    
+  
     AI_ACTIVE --> HUMAN_ACTIVE: Dono/Atendente respondeu no WhatsApp (fromMe=true)
     AI_ACTIVE --> HUMAN_ACTIVE: Cliente solicitou atendimento humano ou negociação
     HUMAN_ACTIVE --> AI_ACTIVE: Timeout de 3 horas sem interação manual OU comando #bot
-    
+  
     AI_ACTIVE --> CLOSED: Inatividade prolongada (24h)
     HUMAN_ACTIVE --> CLOSED: Atendimento finalizado
 ```
@@ -154,13 +156,17 @@ sequenceDiagram
 ## 4. Padrões de Resiliência e Desempenho
 
 ### 4.1 Estratégia de Cache de Alta Performance (Google Sheets)
+
 Para contornar o limite de 60 requisições/minuto da API do Google Drive/Sheets:
+
 * **In-Memory Cache (com TTL de 3 minutos):** O backend realiza uma leitura periódica do catálogo completo para a memória RAM (dicionário indexado por palavras-chave e SKUs).
 * **Busca Local em Milissegundos:** As buscas de produtos feitas pelo Gemini utilizam o catálogo já carregado na memória, resultando em respostas com latência inferior a 30ms.
 * **Escrita Assíncrona:** Apenas inclusões de novos pedidos e logs de auditoria disparam chamadas de escrita direta na planilha, enfileiradas de forma assíncrona (`BackgroundTasks` do FastAPI).
 
 ### 4.2 Detecção e Transbordo Transparente
+
 A Evolution API envia eventos para o webhook tanto de mensagens recebidas quanto de mensagens enviadas.
+
 * Quando o payload traz `"key": { "fromMe": true }`, o sistema reconhece que um operador humano usou o WhatsApp Web ou o aparelho físico da loja.
 * O use case `HandleHumanInterventionUseCase` é executado, atualizando a entidade `Conversation` para `state = ConversationState.HUMAN_ACTIVE` e definindo `human_resumed_at = now()`.
 * Nenhuma resposta automatizada é gerada enquanto a conversa permanecer nesse estado, garantindo que a IA nunca interfira na conversa do dono.

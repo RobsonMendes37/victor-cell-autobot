@@ -1,7 +1,7 @@
 """
 Application Configuration using Pydantic Settings.
 Includes Business Hours logic with local timezone, safe non-conflicting ports,
-and multi-recipient staff notification settings.
+multi-recipient staff notification settings, and optional webhook authentication.
 """
 
 from datetime import datetime, time
@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     EVOLUTION_API_URL: str = "http://localhost:8085"
     EVOLUTION_API_KEY: str = "ChaveSecretaLoja123"
     EVOLUTION_INSTANCE_NAME: str = "victor-cell-01"
+
+    # Token de segurança opcional para proteger o endpoint de webhook
+    WEBHOOK_SECRET_TOKEN: Optional[str] = None
 
     # Lista de números do balcão/caixa (separados por vírgula no .env)
     STAFF_PHONES: str = "5585999999999"

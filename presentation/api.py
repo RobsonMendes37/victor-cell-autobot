@@ -1,5 +1,5 @@
 """
-FastAPI Presentation Layer with Debounce Buffer & SQLite Persistence.
+FastAPI Presentation Layer with Debounce Buffer, Multimodal Media & SQLite Persistence.
 Exposes Webhooks for Evolution API v2, health checks, and local testing.
 """
 
@@ -7,7 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
-from fastapi import BackgroundTasks, FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from application.use_cases.debounce_buffer import DebounceBuffer
@@ -41,16 +41,16 @@ use_case = ProcessIncomingMessageUseCase(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Inicializa tabelas SQLite no startup
+    # Inicializa tabelas SQLite e modo WAL no startup
     await sqlite_repo.init_db()
-    logger.info("Banco SQLite inicializado com sucesso.")
+    logger.info("Banco SQLite inicializado em modo WAL com sucesso.")
     yield
 
 
 app = FastAPI(
     title="Victor Cell - PecasBot API",
     description="Assistente Autônomo de Vendas e Despacho de Peças para Tablets e Celulares via WhatsApp",
-    version="1.2.0",
+    version="1.3.0",
     lifespan=lifespan,
 )
 
@@ -102,7 +102,16 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
     Webhook receiver for Evolution API v2.
     Listens to 'messages.upsert' events.
     Applies debounce to customer messages; processes staff interventions immediately.
+    Supports audio voice notes and image messages.
     """
+    # 1. Autenticação opcional do Webhook
+    if settings.WEBHOOK_SECRET_TOKEN:
+        token = request.headers.get("x-webhook-token") or request.headers.get("apikey")
+        if token != settings.WEBHOOK_SECRET_TOKEN:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook token"
+            )
+
     try:
         body = await request.json()
         event = body.get("event")
@@ -130,13 +139,22 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
             or ""
         )
 
-        if "audioMessage" in message_obj:
-            message_text = "[Áudio do cliente no WhatsApp]"
+        # 2. Processamento Multimodal (Áudio / Imagem)
+        media_bytes = None
+        mime_type = None
 
-        if not message_text.strip() and not from_me:
+        if "audioMessage" in message_obj or "imageMessage" in message_obj:
+            media_info = await gateway.fetch_media_bytes(message_obj)
+            if media_info:
+                media_bytes, mime_type = media_info
+                logger.info(
+                    f"Mídia decodificada recebida: mimetype={mime_type}, bytes={len(media_bytes)}"
+                )
+
+        if not message_text.strip() and not media_bytes and not from_me:
             return {"status": "EMPTY_MESSAGE"}
 
-        # 1. Se foi o operador humano falando (fromMe=True), executa sem debounce
+        # 3. Se foi o operador humano falando (fromMe=True), executa sem debounce
         if from_me:
             result = await use_case.execute(
                 customer_phone=remote_jid,
@@ -147,7 +165,20 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
             )
             return {"received": True, "immediate": True, "result": result}
 
-        # 2. Mensagem do cliente: aplica Debounce Buffer para unir mensagens sequenciais
+        # 4. Mensagem do cliente: se tiver mídia (foto/áudio), executa imediatamente para agilidade
+        if media_bytes:
+            result = await use_case.execute(
+                customer_phone=remote_jid,
+                message_text=message_text,
+                from_me=False,
+                push_name=push_name,
+                message_id=message_id,
+                media_bytes=media_bytes,
+                mime_type=mime_type,
+            )
+            return {"received": True, "multimodal": True, "result": result}
+
+        # 5. Mensagens de texto sequenciais: aplica Debounce Buffer
         async def on_debounced(phone: str, combined_text: str):
             await use_case.execute(
                 customer_phone=phone,
@@ -160,6 +191,8 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
         await debounce_buffer.enqueue(remote_jid, message_text, on_debounced)
         return {"received": True, "queued": True, "debounce_wait": settings.DEBOUNCE_WAIT_SECONDS}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Erro ao processar webhook do WhatsApp: {e}", exc_info=True)
         return {"status": "ERROR", "message": str(e)}

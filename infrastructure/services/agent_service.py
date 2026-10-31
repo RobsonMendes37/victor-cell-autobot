@@ -1,12 +1,15 @@
 """
 AI Agent Service using Google Gemini with Async Client (client.aio).
-Enforces semantic extraction with gemini-3.5-flash and automatic fallback.
+Supports:
+- Multi-turn conversation history
+- Multimodal inputs (audio voice notes and photo inspection)
+- Semantic extraction with gemini-3.5-flash and automatic fallback
 """
 
 import json
 import logging
 import re
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 from domain.entities import Conversation
 from domain.gateways import AIServiceInterface
@@ -25,7 +28,10 @@ DIRETRIZES DE ATENDIMENTO:
    - "Original Nacional": informe que tem garantia de 90 dias.
    - "Paralela / China Incell": informe o valor acessível e recomende testar antes de colar.
 4. Para telas: se o cliente não especificou se quer COM ARO ou SEM ARO, pergunte amigavelmente.
-5. Quando o cliente solicitar entrega ou cotar Uber:
+5. Multimodalidade:
+   - Se o cliente enviar FOTO de etiqueta, flex, conector ou tela quebrada: identifique o modelo exato (ex: SM-X200, A155F), confirme com o catálogo e responda.
+   - Se o cliente enviar ÁUDIO de voz: ouça a gravação com atenção, extraia a dúvida técnica ou pedido e responda normalmente.
+6. Quando o cliente solicitar entrega ou cotar Uber:
    - Se apenas perguntou quanto custa o Uber ("quanto fica o Uber até o centro?"): NÃO crie pedido! Explique que os meninos do caixa calculam a rota pelo app do Uber Flash na hora do envio.
    - Se disse "separa essa", "pode mandar", "vou querer" ou enviou o endereço de entrega:
      - Verifique se informou endereço de entrega real (ex: Rua, Número, Bairro).
@@ -78,7 +84,10 @@ class AIAgentService(AIServiceInterface):
         self,
         conversation: Conversation,
         user_message: str,
-        catalog_context: str
+        catalog_context: str,
+        history: Optional[List[Dict[str, str]]] = None,
+        media_bytes: Optional[bytes] = None,
+        mime_type: Optional[str] = None,
     ) -> Dict[str, Any]:
         is_open = settings.is_store_open()
 
@@ -92,44 +101,61 @@ class AIAgentService(AIServiceInterface):
                 closing_time=settings.STORE_CLOSING_TIME,
             )
 
+            # Constrói o histórico multi-turn
+            contents = []
+            if history:
+                for h in history:
+                    role = "user" if h.get("role") == "user" else "model"
+                    contents.append({"role": role, "parts": [{"text": h.get("content", "")}]})
+
+            # Monta o turno atual (com texto e/ou mídia)
+            current_turn_parts = []
+            if media_bytes and mime_type:
+                from google.genai import types
+
+                current_turn_parts.append(
+                    types.Part.from_bytes(data=media_bytes, mime_type=mime_type)
+                )
+
+            text_content = user_message or (
+                "[Mídia enviada pelo cliente]" if media_bytes else "Olá!"
+            )
+            current_turn_parts.append(
+                {
+                    "text": f"Peça ativa na sessão: {conversation.active_sku}\nMensagem: {text_content}"
+                }
+            )
+
+            contents.append({"role": "user", "parts": current_turn_parts})
+
             for model_name in self.SUPPORTED_MODELS:
                 try:
                     response = await self._client.aio.models.generate_content(
                         model=model_name,
-                        contents=[
-                            {
-                                "role": "user",
-                                "parts": [
-                                    {
-                                        "text": (
-                                            f"Peça ativa na sessão: {conversation.active_sku}\n"
-                                            f"Mensagem do cliente: {user_message}"
-                                        )
-                                    }
-                                ],
-                            }
-                        ],
-                        config={"system_instruction": prompt, "response_mime_type": "application/json"},
+                        contents=contents,
+                        config={
+                            "system_instruction": prompt,
+                            "response_mime_type": "application/json",
+                        },
                     )
                     cleaned_text = response.text.strip()
-                    # Remove markdown fences caso o modelo retorne ```json ... ```
                     if cleaned_text.startswith("```"):
                         cleaned_text = re.sub(r"^```(?:json)?\s*", "", cleaned_text)
                         cleaned_text = re.sub(r"\s*```$", "", cleaned_text)
                     result = json.loads(cleaned_text)
-                    logger.info(f"Resposta gerada com sucesso via {model_name}: intent={result.get('intent')}")
+                    logger.info(
+                        f"Resposta gerada com sucesso via {model_name}: intent={result.get('intent')}"
+                    )
                     return result
                 except Exception as e:
-                    logger.warning(f"Tentativa com modelo {model_name} falhou ({e}). Tentando próximo...")
+                    logger.warning(
+                        f"Tentativa com modelo {model_name} falhou ({e}). Tentando próximo..."
+                    )
 
-        # Fallback Semântico Seguro (Não comete os erros de substring)
+        # Fallback Semântico Seguro
         return self._semantic_fallback(user_message, conversation, is_open)
 
     def _extract_real_address(self, text: str) -> str | None:
-        """
-        Extrai endereço apenas se contiver palavras-chave de logradouro com limites de palavras.
-        Evita falsos positivos como 'por favor', 'avisa', etc.
-        """
         pattern = r"\b(rua|r\.|avenida|av\.|travessa|trav\.|alameda|bairro|praça)\b\s+[^,\n]+(?:,\s*\d+)?(?:\s*-\s*[^,\n]+)?"
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
@@ -138,15 +164,22 @@ class AIAgentService(AIServiceInterface):
         return None
 
     def _semantic_fallback(
-        self,
-        user_msg: str,
-        conversation: Conversation,
-        is_open: bool
+        self, user_msg: str, conversation: Conversation, is_open: bool
     ) -> Dict[str, Any]:
         msg = user_msg.lower().strip()
 
         # 1. Transbordo Humano
-        if any(w in msg for w in ["desconto", "faz por menos", "garantia", "defeito", "falar com dono", "falar com atendente"]):
+        if any(
+            w in msg
+            for w in [
+                "desconto",
+                "faz por menos",
+                "garantia",
+                "defeito",
+                "falar com dono",
+                "falar com atendente",
+            ]
+        ):
             return {
                 "intent": "HUMAN_HANDOFF",
                 "reply_text": "Entendi, meu amigo! Já avisei o gerente aqui na loja para verificar sua solicitação com prioridade. Um minuto que ele já assume a conversa aqui com você!",
@@ -160,7 +193,9 @@ class AIAgentService(AIServiceInterface):
         is_only_uber_question = (
             ("quanto fica" in msg or "qual o valor" in msg or "quanto é" in msg)
             and ("uber" in msg or "frete" in msg or "entrega" in msg)
-            and not any(w in msg for w in ["separa", "separar", "manda essa", "pode mandar", "vou querer"])
+            and not any(
+                w in msg for w in ["separa", "separar", "manda essa", "pode mandar", "vou querer"]
+            )
         )
         if is_only_uber_question:
             return {
@@ -175,25 +210,38 @@ class AIAgentService(AIServiceInterface):
                 "handoff_reason": None,
             }
 
-        # Extração de endereço com regex segura
         real_address = self._extract_real_address(user_msg)
 
         # 3. Intenção de Pedido / Separação ou Envio de Endereço
-        is_order_intent = (
-            any(
-                w in msg for w in [
-                    "separa", "separar", "manda entregar", "vou querer", "fecha essa",
-                    "manda essa", "pode mandar", "manda pro", "manda pra", "manda para",
-                    "entrega em", "entrega na", "entrega no", "endereço", "endereco"
-                ]
-            )
-            or (real_address is not None and conversation.active_sku is not None)
-        )
+        is_order_intent = any(
+            w in msg
+            for w in [
+                "separa",
+                "separar",
+                "manda entregar",
+                "vou querer",
+                "fecha essa",
+                "manda essa",
+                "pode mandar",
+                "manda pro",
+                "manda pra",
+                "manda para",
+                "entrega em",
+                "entrega na",
+                "entrega no",
+                "endereço",
+                "endereco",
+            ]
+        ) or (real_address is not None and conversation.active_sku is not None)
 
         if is_order_intent:
             resolved_sku = conversation.active_sku
             if "a15" in msg:
-                resolved_sku = "TEL-SAM-A15-ORIG" if "original" in msg else (conversation.active_sku or "TEL-SAM-A15-ORIG")
+                resolved_sku = (
+                    "TEL-SAM-A15-ORIG"
+                    if "original" in msg
+                    else (conversation.active_sku or "TEL-SAM-A15-ORIG")
+                )
             elif "tab a8" in msg or "x200" in msg:
                 resolved_sku = "CON-TAB-A8-ORIG" if "conector" in msg else "TEL-TAB-A8-1LINHA"
 
@@ -293,7 +341,6 @@ class AIAgentService(AIServiceInterface):
                 "handoff_reason": None,
             }
 
-        # Resposta padrão
         return {
             "intent": "GENERAL_QUESTION",
             "reply_text": "Opa, bom dia meu amigo! Tudo certo? Me diz qual modelo de celular ou tablet você tá precisando de peça hoje que já consulto nosso estoque aqui no balcão!",

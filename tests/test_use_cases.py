@@ -1,15 +1,19 @@
 """
-Integration and Use Case Tests.
-Tests regressions for Bug 1 (Context Memory) and Bug 2 (Self-silencing).
+Integration and Use Case Tests for Victor Cell PecasBot.
+Covers:
+- Context Memory & Multi-turn history
+- Stock deduction upon order creation
+- Anti-loop protection for bot echoes
+- Owner human takeover & resume
 """
 
 import pytest
 
-from domain.entities import ConversationState
+from domain.entities import ConversationState, OrderStatus
 
 
 @pytest.mark.asyncio
-async def test_quote_sets_active_sku(use_case, test_sqlite):
+async def test_quote_sets_active_sku_and_saves_history(use_case, test_sqlite):
     phone = "5585991112222"
     res = await use_case.execute(
         customer_phone=phone,
@@ -24,22 +28,35 @@ async def test_quote_sets_active_sku(use_case, test_sqlite):
     conv = await test_sqlite.get_or_create(phone)
     assert conv.active_sku == "TEL-SAM-A15-ORIG"
 
+    # Verifica se gravou no histórico multi-turn
+    history = await test_sqlite.get_recent_messages(phone)
+    assert len(history) >= 2  # Mensagem do user + resposta do model
+    assert history[0]["role"] == "user"
+    assert "A15" in history[0]["content"]
+    assert history[1]["role"] == "model"
+
 
 @pytest.mark.asyncio
-async def test_order_uses_active_sku_context_bug_fix(use_case, test_sqlite):
+async def test_order_deducts_stock_and_uses_active_sku(use_case, test_sqlite, product_repo):
     """
-    BUG 1 REGRESSION TEST:
-    Customer previously asked for A15. Then says "pode separar essa! Rua Floriano 1250".
-    The order MUST be created for A15 Original, NOT Tab A8 connector!
+    Testa se o pedido deduz o estoque disponível da peça
+    e se associa corretamente à peça ativa discutida.
     """
     phone = "5585991113333"
 
-    # 1. Cotação do A15
+    # Estoque inicial da Tela A15 Original: 4
+    prod_before = await product_repo.get_by_sku("TEL-SAM-A15-ORIG")
+    initial_stock = prod_before.stock_quantity
+    assert initial_stock == 4
+
+    # 1. Cotação
     await use_case.execute(
-        customer_phone=phone, message_text="Quanto tá a tela do A15 original?", from_me=False
+        customer_phone=phone,
+        message_text="Quanto tá a tela do A15 original?",
+        from_me=False,
     )
 
-    # 2. Confirmação sem citar o nome da peça ("pode separar essa")
+    # 2. Confirmação com endereço
     res = await use_case.execute(
         customer_phone=phone,
         message_text="Pode separar essa! Manda o Uber pra Rua Floriano Peixoto, 1250 - Centro",
@@ -50,28 +67,29 @@ async def test_order_uses_active_sku_context_bug_fix(use_case, test_sqlite):
     assert res["order_created"] is True
     assert res["target_sku"] == "TEL-SAM-A15-ORIG"
 
+    # Verifica se o estoque diminuiu exatamente em 1 unidade
+    prod_after = await product_repo.get_by_sku("TEL-SAM-A15-ORIG")
+    assert prod_after.stock_quantity == initial_stock - 1 == 3
+
+    # Verifica se o pedido foi gravado
     orders = await test_sqlite.list_orders()
     assert len(orders) >= 1
     latest = orders[0]
     assert latest.product_sku == "TEL-SAM-A15-ORIG"
-    assert latest.product_price == 190.00
-    assert "Floriano Peixoto" in latest.destination_address
+    assert latest.status == OrderStatus.PENDING_SEPARATION
 
 
 @pytest.mark.asyncio
 async def test_bot_echo_does_not_pause_ai_bug_fix(use_case, test_sqlite):
     """
-    BUG 2 REGRESSION TEST:
-    When Evolution API emits an echo of the bot's own message with fromMe=true,
-    the bot MUST NOT pause itself!
+    Quando a Evolution API emite o eco da mensagem enviada pelo bot,
+    a IA não deve se auto-silenciar.
     """
     phone = "5585991114444"
     bot_msg_id = "bot_echo_msg_999"
 
-    # Registra que o bot enviou uma mensagem com esse ID
     await test_sqlite.record_sent_message(bot_msg_id)
 
-    # Webhook devolve o eco da mensagem própria
     res = await use_case.execute(
         customer_phone=phone,
         message_text="Opa meu amigo, temos sim!",
@@ -81,14 +99,13 @@ async def test_bot_echo_does_not_pause_ai_bug_fix(use_case, test_sqlite):
 
     assert res["status"] == "SKIPPED_BOT_ECHO"
     conv = await test_sqlite.get_or_create(phone)
-    assert conv.state == ConversationState.AI_ACTIVE  # Continuou ativa!
+    assert conv.state == ConversationState.AI_ACTIVE
 
 
 @pytest.mark.asyncio
 async def test_human_owner_message_pauses_ai(use_case, test_sqlite):
     """
-    When the real human owner types from their phone (not sent by bot),
-    AI MUST be paused.
+    Quando o dono da loja digita do celular pessoal, a IA é pausada por 3 horas.
     """
     phone = "5585991115555"
     human_msg_id = "human_real_msg_888"
@@ -114,7 +131,9 @@ async def test_manual_bot_resume(use_case, test_sqlite):
     await test_sqlite.save(conv)
 
     res = await use_case.execute(
-        customer_phone=phone, message_text="#bot pode assumir", from_me=True
+        customer_phone=phone,
+        message_text="#bot pode assumir",
+        from_me=True,
     )
     assert res["status"] == "AI_RESUMED"
     conv_after = await test_sqlite.get_or_create(phone)

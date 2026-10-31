@@ -1,10 +1,12 @@
 """
 Evolution API Client Gateway (WhatsApp Provider).
 Implements MessagingGatewayInterface.
-Supports multi-recipient staff alerts and tracks sent message IDs.
+Supports multi-recipient staff alerts, sent message tracking, and media decoding.
 """
 
+import base64
 import logging
+from typing import Any, Dict, Optional, Tuple
 
 import httpx
 
@@ -65,3 +67,41 @@ class EvolutionGateway(MessagingGatewayInterface):
             if not sent:
                 success = False
         return success
+
+    async def fetch_media_bytes(self, message_obj: Dict[str, Any]) -> Optional[Tuple[bytes, str]]:
+        """
+        Extrai os bytes brutos e o mimetype de uma mensagem de imagem ou áudio.
+        Se já vier em base64 no webhook, decodifica diretamente.
+        Caso contrário, busca na Evolution API via getBase64FromMediaMessage.
+        """
+        try:
+            mime_type = None
+            raw_base64 = None
+
+            if "imageMessage" in message_obj:
+                img_data = message_obj["imageMessage"]
+                mime_type = img_data.get("mimetype", "image/jpeg")
+                raw_base64 = img_data.get("base64")
+            elif "audioMessage" in message_obj:
+                audio_data = message_obj["audioMessage"]
+                mime_type = audio_data.get("mimetype", "audio/ogg")
+                raw_base64 = audio_data.get("base64")
+
+            # Se já veio no payload
+            if raw_base64:
+                return base64.b64decode(raw_base64), mime_type
+
+            # Se não veio no payload, tenta buscar da Evolution API
+            url = f"{self.base_url}/chat/getBase64FromMediaMessage/{self.instance}"
+            payload = {"message": message_obj, "convertToMp4": False}
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.post(url, json=payload, headers=self.headers)
+                if res.status_code in [200, 201]:
+                    data = res.json()
+                    b64_str = data.get("base64")
+                    if b64_str:
+                        return base64.b64decode(b64_str), mime_type
+        except Exception as e:
+            logger.warning(f"Não foi possível obter bytes da mídia: {e}")
+
+        return None
