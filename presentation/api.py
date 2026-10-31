@@ -425,12 +425,30 @@ async def update_gemini_key(req: UpdateKeyRequest):
 
 
 
+def format_phone_br(phone: str) -> str:
+    digits = ''.join(filter(str.isdigit, phone or ''))
+    if len(digits) == 13 and digits.startswith('55'):
+        return f"({digits[2:4]}) {digits[4:9]}-{digits[9:]}"
+    elif len(digits) == 12 and digits.startswith('55'):
+        return f"({digits[2:4]}) {digits[4:8]}-{digits[8:]}"
+    elif len(digits) == 11:
+        return f"({digits[0:2]}) {digits[2:7]}-{digits[7:]}"
+    elif len(digits) == 10:
+        return f"({digits[0:2]}) {digits[2:6]}-{digits[6:]}"
+    return phone
+
 @app.get("/api/conversations")
 async def list_conversations():
-    """Lists recent conversations with their AI pause/active status."""
-    convs = await sqlite_repo.list_conversations(limit=25)
+    """Lists recent conversations with rich customer context, active SKU, and AI controls."""
+    convs = await sqlite_repo.list_conversations(limit=30)
+    products = await product_repo.list_all()
+    product_map = {p.sku: p.name for p in products}
+
     fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
     now_utc = datetime.now(timezone.utc)
+
+    orders = await sqlite_repo.list_orders()
+    phone_to_name = {o.customer_phone: o.customer_name for o in orders if o.customer_name}
 
     result = []
     for c in convs:
@@ -441,8 +459,15 @@ async def list_conversations():
             if now_utc < until:
                 paused_until_str = until.astimezone(fortaleza_tz).strftime("%H:%M")
 
+        cust_name = c.customer_name or phone_to_name.get(c.customer_phone, "Cliente WhatsApp")
+        sku_label = product_map.get(c.active_sku, c.active_sku or "Nenhuma peça cotada")
+
         result.append({
             "phone": c.customer_phone,
+            "formatted_phone": format_phone_br(c.customer_phone),
+            "customer_name": cust_name,
+            "active_sku": c.active_sku,
+            "active_sku_name": sku_label,
             "is_ai_active": not is_paused,
             "state": c.state.value,
             "paused_until": paused_until_str,

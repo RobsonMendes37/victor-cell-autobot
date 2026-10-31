@@ -68,6 +68,8 @@ class ProcessIncomingMessageUseCase:
                 return {"status": "SKIPPED_BOT_ECHO"}
 
         conversation = await self.conversation_repo.get_or_create(clean_phone)
+        if push_name and (not conversation.customer_name or conversation.customer_name == "Cliente WhatsApp"):
+            conversation.customer_name = push_name
 
         # 2. Se a mensagem foi enviada pelo dono no celular pessoal ou WhatsApp Web
         if from_me:

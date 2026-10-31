@@ -96,6 +96,7 @@ class Message:
 class Conversation:
     id: str
     customer_phone: str
+    customer_name: Optional[str] = None  # Nome do cliente (push_name ou razão social)
     state: ConversationState = ConversationState.AI_ACTIVE
     last_activity_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     human_resumed_at: Optional[datetime] = None

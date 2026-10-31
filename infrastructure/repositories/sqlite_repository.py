@@ -60,6 +60,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 CREATE TABLE IF NOT EXISTS conversations (
                     customer_phone TEXT PRIMARY KEY,
                     id TEXT NOT NULL,
+                    customer_name TEXT,
                     state TEXT NOT NULL,
                     last_activity_at TEXT NOT NULL,
                     human_resumed_at TEXT,
@@ -68,6 +69,10 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                     notes TEXT
                 )
             """)
+            try:
+                await db.execute("ALTER TABLE conversations ADD COLUMN customer_name TEXT;")
+            except Exception:
+                pass
 
             # 2. Tabela de Mensagens para Histórico Multi-Turn
             await db.execute("""
@@ -127,9 +132,11 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                     if row["human_resumed_at"]
                     else None
                 )
+                cust_name = row["customer_name"] if "customer_name" in row.keys() else None
                 return Conversation(
                     id=row["id"],
                     customer_phone=row["customer_phone"],
+                    customer_name=cust_name,
                     state=ConversationState(row["state"]),
                     last_activity_at=datetime.fromisoformat(row["last_activity_at"]),
                     human_resumed_at=human_resumed_at,
@@ -155,10 +162,11 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             await db.execute(
                 """
                 INSERT INTO conversations (
-                    customer_phone, id, state, last_activity_at,
+                    customer_phone, id, customer_name, state, last_activity_at,
                     human_resumed_at, human_silence_duration_hours, active_sku, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(customer_phone) DO UPDATE SET
+                    customer_name = COALESCE(excluded.customer_name, conversations.customer_name),
                     state = excluded.state,
                     last_activity_at = excluded.last_activity_at,
                     human_resumed_at = excluded.human_resumed_at,
@@ -169,6 +177,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 (
                     clean_phone,
                     conversation.id,
+                    conversation.customer_name,
                     conversation.state.value,
                     conversation.last_activity_at.isoformat(),
                     human_resumed_str,
@@ -362,10 +371,12 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                     if row["human_resumed_at"]
                     else None
                 )
+                cust_name = row["customer_name"] if "customer_name" in row.keys() else None
                 conversations.append(
                     Conversation(
                         id=row["id"],
                         customer_phone=row["customer_phone"],
+                        customer_name=cust_name,
                         state=ConversationState(row["state"]),
                         last_activity_at=datetime.fromisoformat(row["last_activity_at"]),
                         human_resumed_at=human_resumed_at,

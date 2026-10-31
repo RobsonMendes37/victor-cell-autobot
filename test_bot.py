@@ -18,6 +18,13 @@ async def run_tests():
     await sqlite_repo.init_db()
     customer_phone = "5585991234567"
 
+    import aiosqlite
+    async with aiosqlite.connect(sqlite_repo.db_path) as db:
+        await db.execute("DELETE FROM messages WHERE customer_phone IN (?, ?)", (customer_phone, "5585988887777"))
+        await db.execute("DELETE FROM conversations WHERE customer_phone IN (?, ?)", (customer_phone, "5585988887777"))
+        await db.execute("DELETE FROM orders WHERE customer_phone IN (?, ?)", (customer_phone, "5585988887777"))
+        await db.commit()
+
     # Teste 1: Cotação de Tela A15 Original
     print("\n[TESTE 1] Cliente pergunta sobre Tela A15 Original...")
     res1 = await use_case.execute(
