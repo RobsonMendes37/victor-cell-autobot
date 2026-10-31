@@ -47,6 +47,11 @@ from presentation.dashboard import render_dashboard_html, render_login_html
 
 SESSION_COOKIE_NAME = "victor_session"
 
+# Proteção contra força bruta no /login (Rate Limiter em memória)
+LOGIN_ATTEMPTS: Dict[str, list] = {}
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_LOCKOUT_SECONDS = 300
+
 
 def create_session_token(username: str, secret: str, max_age_seconds: int = 86400 * 30) -> str:
     expires = int(time.time()) + max_age_seconds
@@ -145,7 +150,16 @@ async def login_page(request: Request):
 
 @app.post("/login")
 async def login_submit(request: Request):
-    """Valida credenciais do gestor e emite cookie de sessão HMAC."""
+    """Valida credenciais do gestor e emite cookie de sessão HMAC com proteção contra força bruta."""
+    client_ip = request.client.host if request.client else "unknown"
+    now_ts = time.time()
+    attempts = [t for t in LOGIN_ATTEMPTS.get(client_ip, []) if now_ts - t < LOGIN_LOCKOUT_SECONDS]
+    if len(attempts) >= MAX_LOGIN_ATTEMPTS:
+        logger.warning(f"IP {client_ip} bloqueado por excesso de tentativas no painel.")
+        return HTMLResponse(
+            content=render_login_html(error_message="Muitas tentativas incorretas. Aguarde 5 minutos para tentar novamente."),
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
     content_type = request.headers.get("content-type", "")
     username = ""
     password = ""
@@ -186,10 +200,13 @@ async def login_submit(request: Request):
             httponly=True,
             samesite="lax",
         )
+        LOGIN_ATTEMPTS.pop(client_ip, None)
         logger.info(f"Login bem-sucedido no painel para usuário: {username}")
         return response
     else:
-        logger.warning(f"Tentativa de login inválida com usuário: {username}")
+        attempts.append(now_ts)
+        LOGIN_ATTEMPTS[client_ip] = attempts
+        logger.warning(f"Tentativa de login inválida ({len(attempts)}/{MAX_LOGIN_ATTEMPTS}) do IP {client_ip} com usuário: {username}")
         return HTMLResponse(
             content=render_login_html(error_message="Usuário ou senha incorretos. Verifique suas credenciais."),
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -701,8 +718,13 @@ async def evolution_webhook(
     # Mensagem recebida de um cliente
     customer_name = data.get("pushName") or "Cliente"
 
-    # Verificar se a conversa está com IA silenciada por atendimento humano
+    # Atualiza e persiste o nome do cliente imediatamente (mesmo se a IA estiver em pausa humana)
     conv = await sqlite_repo.get_or_create(clean_phone)
+    if customer_name and customer_name != "Cliente" and (not conv.customer_name or conv.customer_name in ["Cliente WhatsApp", "Cliente"]):
+        conv.customer_name = customer_name
+        await sqlite_repo.save(conv)
+
+    # Verificar se a conversa está com IA silenciada por atendimento humano
     if not conv.is_ai_allowed():
         logger.info(f"Mensagem de {clean_phone} recebida, mas IA está silenciada (atendente humano no controle).")
         return {"status": "ignored", "reason": "AI paused for human intervention", "phone": clean_phone}
@@ -726,3 +748,93 @@ async def evolution_webhook(
     )
 
     return {"status": "queued_in_debounce", "phone": clean_phone}
+
+
+class CopilotChatRequest(BaseModel):
+    message: str
+    history: Optional[list] = None
+
+
+async def build_copilot_context() -> str:
+    """Monta o contexto operacional em tempo real da loja para o Copiloto Executivo."""
+    orders = await sqlite_repo.list_orders()
+    products = await product_repo.list_all()
+    convs = await sqlite_repo.list_conversations(limit=50)
+
+    tz = pytz.timezone(settings.STORE_TIMEZONE)
+    local_now = datetime.now(tz)
+    weekday_names = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]
+    weekday_str = weekday_names[local_now.weekday()]
+    date_str = local_now.strftime("%d/%m/%Y %H:%M")
+    is_open = settings.is_store_open(local_now)
+
+    total_revenue = sum(o.product_price * o.quantity for o in orders)
+    total_orders = len(orders)
+    uber_orders = sum(1 for o in orders if o.destination_address)
+    avg_ticket = (total_revenue / total_orders) if total_orders > 0 else 0.0
+    uber_pct = ((uber_orders / total_orders) * 100) if total_orders > 0 else 0.0
+
+    low_stock = [p for p in products if p.stock_quantity <= 2 and p.stock_quantity > 0]
+    out_of_stock = [p for p in products if p.stock_quantity == 0]
+    healthy_stock = [p for p in products if p.stock_quantity > 2]
+
+    ai_active_count = sum(1 for c in convs if c.is_ai_allowed())
+    human_count = sum(1 for c in convs if not c.is_ai_allowed())
+
+    recent_orders_summary = []
+    for o in orders[-10:]:
+        addr = f"Entrega Uber: {o.destination_address}" if o.destination_address else "Retirada Balcão"
+        recent_orders_summary.append(
+            f"- Pedido #{o.id[-8:]} | Cliente: {o.customer_name or o.customer_phone} | Peça: {o.product_sku} (Qtd: {o.quantity}) | Valor: R$ {o.product_price:.2f} | {addr} | Status: {o.status.value}"
+        )
+
+    catalog_summary = []
+    for p in products:
+        status_tag = "⚠️ CRÍTICO" if p.stock_quantity <= 2 else "✅ DISPONÍVEL"
+        if p.stock_quantity == 0:
+            status_tag = "🔴 ESGOTADO"
+        catalog_summary.append(f"- SKU: {p.sku} | {p.name} | Preço: R$ {p.price:.2f} | Estoque: {p.stock_quantity} un. ({status_tag})")
+
+    context = f"""
+LOJA: Victor Cell (Fortaleza/CE)
+DATA/HORA LOCAL: {weekday_str}, {date_str} (Horário de Fortaleza)
+FUNCIONAMENTO FÍSICO: {"ABERTA AGORA" if is_open else "FECHADA (Atendimento autônomo via WhatsApp)"}
+HORÁRIO REGULAR: {settings.STORE_OPENING_TIME} às {settings.STORE_CLOSING_TIME} (Sábado até {settings.STORE_SAT_CLOSING_TIME})
+
+--- RESUMO FINANCEIRO E DE VENDAS ---
+- Faturamento Total Acumulado: R$ {total_revenue:.2f}
+- Quantidade Total de Pedidos: {total_orders}
+- Ticket Médio: R$ {avg_ticket:.2f}
+- Pedidos com Despacho via Uber Flash: {uber_orders} ({uber_pct:.1f}% do total de vendas)
+
+--- ÚLTIMOS PEDIDOS REGISTRADOS NO SISTEMA ---
+{chr(10).join(recent_orders_summary) if recent_orders_summary else "Nenhum pedido registrado até o momento."}
+
+--- SITUAÇÃO DO ESTOQUE E CATÁLOGO ({len(products)} PRODUTOS CADASTRADOS) ---
+- Itens em estoque saudável: {len(healthy_stock)}
+- Itens em estoque crítico (<= 2 un): {len(low_stock)} -> {[f"{p.name} ({p.stock_quantity} un)" for p in low_stock]}
+- Itens esgotados (0 un): {len(out_of_stock)} -> {[p.name for p in out_of_stock]}
+
+LISTA GERAL DO CATÁLOGO:
+{chr(10).join(catalog_summary)}
+
+--- STATUS DOS ATENDIMENTOS NO BALCÃO WHATSAPP ---
+- Total de conversas ativas no sistema: {len(convs)}
+- Clientes sendo atendidos pela IA (Robô): {ai_active_count}
+- Clientes com Atendimento Humano em curso: {human_count}
+"""
+    return context.strip()
+
+
+@app.post("/api/copilot/chat")
+async def copilot_chat_endpoint(payload: CopilotChatRequest, request: Request):
+    """Atende perguntas do gestor sobre o dia, vendas, estoque e operação."""
+    check_dashboard_auth(request)
+    context = await build_copilot_context()
+    reply = await ai_service.ask_copilot(
+        manager_question=payload.message,
+        operational_context=context,
+        chat_history=payload.history,
+    )
+    return {"reply": reply, "status": "success"}
+

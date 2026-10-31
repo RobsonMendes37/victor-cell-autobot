@@ -440,3 +440,68 @@ class AIAgentService(AIServiceInterface):
             "destination_address": None,
             "handoff_reason": None,
         }
+
+    async def ask_copilot(
+        self,
+        manager_question: str,
+        operational_context: str,
+        chat_history: Optional[List[Dict[str, str]]] = None,
+    ) -> str:
+        """
+        Copiloto Executivo do Gestor com inteligência analítica em tempo real (Padrão Google / BI).
+        Analisa faturamento, ruptura de estoque, gargalos de entrega e produtividade do balcão.
+        """
+        system_instruction = f"""Você é o Copiloto Executivo de Operações e Vendas da Victor Cell (Fortaleza/CE).
+Você atua como um Consultor Estratégico Sênior (Padrão Google / Big Tech / Power BI) assessorando diretamente o dono da loja e os gestores em decisões comerciais, operacionais e de estoque.
+
+DIRETRIZES FUNDAMENTAIS DE ANÁLISE:
+1. PRECISÃO FOCADA EM DADOS: Baseie suas análises 100% no CONTEXTO OPERACIONAL EM TEMPO REAL fornecido abaixo. Não invente números, valores de faturamento nem itens que não constem no relatório.
+2. COMUNICAÇÃO EXECUTIVA DE ALTO IMPACTO:
+   - Seja direto, claro, perspicaz e proativo.
+   - Use formatação markdown elegante: destaques em negrito (ex: **R$ 570,00**), tópicos concisos e emojis profissionais discretos (📊, ⚠️, 🛵, 💰, 💡, 👥).
+   - Se o gestor perguntar "Como foi o dia?" ou "Vendemos muito?", estruture a resposta com:
+     * 📊 Resumo Executivo (Faturamento, Total de Pedidos e Ticket Médio).
+     * ⭐ Destaques de Venda & Uber Flash (Peças mais vendidas e percentual de entregas).
+     * ⚠️ Atenção Imediata (Rupturas ou estoques baixos de peças com alta procura).
+     * 💡 Plano de Ação Rápido (1 a 3 sugestões práticas para maximizar o lucro).
+3. MONITORAMENTO DE RUPTURA: Se houver produtos com estoque zerado ou <= 2 unidades, aponte imediatamente a necessidade de reposição preventiva junto aos fornecedores do Centro de Fortaleza.
+4. ATENDIMENTOS NO BALCÃO: Analise a proporção de atendimentos feitos pelo robô vs. clientes que precisaram de atendimento humano, apontando peças quentes sendo cotadas.
+5. RESPOSTA EM TEXTO RICO: Responda em texto corrido com Markdown (não responda em JSON), pronto para exibição no painel executivo.
+
+CONTEXTO OPERACIONAL EM TEMPO REAL:
+{operational_context}
+"""
+
+        contents = []
+        if chat_history:
+            for turn in chat_history[-6:]:
+                role = "user" if turn.get("role") in ["user", "manager"] else "model"
+                contents.append({"role": role, "parts": [{"text": turn.get("content", "")}]})
+
+        contents.append({"role": "user", "parts": [{"text": manager_question}]})
+
+        if self._client:
+            for model_name in self.SUPPORTED_MODELS:
+                try:
+                    response = await self._client.aio.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config={
+                            "system_instruction": system_instruction,
+                        },
+                    )
+                    reply_text = response.text.strip()
+                    logger.info(f"Resposta do Copiloto gerada via {model_name}")
+                    return reply_text
+                except Exception as e:
+                    logger.warning(f"Falha no modelo {model_name} para Copiloto: {e}. Tentando próximo...")
+                    continue
+
+        # Fallback offline
+        return (
+            "📊 **Resumo Operacional Victor Cell (Modo Offline)**\n\n"
+            "• Os dados em tempo real estão sincronizados no seu painel.\n"
+            "• Verifique as abas de *Expedição & Uber Flash* para pedidos do dia e *Estoque & Catálogo* para peças com saldo baixo.\n"
+            "• Para ativar análises avançadas com IA, verifique sua cota da API Gemini na aba de configurações."
+        )
+

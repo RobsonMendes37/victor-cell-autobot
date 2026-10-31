@@ -25,7 +25,138 @@ def render_dashboard_html() -> str:
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js">
+    // --- JAVASCRIPT DO COPILOTO IA DO GESTOR ---
+    let copilotHistory = [];
+
+    function clearCopilotChat() {
+      copilotHistory = [];
+      const messagesDiv = document.getElementById('copilot-messages');
+      messagesDiv.innerHTML = `
+        <div class="copilot-msg bot">
+          <div class="copilot-avatar">🧠</div>
+          <div class="copilot-bubble">
+            <p><strong>Conversa reiniciada com sucesso.</strong></p>
+            <p>Estou pronto para analisar novos dados de faturamento, pedidos e estoque da Victor Cell. O que gostaria de conferir?</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function sendQuickPrompt(promptText) {
+      const input = document.getElementById('copilot-input');
+      input.value = promptText;
+      sendCopilotMessage();
+    }
+
+    function formatMarkdownText(rawText) {
+      if (!rawText) return '';
+      let formatted = rawText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.1);padding:2px 5px;border-radius:4px;font-family:monospace;">$1</code>');
+
+      const lines = formatted.split('\n');
+      let htmlOut = '';
+      let inList = false;
+
+      for (let line of lines) {
+        line = line.trim();
+        if (line.startsWith('• ') || line.startsWith('- ') || line.startsWith('* ')) {
+          if (!inList) {
+            htmlOut += '<ul>';
+            inList = true;
+          }
+          htmlOut += `<li>${line.substring(2)}</li>`;
+        } else {
+          if (inList) {
+            htmlOut += '</ul>';
+            inList = false;
+          }
+          if (line) {
+            htmlOut += `<p>${line}</p>`;
+          }
+        }
+      }
+      if (inList) htmlOut += '</ul>';
+      return htmlOut;
+    }
+
+    async function sendCopilotMessage() {
+      const input = document.getElementById('copilot-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+
+      const messagesDiv = document.getElementById('copilot-messages');
+
+      // 1. Mensagem do Gestor
+      const userMsg = document.createElement('div');
+      userMsg.className = 'copilot-msg user';
+      userMsg.innerHTML = `
+        <div class="copilot-user-avatar">👤</div>
+        <div class="copilot-bubble">
+          <p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+        </div>
+      `;
+      messagesDiv.appendChild(userMsg);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      // 2. Balão de Carregando (Typing Indicator)
+      const loadingMsg = document.createElement('div');
+      loadingMsg.className = 'copilot-msg bot loading-msg';
+      loadingMsg.innerHTML = `
+        <div class="copilot-avatar">🧠</div>
+        <div class="copilot-bubble">
+          <span class="copilot-loading-dot"></span> Analisando dados da loja com Gemini 3.5 Flash Lite...
+        </div>
+      `;
+      messagesDiv.appendChild(loadingMsg);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      try {
+        const res = await fetch('/api/copilot/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, history: copilotHistory })
+        });
+        const data = await res.json();
+        loadingMsg.remove();
+
+        const botMsg = document.createElement('div');
+        botMsg.className = 'copilot-msg bot';
+        const formatted = formatMarkdownText(data.reply || 'Sem resposta do assistente.');
+        botMsg.innerHTML = `
+          <div class="copilot-avatar">🧠</div>
+          <div class="copilot-bubble">${formatted}</div>
+        `;
+        messagesDiv.appendChild(botMsg);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        copilotHistory.push({ role: 'user', content: text });
+        copilotHistory.push({ role: 'model', content: data.reply || '' });
+        if (copilotHistory.length > 8) copilotHistory = copilotHistory.slice(-8);
+
+      } catch (err) {
+        loadingMsg.remove();
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'copilot-msg bot';
+        errorMsg.innerHTML = `
+          <div class="copilot-avatar">🧠</div>
+          <div class="copilot-bubble" style="border-color: rgba(239, 68, 68, 0.4);">
+            <p style="color: #F87171;">⚠️ Erro ao consultar o Copiloto. Verifique sua chave da API ou tente novamente.</p>
+          </div>
+        `;
+        messagesDiv.appendChild(errorMsg);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+    }
+
+</script>
   <style>
     :root {
       --bg-base: #070A0F;
@@ -383,7 +514,187 @@ def render_dashboard_html() -> str:
       .table-container { display: block; }
       .mobile-card-deck { display: none; }
     }
-  </style>
+  
+    /* --- ESTILOS DO COPILOTO IA DO GESTOR --- */
+    .quick-chips-wrapper {
+      margin-bottom: 1.25rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+    }
+    .chips-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.6rem;
+    }
+    .chips-scroller {
+      display: flex;
+      gap: 0.6rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    .chips-scroller::-webkit-scrollbar {
+      height: 4px;
+    }
+    .chips-scroller::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    .chip-btn {
+      background: rgba(16, 185, 129, 0.08);
+      color: #A7F3D0;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 999px;
+      padding: 0.45rem 0.95rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .chip-btn:hover {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: var(--primary);
+      color: #FFFFFF;
+      transform: translateY(-1px);
+    }
+    .chip-btn:active {
+      transform: translateY(0);
+    }
+
+    .copilot-chat-container {
+      background: #0B0F19;
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+    .copilot-messages {
+      height: 480px;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .copilot-msg {
+      display: flex;
+      gap: 0.85rem;
+      max-width: 90%;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    .copilot-msg.bot {
+      align-self: flex-start;
+    }
+    .copilot-msg.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+    .copilot-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(99, 102, 241, 0.25));
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+    }
+    .copilot-user-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .copilot-bubble {
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      color: #E5E7EB;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .copilot-msg.user .copilot-bubble {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #FFFFFF;
+    }
+    .copilot-bubble p {
+      margin-bottom: 0.5rem;
+    }
+    .copilot-bubble p:last-child {
+      margin-bottom: 0;
+    }
+    .copilot-bubble ul, .copilot-bubble ol {
+      margin-left: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .copilot-bubble li {
+      margin-bottom: 0.25rem;
+    }
+    .copilot-bubble strong {
+      color: #FFFFFF;
+    }
+    .copilot-input-bar {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: #111827;
+      border-top: 1px solid var(--border-subtle);
+    }
+    .copilot-input-field {
+      flex: 1;
+      background: #0B0F19;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 0.85rem 1.15rem;
+      color: #FFFFFF;
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+    .copilot-input-field:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    }
+    .copilot-loading-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      margin-right: 0.5rem;
+      animation: pulseDot 1s infinite alternate;
+    }
+    @keyframes pulseDot {
+      0% { opacity: 0.3; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1.2); }
+    }
+
+</style>
 </head>
 <body>
 
@@ -439,8 +750,8 @@ def render_dashboard_html() -> str:
         📋 Estoque & Catálogo
         <span class="tab-badge" id="badge-catalog-count">0</span>
       </button>
-      <button class="nav-tab" onclick="switchTab('simulator')">
-        🧪 Simulador de Balcão
+      <button class="nav-tab" onclick="switchTab('copilot')">
+        🧠 Copiloto IA do Gestor
       </button>
       <button class="nav-tab" onclick="switchTab('gemini')">
         ⚡ Google Gemini & Cotas
@@ -645,50 +956,57 @@ def render_dashboard_html() -> str:
       </div>
     </div>
 
-    <!-- TAB 5: SIMULADOR DE CHAT -->
-    <div class="tab-pane" id="tab-simulator">
+    <!-- TAB 5: COPILOTO IA DO GESTOR (BUSINESS INTELLIGENCE) -->
+    <div class="tab-pane" id="tab-copilot">
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">🧪 Simulador de Atendimento WhatsApp</h2>
+            <h2 class="section-title">🧠 Copiloto IA do Gestor • Business Intelligence</h2>
+            <p class="section-subtitle">Consultor executivo em tempo real com acesso ao faturamento, estoque e atendimentos.</p>
           </div>
           <div class="toolbar-actions">
-            <button class="btn btn-secondary btn-sm" onclick="clearChat()">🗑️ Limpar Conversa</button>
+            <div class="pill pill-emerald">
+              <span class="pill-dot"></span>
+              <span>Gemini 3.5 Flash Lite Ativo</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="clearCopilotChat()">🗑️ Limpar Conversa</button>
           </div>
         </div>
 
         <div style="padding: 1.25rem;">
-          <div class="simulator-wrapper">
-            <div class="chat-box">
-              <div class="chat-messages" id="chat-messages">
-                <div class="chat-msg bot">
-                  Opa meu patrão! Tudo beleza? Aqui é da Victor Cell Peças. Pode mandar sua dúvida ou cotação de tela/peça que já vejo no estoque pra você!
+          <!-- CHIPS DE PERGUNTAS RÁPIDAS -->
+          <div class="quick-chips-wrapper">
+            <span class="chips-label">Perguntas Rápidas:</span>
+            <div class="chips-scroller">
+              <button class="chip-btn" onclick="sendQuickPrompt('Como foi o desempenho de hoje? Faça um resumo executivo com vendas e ticket médio.')">📊 Resumo do Dia</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Quais peças estão com estoque crítico ou esgotadas? O que preciso repor com urgência?')">⚠️ O que tá faltando?</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Vendemos muito hoje? Como foi o volume de saída comparado ao esperado?')">💰 Vendemos muito?</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Como estão os pedidos com entrega pelo Uber Flash? Tem algum parado ou pendente?')">🛵 Entregas Uber Flash</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Qual o status dos atendimentos no WhatsApp agora? Quantos clientes estão pausados pra atendimento humano e quais peças estão cotando?')">👥 Atendimentos no Balcão</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Me dê 3 sugestões práticas e estratégicas para aumentar o faturamento e vendas da Victor Cell amanhã.')">💡 3 Dicas p/ Vender Mais</button>
+            </div>
+          </div>
+
+          <!-- ÁREA DO CHAT COPILOTO -->
+          <div class="copilot-chat-container">
+            <div class="copilot-messages" id="copilot-messages">
+              <div class="copilot-msg bot">
+                <div class="copilot-avatar">🧠</div>
+                <div class="copilot-bubble">
+                  <p><strong>Olá, patrão! Sou seu Copiloto Executivo da Victor Cell.</strong></p>
+                  <p>Estou monitorando seu estoque, vendas e pedidos de balcão em tempo real. Você pode me perguntar como foi o dia, quais peças estão faltando, faturamento de hoje ou dicas para lucrar mais.</p>
+                  <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #9CA3AF;">👉 Toque em uma das perguntas rápidas acima ou digite sua dúvida no campo abaixo!</p>
                 </div>
-              </div>
-              <div class="chat-input-bar">
-                <input type="text" id="chat-input" class="search-input" style="flex: 1;" placeholder="Digite como cliente (ex: 'Tem a tela do A15 original?')..." onkeydown="if(event.key==='Enter') sendChatMessage()">
-                <button class="btn btn-emerald" onclick="sendChatMessage()">Enviar 📤</button>
               </div>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-              <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1rem;">
-                <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 0.5rem;">💡 Dicas de Testes de Balcão:</h4>
-                <ul style="font-size: 0.775rem; color: var(--text-muted); padding-left: 1.1rem; line-height: 1.6;">
-                  <li><strong>Cotação:</strong> "Quanto tá a tela do A15 com aro?"</li>
-                  <li><strong>Pós-Venda / Rastreio:</strong> "E aí amigo, o Uber já saiu com a minha peça?"</li>
-                  <li><strong>Memória de Ontem:</strong> "Lembra da tela que perguntei ontem? Quanto é mesmo?"</li>
-                  <li><strong>Negociação:</strong> "Faz por R$ 150 no Pix?" (Aciona alerta de humano)</li>
-                </ul>
-              </div>
-
-              <!-- Conexão WhatsApp Card -->
-              <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1rem;">
-                <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 0.5rem;">📲 Conexão WhatsApp Web</h4>
-                <div id="wa-qr-container" style="text-align: center; padding: 0.5rem;">
-                  <div style="font-size: 0.8rem; color: var(--text-muted);">Verificando instância...</div>
-                </div>
-              </div>
+            <!-- BARRA DE INPUT -->
+            <div class="copilot-input-bar">
+              <input type="text" id="copilot-input" class="copilot-input-field" placeholder="Pergunte sobre vendas, peças em falta, Uber Flash ou balcão..." onkeydown="if(event.key==='Enter') sendCopilotMessage()">
+              <button class="btn btn-primary" id="copilot-send-btn" onclick="sendCopilotMessage()">
+                <span>Enviar</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+              </button>
             </div>
           </div>
         </div>
@@ -742,6 +1060,58 @@ def render_dashboard_html() -> str:
           </div>
         </div>
       </div>
+      <!-- SIMULADOR DE TESTE INTEGRADO AO GEMINI -->
+      <div style="margin-top: 1.5rem;">
+        
+    
+      <div class="section-card">
+        <div class="section-toolbar">
+          <div class="section-title-group">
+            <h2 class="section-title">🧪 Simulador de Atendimento WhatsApp</h2>
+          </div>
+          <div class="toolbar-actions">
+            <button class="btn btn-secondary btn-sm" onclick="clearChat()">🗑️ Limpar Conversa</button>
+          </div>
+        </div>
+
+        <div style="padding: 1.25rem;">
+          <div class="simulator-wrapper">
+            <div class="chat-box">
+              <div class="chat-messages" id="chat-messages">
+                <div class="chat-msg bot">
+                  Opa meu patrão! Tudo beleza? Aqui é da Victor Cell Peças. Pode mandar sua dúvida ou cotação de tela/peça que já vejo no estoque pra você!
+                </div>
+              </div>
+              <div class="chat-input-bar">
+                <input type="text" id="chat-input" class="search-input" style="flex: 1;" placeholder="Digite como cliente (ex: 'Tem a tela do A15 original?')..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+                <button class="btn btn-emerald" onclick="sendChatMessage()">Enviar 📤</button>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1rem;">
+                <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 0.5rem;">💡 Dicas de Testes de Balcão:</h4>
+                <ul style="font-size: 0.775rem; color: var(--text-muted); padding-left: 1.1rem; line-height: 1.6;">
+                  <li><strong>Cotação:</strong> "Quanto tá a tela do A15 com aro?"</li>
+                  <li><strong>Pós-Venda / Rastreio:</strong> "E aí amigo, o Uber já saiu com a minha peça?"</li>
+                  <li><strong>Memória de Ontem:</strong> "Lembra da tela que perguntei ontem? Quanto é mesmo?"</li>
+                  <li><strong>Negociação:</strong> "Faz por R$ 150 no Pix?" (Aciona alerta de humano)</li>
+                </ul>
+              </div>
+
+              <!-- Conexão WhatsApp Card -->
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1rem;">
+                <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 0.5rem;">📲 Conexão WhatsApp Web</h4>
+                <div id="wa-qr-container" style="text-align: center; padding: 0.5rem;">
+                  <div style="font-size: 0.8rem; color: var(--text-muted);">Verificando instância...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+
     </div>
 
   </main>
