@@ -1,7 +1,7 @@
 """
 Application Configuration using Pydantic Settings.
 Includes Business Hours logic with local timezone, safe non-conflicting ports,
-multi-recipient staff notification settings, and optional webhook authentication.
+multi-recipient staff notification settings, and Google Sheets API Key.
 """
 
 from datetime import datetime, time
@@ -17,6 +17,11 @@ class Settings(BaseSettings):
 
     GEMINI_API_KEY: str = "demo_key"
     GEMINI_API_KEY_BACKUP: Optional[str] = None
+
+    # Google Sheets Integration
+    GOOGLE_SHEET_ID: Optional[str] = None
+    GOOGLE_SHEETS_API_KEY: Optional[str] = None
+    GOOGLE_APPLICATION_CREDENTIALS: str = "credentials.json"
 
     # Portas seguras (não conflitam com 8080 nem 3000/3010 já em uso na VM da Oracle)
     PORT_BACKEND: int = 8005

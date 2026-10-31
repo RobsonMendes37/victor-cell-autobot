@@ -1,11 +1,9 @@
 """
-Google Sheets Product Repository using gspread and Service Account.
-Implements ProductRepositoryInterface with in-memory caching to respect Google API quotas.
-
-Expected Google Sheets Layout:
-- Row 1: Project Title
-- Row 2: Headers (SKU, Produto, Modelos Compatíveis, Categoria, Qualidade, Com Aro, Preço, Estoque, Garantia, Última Alteração)
-- Row 3+: Product Data
+Google Sheets Product Repository.
+Supports BOTH:
+1. Google Sheets API Key (via direct REST API v4 HTTP requests) for reading catalog.
+2. Google Service Account (via credentials.json & gspread) for reading catalog + appending order logs.
+Includes in-memory cache to respect Google API quotas.
 """
 
 import logging
@@ -14,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 import gspread
+import httpx
 import pytz
 
 from domain.entities import Product, QualityTier, ReservationOrder
@@ -27,23 +26,25 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
     def __init__(
         self,
         sheet_id: Optional[str] = None,
+        api_key: Optional[str] = None,
         credentials_file: str = "credentials.json",
         cache_ttl_seconds: int = 120,
     ):
         self.sheet_id = sheet_id
+        self.api_key = api_key or getattr(settings, "GOOGLE_SHEETS_API_KEY", None)
         self.credentials_file = credentials_file
         self.cache_ttl_seconds = cache_ttl_seconds
         self._cached_products: Dict[str, Product] = {}
         self._last_cache_update: Optional[datetime] = None
         self._client: Optional[gspread.Client] = None
 
-    def _get_client(self) -> Optional[gspread.Client]:
+    def _get_service_client(self) -> Optional[gspread.Client]:
         if self._client:
             return self._client
         if os.path.exists(self.credentials_file):
             try:
                 self._client = gspread.service_account(filename=self.credentials_file)
-                logger.info(f"Conexão com Google Sheets autenticada via {self.credentials_file}")
+                logger.info(f"Conexão com Google Sheets autenticada via Service Account ({self.credentials_file})")
                 return self._client
             except Exception as e:
                 logger.error(f"Erro ao autenticar service account do Google Sheets: {e}")
@@ -59,72 +60,99 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
         ):
             return list(self._cached_products.values())
 
-        client = self._get_client()
-        if client and self.sheet_id:
-            try:
-                sheet = client.open_by_key(self.sheet_id)
-                worksheet = sheet.worksheet("Estoque_Catalogo")
-                all_values = worksheet.get_all_values()
+        if not self.sheet_id:
+            return list(self._cached_products.values())
 
-                # Linha 1 = Título, Linha 2 = Cabeçalhos, Linha 3+ = Dados
-                if len(all_values) >= 3:
-                    products = {}
-                    for row in all_values[2:]:  # Inicia na linha 3 (índice 2)
-                        if not row or not row[0].strip():
-                            continue
-                        try:
-                            sku = row[0].strip()
-                            name = row[1].strip()
-                            models = [m.strip() for m in row[2].split(",") if m.strip()]
-                            category = row[3].strip() if len(row) > 3 else "Geral"
-                            quality_str = row[4].strip() if len(row) > 4 else "ORIGINAL_NACIONAL"
-                            has_frame = (row[5].strip().upper() == "SIM") if len(row) > 5 else False
-                            price = (
-                                float(row[6].replace("R$", "").replace(",", ".").strip())
-                                if len(row) > 6
-                                else 0.0
-                            )
-                            stock = int(row[7].strip()) if len(row) > 7 else 0
-                            warranty = int(row[8].strip()) if len(row) > 8 else 90
+        # Método 1: Leitura via Chave de API direta (Google Sheets REST API v4)
+        if self.api_key:
+            products = await self._fetch_via_api_key()
+            if products:
+                self._cached_products = products
+                self._last_cache_update = now
+                return list(self._cached_products.values())
 
-                            quality_enum = (
-                                QualityTier.PARALELA_CHINA
-                                if "PARALELA" in quality_str.upper()
-                                or "CHINA" in quality_str.upper()
-                                else (
-                                    QualityTier.PRIMEIRA_LINHA
-                                    if "PRIMEIRA" in quality_str.upper() or "1" in quality_str
-                                    else QualityTier.ORIGINAL_NACIONAL
-                                )
-                            )
-
-                            prod = Product(
-                                sku=sku,
-                                name=name,
-                                category=category,
-                                compatible_models=models,
-                                quality=quality_enum,
-                                has_frame=has_frame,
-                                price=price,
-                                stock_quantity=stock,
-                                warranty_days=warranty,
-                            )
-                            products[sku] = prod
-                        except Exception as parse_err:
-                            logger.warning(
-                                f"Erro ao processar linha da planilha {row}: {parse_err}"
-                            )
-
-                    self._cached_products = products
-                    self._last_cache_update = now
-                    logger.info(
-                        f"Cache de produtos atualizado do Google Sheets ({len(products)} itens carregados)."
-                    )
-                    return list(self._cached_products.values())
-            except Exception as e:
-                logger.error(f"Erro ao buscar catálogo do Google Sheets: {e}. Usando cache local.")
+        # Método 2: Leitura via Service Account (gspread)
+        client = self._get_service_client()
+        if client:
+            products = await self._fetch_via_service_account(client)
+            if products:
+                self._cached_products = products
+                self._last_cache_update = now
+                return list(self._cached_products.values())
 
         return list(self._cached_products.values())
+
+    async def _fetch_via_api_key(self) -> Dict[str, Product]:
+        """Fetches catalog using Google Sheets API Key (REST API v4)."""
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.sheet_id}/values/Estoque_Catalogo!A3:J?key={self.api_key}"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.get(url)
+                if res.status_code == 200:
+                    data = res.json()
+                    rows = data.get("values", [])
+                    products = self._parse_rows(rows)
+                    logger.info(f"Catálogo lido com sucesso via Chave de API ({len(products)} itens).")
+                    return products
+                else:
+                    logger.warning(f"Google Sheets API retornou status {res.status_code}: {res.text}")
+        except Exception as e:
+            logger.error(f"Erro ao consultar Google Sheets via API Key: {e}")
+        return {}
+
+    async def _fetch_via_service_account(self, client: gspread.Client) -> Dict[str, Product]:
+        """Fetches catalog using gspread and Service Account."""
+        try:
+            sheet = client.open_by_key(self.sheet_id)
+            worksheet = sheet.worksheet("Estoque_Catalogo")
+            all_values = worksheet.get_all_values()
+            if len(all_values) >= 3:
+                return self._parse_rows(all_values[2:])
+        except Exception as e:
+            logger.error(f"Erro ao consultar Google Sheets via gspread: {e}")
+        return {}
+
+    def _parse_rows(self, rows: List[List[str]]) -> Dict[str, Product]:
+        products = {}
+        for row in rows:
+            if not row or not row[0].strip():
+                continue
+            try:
+                sku = row[0].strip()
+                name = row[1].strip()
+                models = [m.strip() for m in row[2].split(",") if m.strip()]
+                category = row[3].strip() if len(row) > 3 else "Geral"
+                quality_str = row[4].strip() if len(row) > 4 else "ORIGINAL_NACIONAL"
+                has_frame = (row[5].strip().upper() == "SIM") if len(row) > 5 else False
+                price = float(row[6].replace("R$", "").replace(",", ".").strip()) if len(row) > 6 else 0.0
+                stock = int(row[7].strip()) if len(row) > 7 else 0
+                warranty = int(row[8].strip()) if len(row) > 8 else 90
+
+                quality_enum = (
+                    QualityTier.PARALELA_CHINA
+                    if "PARALELA" in quality_str.upper() or "CHINA" in quality_str.upper()
+                    else (
+                        QualityTier.PRIMEIRA_LINHA
+                        if "PRIMEIRA" in quality_str.upper() or "1" in quality_str
+                        else QualityTier.ORIGINAL_NACIONAL
+                    )
+                )
+
+                prod = Product(
+                    sku=sku,
+                    name=name,
+                    category=category,
+                    compatible_models=models,
+                    quality=quality_enum,
+                    has_frame=has_frame,
+                    price=price,
+                    stock_quantity=stock,
+                    warranty_days=warranty,
+                )
+                products[sku] = prod
+            except Exception as parse_err:
+                logger.warning(f"Erro ao processar linha da planilha {row}: {parse_err}")
+        return products
 
     async def get_by_sku(self, sku: str) -> Optional[Product]:
         products = await self.list_all()
@@ -172,16 +200,14 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
         return False
 
     async def append_order_log(self, order: ReservationOrder) -> bool:
-        """Appends a new order row to the 'Logs_Expedicao_PowerBI' tab in Google Sheets."""
-        client = self._get_client()
+        """Appends a new order row to the 'Logs_Expedicao_PowerBI' tab via Service Account."""
+        client = self._get_service_client()
         if client and self.sheet_id:
             try:
                 sheet = client.open_by_key(self.sheet_id)
                 worksheet = sheet.worksheet("Logs_Expedicao_PowerBI")
                 fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
-                created_str = order.created_at.astimezone(fortaleza_tz).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                created_str = order.created_at.astimezone(fortaleza_tz).strftime("%Y-%m-%d %H:%M:%S")
                 expires_str = order.expires_at.astimezone(fortaleza_tz).strftime("%H:%M")
 
                 row_data = [
@@ -198,10 +224,8 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
                     expires_str,
                 ]
                 worksheet.append_row(row_data)
-                logger.info(
-                    f"Pedido #{order.id} registrado com sucesso na aba Logs_Expedicao_PowerBI."
-                )
+                logger.info(f"Pedido #{order.id} registrado com sucesso no Google Sheets.")
                 return True
             except Exception as e:
-                logger.error(f"Erro ao gravar log no Google Sheets: {e}")
+                logger.error(f"Erro ao gravar log no Google Sheets via service account: {e}")
         return False
