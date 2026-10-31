@@ -22,6 +22,27 @@ from domain.repositories import (
 from infrastructure.config import settings
 
 
+
+def _format_relative_time(timestamp_iso: str, now: datetime) -> str:
+    try:
+        dt = datetime.fromisoformat(timestamp_iso)
+        diff = now - dt
+        seconds = diff.total_seconds()
+        if seconds < 120:
+            return "Agora"
+        minutes = int(seconds // 60)
+        if minutes < 60:
+            return f"Há {minutes} min"
+        hours = int(minutes // 60)
+        if hours < 24:
+            return f"Há {hours}h atrás"
+        days = int(hours // 24)
+        if days == 1:
+            return "Ontem"
+        return f"Há {days} dias"
+    except Exception:
+        return "Anteriormente"
+
 class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface):
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or settings.DATABASE_PATH
@@ -172,24 +193,36 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             await db.commit()
 
     async def get_recent_messages(
-        self, customer_phone: str, limit: int = 8, max_age_hours: int = 2
+        self, customer_phone: str, limit: int = 15, max_age_hours: int = 48
     ) -> List[Dict[str, str]]:
-        """Retrieves recent conversation turns within the active session window (default 2 hours)."""
+        """
+        Recupera histórico recente com âncoras temporais relativas
+        dentro da janela deslizante (padrão 48 horas, até 15 mensagens).
+        """
         clean_phone = "".join(filter(str.isdigit, customer_phone))
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(hours=max_age_hours)
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
                 """
-                SELECT role, content FROM messages
+                SELECT role, content, timestamp FROM messages
                 WHERE customer_phone = ? AND timestamp >= ?
                 ORDER BY id DESC LIMIT ?
             """,
                 (clean_phone, cutoff.isoformat(), limit),
             )
             rows = await cursor.fetchall()
-            # Inverte para ordem cronológica (mais antiga para mais recente)
-            return [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
+            messages = []
+            for r in reversed(rows):
+                time_str = _format_relative_time(r["timestamp"], now)
+                messages.append({
+                    "role": r["role"],
+                    "content": f"[{time_str}] {r['content']}",
+                    "raw_content": r["content"],
+                    "timestamp": r["timestamp"],
+                })
+            return messages
 
     # --- Pedidos ---
 
@@ -228,6 +261,41 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute("SELECT * FROM orders ORDER BY created_at DESC")
+            rows = await cursor.fetchall()
+            orders = []
+            for r in rows:
+                orders.append(
+                    ReservationOrder(
+                        id=r["id"],
+                        customer_phone=r["customer_phone"],
+                        customer_name=r["customer_name"],
+                        product_sku=r["product_sku"],
+                        quantity=r["quantity"],
+                        product_price=r["product_price"],
+                        destination_address=r["destination_address"],
+                        status=OrderStatus(r["status"]),
+                        created_at=datetime.fromisoformat(r["created_at"]),
+                        expires_at=datetime.fromisoformat(r["expires_at"]),
+                    )
+                )
+            return orders
+
+    async def get_recent_orders_by_phone(
+        self, customer_phone: str, limit: int = 3
+    ) -> List[ReservationOrder]:
+        """Recupera os pedidos mais recentes deste número para contextualizar pós-venda/rastreio."""
+        clean_phone = "".join(filter(str.isdigit, customer_phone))
+        await self.init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """
+                SELECT * FROM orders
+                WHERE customer_phone = ?
+                ORDER BY created_at DESC LIMIT ?
+            """,
+                (clean_phone, limit),
+            )
             rows = await cursor.fetchall()
             orders = []
             for r in rows:

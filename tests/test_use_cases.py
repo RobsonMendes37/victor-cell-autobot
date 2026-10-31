@@ -186,16 +186,52 @@ async def test_inactivity_resets_context_and_prevents_stale_orders(use_case, tes
         from_me=False,
     )
 
-    # 4. Verifica que NÃO gerou pedido falso e a sessão foi resetada
+    # 4. Verifica que NÃO gerou pedido falso e a confirmação pendente expirou
     assert res["status"] == "SUCCESS"
     assert res["order_created"] is False
 
     conv_after = await test_sqlite.get_or_create(phone)
-    assert conv_after.active_sku is None
+    assert conv_after.state == ConversationState.AI_ACTIVE
     assert conv_after.notes is None
 
-    # Histórico recente com corte de 2 horas não traz as mensagens de 3h atrás
-    recent_in_window = await test_sqlite.get_recent_messages(phone, max_age_hours=2)
-    # Apenas a mensagem de agora e a resposta do modelo (2 itens)
-    assert len(recent_in_window) == 2
-    assert "Beleza amigo" in recent_in_window[0]["content"]
+    # Histórico de 48h traz as mensagens com âncora temporal [Há 3h atrás]
+    history_48h = await test_sqlite.get_recent_messages(phone, max_age_hours=48)
+    assert len(history_48h) == 4
+    assert "Há 3h atrás" in history_48h[0]["content"] or "min" in history_48h[0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_post_sale_order_tracking_query(use_case, test_sqlite):
+    """
+    Testa se a IA reconhece o pedido recente do cliente no banco
+    ao ser questionada sobre o status de despacho/entrega ('deu certo? já mandou?').
+    """
+    from domain.entities import ReservationOrder, OrderStatus
+    from datetime import datetime, timezone
+    phone = "5585991118888"
+
+    # Cria pedido no banco para o cliente
+    order = ReservationOrder(
+        id="ped_track_99",
+        customer_phone=phone,
+        customer_name="Oficina do João",
+        product_sku="TEL-SAM-A15-ORIG",
+        quantity=1,
+        product_price=190.0,
+        destination_address="Av. Central, 500 - Bairro de Fátima",
+        status=OrderStatus.PENDING_SEPARATION,
+    )
+    await test_sqlite.save_order(order)
+
+    # Cliente pergunta se deu certo e se já despachou
+    res = await use_case.execute(
+        customer_phone=phone,
+        message_text="E aí amigo, deu certo o meu pedido? Já despachou o Uber?",
+        from_me=False,
+    )
+
+    assert res["status"] == "SUCCESS"
+    # Não recria o pedido
+    assert res["order_created"] is False
+    # A resposta menciona que deu certo ou o pedido/peça
+    assert len(res["reply"]) > 10

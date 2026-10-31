@@ -69,7 +69,7 @@ class ConversationRepositoryInterface(ABC):
 
     @abstractmethod
     async def get_recent_messages(
-        self, customer_phone: str, limit: int = 8, max_age_hours: int = 2
+        self, customer_phone: str, limit: int = 15, max_age_hours: int = 48
     ) -> List[Dict[str, str]]:
         """Retrieves recent conversation turns for multi-turn context."""
         pass
@@ -84,4 +84,11 @@ class OrderRepositoryInterface(ABC):
     @abstractmethod
     async def list_orders(self) -> List[ReservationOrder]:
         """Lists existing orders."""
+        pass
+
+    @abstractmethod
+    async def get_recent_orders_by_phone(
+        self, customer_phone: str, limit: int = 3
+    ) -> List[ReservationOrder]:
+        """Retrieves recent orders by customer phone for tracking context."""
         pass
