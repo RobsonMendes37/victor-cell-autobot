@@ -13,7 +13,7 @@ services:
 
   # 2. Gateway do WhatsApp (Evolution API v2 - Porta 8085 para evitar conflitos na VM)
   evolution-api:
-    image: atendai/evolution-api:v2.1.2
+    image: evoapicloud/evolution-api:v2.2.0
     container_name: victor_cell_evolution
     restart: unless-stopped
     ports:
