@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     # Token de segurança opcional para proteger o endpoint de webhook
     WEBHOOK_SECRET_TOKEN: Optional[str] = None
 
+    # Credenciais do Painel de Gerenciamento / Dashboard
+    DASHBOARD_USERNAME: str = "admin"
+    DASHBOARD_PASSWORD: str = "victorcell2026"
+    DASHBOARD_SECRET_KEY: str = "victor-cell-secret-token-auth-2026"
+
     # Lista de números do balcão/caixa (separados por vírgula no .env)
     STAFF_PHONES: str = "5585999999999"
 

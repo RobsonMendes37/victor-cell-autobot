@@ -39,7 +39,48 @@ from infrastructure.repositories.memory_product_repository import MemoryProductR
 from infrastructure.repositories.sheets_exporter import SheetsExporter
 from infrastructure.repositories.sqlite_repository import SqliteRepository
 from infrastructure.services.agent_service import AIAgentService
-from presentation.dashboard import render_dashboard_html
+import hashlib
+import hmac
+import time
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from presentation.dashboard import render_dashboard_html, render_login_html
+
+SESSION_COOKIE_NAME = "victor_session"
+
+
+def create_session_token(username: str, secret: str, max_age_seconds: int = 86400 * 30) -> str:
+    expires = int(time.time()) + max_age_seconds
+    data = f"{username}:{expires}"
+    sig = hmac.new(secret.encode("utf-8"), data.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{data}:{sig}"
+
+
+def verify_session_token(token: Optional[str], secret: str) -> bool:
+    if not token or ":" not in token:
+        return False
+    parts = token.split(":")
+    if len(parts) != 3:
+        return False
+    username, expires_str, sig = parts
+    try:
+        expires = int(expires_str)
+        if time.time() > expires:
+            return False
+    except ValueError:
+        return False
+    data = f"{username}:{expires}"
+    expected_sig = hmac.new(secret.encode("utf-8"), data.encode("utf-8"), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(sig, expected_sig)
+
+
+def check_dashboard_auth(request: Request):
+    """Protege endpoints administrativos do painel."""
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    if not verify_session_token(token, settings.DASHBOARD_SECRET_KEY):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Acesso não autorizado. Por favor, faça login no painel.",
+        )
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -93,15 +134,89 @@ app = FastAPI(
 # --- ROTAS DO DASHBOARD & ANALYTICS ---
 
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Exibe tela de login estilizada ou redireciona se já autenticado."""
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    if verify_session_token(token, settings.DASHBOARD_SECRET_KEY):
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    return HTMLResponse(content=render_login_html(), status_code=status.HTTP_200_OK)
+
+
+@app.post("/login")
+async def login_submit(request: Request):
+    """Valida credenciais do gestor e emite cookie de sessão HMAC."""
+    content_type = request.headers.get("content-type", "")
+    username = ""
+    password = ""
+    remember_me = False
+
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+            username = body.get("username", "").strip()
+            password = body.get("password", "").strip()
+            remember_me = bool(body.get("remember_me", False))
+        except Exception:
+            pass
+    else:
+        try:
+            form = await request.form()
+            username = str(form.get("username", "")).strip()
+            password = str(form.get("password", "")).strip()
+            remember_me = bool(form.get("remember_me"))
+        except Exception:
+            pass
+
+    if (
+        username == settings.DASHBOARD_USERNAME
+        and password == settings.DASHBOARD_PASSWORD
+    ):
+        max_age = 86400 * 30 if remember_me else 86400 * 7
+        token = create_session_token(
+            username=username,
+            secret=settings.DASHBOARD_SECRET_KEY,
+            max_age_seconds=max_age,
+        )
+        response = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+        response.set_cookie(
+            key=SESSION_COOKIE_NAME,
+            value=token,
+            max_age=max_age,
+            httponly=True,
+            samesite="lax",
+        )
+        logger.info(f"Login bem-sucedido no painel para usuário: {username}")
+        return response
+    else:
+        logger.warning(f"Tentativa de login inválida com usuário: {username}")
+        return HTMLResponse(
+            content=render_login_html(error_message="Usuário ou senha incorretos. Verifique suas credenciais."),
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+
+
+@app.get("/logout")
+async def logout():
+    """Encerra a sessão e redireciona para tela de login."""
+    response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie(key=SESSION_COOKIE_NAME)
+    return response
+
+
 @app.get("/", response_class=HTMLResponse)
 @app.get("/dashboard", response_class=HTMLResponse)
-async def get_dashboard():
-    """Serves the interactive management and WhatsApp connection dashboard."""
+async def get_dashboard(request: Request):
+    """Serve o painel executivo se autenticado, caso contrário redireciona para login."""
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    if not verify_session_token(token, settings.DASHBOARD_SECRET_KEY):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     return HTMLResponse(content=render_dashboard_html(), status_code=200)
 
 
 @app.get("/api/reports/stats")
-async def get_report_stats():
+async def get_report_stats(request: Request):
+    check_dashboard_auth(request)
     """Returns summarized KPIs, top products, customer FAQ intents and recent orders."""
     orders = await sqlite_repo.list_orders()
     products = await product_repo.list_all()
@@ -232,7 +347,8 @@ class SimMessageRequest(BaseModel):
 
 
 @app.post("/api/simulator/chat")
-async def simulate_chat(req: SimMessageRequest):
+async def simulate_chat(req: SimMessageRequest, request: Request):
+    check_dashboard_auth(request)
     """Allows instant live testing of the bot directly from the dashboard."""
     sim_phone = "5585999990001"
     conv = await sqlite_repo.get_or_create(sim_phone)
@@ -249,7 +365,8 @@ async def simulate_chat(req: SimMessageRequest):
 
 
 @app.get("/api/reports/orders.csv")
-async def get_orders_csv():
+async def get_orders_csv(request: Request):
+    check_dashboard_auth(request)
     """Direct CSV Feed for export and reporting."""
     orders = await sqlite_repo.list_orders()
     csv_path = exporter.export_orders_log_csv(orders)
@@ -265,7 +382,8 @@ async def get_orders_csv():
 
 
 @app.post("/api/reports/sync-sheets")
-async def sync_google_sheets():
+async def sync_google_sheets(request: Request):
+    check_dashboard_auth(request)
     """Forces cache refresh from Google Sheets."""
     if isinstance(product_repo, GoogleSheetsRepository):
         product_repo._last_cache_update = None
@@ -278,7 +396,8 @@ async def sync_google_sheets():
 
 
 @app.get("/api/whatsapp/qrcode")
-async def get_whatsapp_qrcode():
+async def get_whatsapp_qrcode(request: Request):
+    check_dashboard_auth(request)
     """Fetches connection status or QR code from Evolution API v2."""
     url = f"{settings.EVOLUTION_API_URL}/instance/connect/{settings.EVOLUTION_INSTANCE_NAME}"
     headers = {"apikey": settings.EVOLUTION_API_KEY}
@@ -347,7 +466,8 @@ class UpdateKeyRequest(BaseModel):
 
 
 @app.get("/api/catalog")
-async def get_catalog():
+async def get_catalog(request: Request):
+    check_dashboard_auth(request)
     """Returns live catalog items for the dashboard."""
     products = await product_repo.list_all()
     return {
@@ -371,7 +491,8 @@ async def get_catalog():
 
 
 @app.get("/api/ai/quota-info")
-async def get_ai_quota_info():
+async def get_ai_quota_info(request: Request):
+    check_dashboard_auth(request)
     """Returns current Gemini model, masked key and quota information."""
     key = settings.GEMINI_API_KEY or ""
     masked_key = (key[:6] + "..." + key[-4:]) if len(key) > 10 else "Não configurada"
@@ -394,7 +515,8 @@ async def get_ai_quota_info():
 
 
 @app.post("/api/ai/update-key")
-async def update_gemini_key(req: UpdateKeyRequest):
+async def update_gemini_key(req: UpdateKeyRequest, request: Request):
+    check_dashboard_auth(request)
     """Allows the store owner to update and test their Gemini API key directly from the dashboard."""
     new_key = req.new_key.strip()
     if not new_key or len(new_key) < 20:
@@ -438,7 +560,8 @@ def format_phone_br(phone: str) -> str:
     return phone
 
 @app.get("/api/conversations")
-async def list_conversations():
+async def list_conversations(request: Request):
+    check_dashboard_auth(request)
     """Lists recent conversations with rich customer context, active SKU, and AI controls."""
     convs = await sqlite_repo.list_conversations(limit=30)
     products = await product_repo.list_all()
@@ -477,7 +600,8 @@ async def list_conversations():
 
 
 @app.post("/api/conversations/{phone}/resume")
-async def resume_conversation_ai(phone: str):
+async def resume_conversation_ai(phone: str, request: Request):
+    check_dashboard_auth(request)
     """Re-enables the AI silently via dashboard without the customer seeing any command."""
     clean_phone = "".join(filter(str.isdigit, phone))
     conv = await sqlite_repo.get_or_create(clean_phone)
@@ -488,7 +612,8 @@ async def resume_conversation_ai(phone: str):
 
 
 @app.post("/api/conversations/{phone}/pause")
-async def pause_conversation_ai(phone: str, hours: int = 3):
+async def pause_conversation_ai(phone: str, request: Request, hours: int = 3):
+    check_dashboard_auth(request)
     """Manually pauses the AI via dashboard for human takeover."""
     clean_phone = "".join(filter(str.isdigit, phone))
     conv = await sqlite_repo.get_or_create(clean_phone)

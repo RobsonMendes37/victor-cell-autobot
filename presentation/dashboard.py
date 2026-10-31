@@ -413,6 +413,9 @@ def render_dashboard_html() -> str:
       <button class="btn btn-secondary btn-sm" onclick="refreshAll()" title="Recarregar dados">
         🔄 Atualizar
       </button>
+      <a href="/logout" class="btn btn-secondary btn-sm" style="color: #EF4444; border-color: rgba(239, 68, 68, 0.3); text-decoration: none;" title="Sair do painel">
+        🚪 Sair
+      </a>
     </div>
   </header>
 
@@ -1266,3 +1269,308 @@ def render_dashboard_html() -> str:
   </script>
 </body>
 </html>"""
+
+
+def render_login_html(error_message: Optional[str] = None) -> str:
+    error_banner = ""
+    if error_message:
+        error_banner = f'''
+        <div class="login-alert">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>{error_message}</span>
+        </div>
+        '''
+    return f'''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Login • Victor Cell Painel Executivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {{
+      --bg: #0B0F19;
+      --card-bg: rgba(17, 24, 39, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #F3F4F6;
+      --text-muted: #9CA3AF;
+      --primary: #10B981;
+      --primary-hover: #059669;
+      --danger: #EF4444;
+      --danger-bg: rgba(239, 68, 68, 0.12);
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }}
+    * {{
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }}
+    body {{
+      font-family: var(--font-sans);
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.12) 0px, transparent 50%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }}
+    .login-wrapper {{
+      width: 100%;
+      max-width: 420px;
+    }}
+    .login-card {{
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 2.25rem 2rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }}
+    .brand-header {{
+      text-align: center;
+      margin-bottom: 2rem;
+    }}
+    .brand-icon {{
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(99, 102, 241, 0.2));
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
+    }}
+    .brand-title {{
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #FFFFFF;
+    }}
+    .brand-title span {{
+      color: var(--primary);
+    }}
+    .brand-subtitle {{
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 0.35rem;
+    }}
+    .login-alert {{
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--danger-bg);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+      animation: shake 0.3s ease-in-out;
+    }}
+    @keyframes shake {{
+      0%, 100% {{ transform: translateX(0); }}
+      25% {{ transform: translateX(-4px); }}
+      75% {{ transform: translateX(4px); }}
+    }}
+    .form-group {{
+      margin-bottom: 1.25rem;
+    }}
+    .form-label {{
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #D1D5DB;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }}
+    .input-wrapper {{
+      position: relative;
+    }}
+    .input-icon {{
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      pointer-events: none;
+    }}
+    .input-field {{
+      width: 100%;
+      background: rgba(11, 15, 25, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 0.85rem 1rem 0.85rem 2.75rem;
+      color: #FFFFFF;
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }}
+    .input-field:focus {{
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+      background: rgba(11, 15, 25, 0.9);
+    }}
+    .toggle-pwd {{
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.25rem;
+      display: flex;
+      align-items: center;
+      border-radius: 6px;
+    }}
+    .toggle-pwd:hover {{
+      color: #FFFFFF;
+    }}
+    .form-remember {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }}
+    .remember-label {{
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+    }}
+    .remember-label input[type="checkbox"] {{
+      accent-color: var(--primary);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }}
+    .btn-submit {{
+      width: 100%;
+      background: var(--primary);
+      color: #042F2E;
+      border: none;
+      border-radius: 10px;
+      padding: 0.95rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+      min-height: 48px;
+    }}
+    .btn-submit:hover {{
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+    }}
+    .btn-submit:active {{
+      transform: translateY(0);
+    }}
+    .login-footer {{
+      margin-top: 1.75rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: #6B7280;
+    }}
+    .login-footer p {{
+      margin-top: 0.25rem;
+    }}
+  </style>
+</head>
+<body>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="brand-header">
+        <div class="brand-icon">⚡</div>
+        <h1 class="brand-title">Victor Cell <span>Pro</span></h1>
+        <p class="brand-subtitle">Acesso Restrito ao Gestor & Balcão</p>
+      </div>
+
+      {error_banner}
+
+      <form action="/login" method="POST">
+        <div class="form-group">
+          <label class="form-label" for="username">Usuário</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </span>
+            <input type="text" id="username" name="username" class="input-field" placeholder="Ex: admin" required autofocus autocomplete="username">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Senha de Acesso</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            </span>
+            <input type="password" id="password" name="password" class="input-field" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="toggle-pwd" id="toggle-pwd-btn" onclick="togglePasswordVisibility()" aria-label="Mostrar senha">
+              <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-remember">
+          <label class="remember-label">
+            <input type="checkbox" name="remember_me" value="true" checked>
+            <span>Lembrar neste aparelho</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn-submit">
+          <span>Entrar no Painel</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <p>🔒 Autenticação HMAC Criptografada</p>
+        <p>Victor Cell • Todos os direitos reservados</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function togglePasswordVisibility() {{
+      const pwdInput = document.getElementById('password');
+      const eyeIcon = document.getElementById('eye-icon');
+      if (pwdInput.type === 'password') {{
+        pwdInput.type = 'text';
+        eyeIcon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+      }} else {{
+        pwdInput.type = 'password';
+        eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+      }}
+    }}
+  </script>
+</body>
+</html>'''
