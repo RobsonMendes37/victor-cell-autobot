@@ -6,22 +6,32 @@ Includes:
 - Debounce Buffer Integration (waits 3s to aggregate multiple quick WhatsApp messages)
 - Health Check & System Status Endpoints
 - Dynamic Google Sheets / Memory Product Repository selection
+- Modern Web Dashboard & Power BI Analytics Hub at /dashboard
+- Direct CSV & JSON Data Feeds for Power BI Desktop
+- Evolution API WhatsApp QR Code pairing endpoint
 """
 
+import io
 import logging
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
+import httpx
+import pytz
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Response, status
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from application.use_cases.debounce_buffer import DebounceBuffer
 from application.use_cases.process_incoming_message import ProcessIncomingMessageUseCase
+from domain.entities import QualityTier
 from infrastructure.config import settings
 from infrastructure.gateways.evolution_gateway import EvolutionGateway
 from infrastructure.repositories.google_sheets_repository import GoogleSheetsRepository
 from infrastructure.repositories.memory_product_repository import MemoryProductRepository
+from infrastructure.repositories.sheets_exporter import SheetsExporter
 from infrastructure.repositories.sqlite_repository import SqliteRepository
 from infrastructure.services.agent_service import AIAgentService
+from presentation.dashboard import render_dashboard_html
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +52,7 @@ sqlite_repo = SqliteRepository(settings.DATABASE_PATH)
 gateway = EvolutionGateway(message_recorder=sqlite_repo.record_sent_message)
 ai_service = AIAgentService()
 debounce_buffer = DebounceBuffer(wait_seconds=settings.DEBOUNCE_WAIT_SECONDS)
+exporter = SheetsExporter()
 
 use_case = ProcessIncomingMessageUseCase(
     conversation_repo=sqlite_repo,
@@ -65,10 +76,152 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Victor Cell - PecasBot API",
-    description="API de atendimento e despacho autônomo para peças de smartphone",
+    description="API de atendimento e despacho autônomo para peças de smartphone com painel Power BI",
     version="1.0.0",
     lifespan=lifespan,
 )
+
+
+# --- ROTAS VISUAIS E POWER BI DASHBOARD ---
+
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/dashboard", response_class=HTMLResponse)
+async def get_dashboard():
+    """Serves the interactive Power BI management and WhatsApp connection dashboard."""
+    return HTMLResponse(content=render_dashboard_html(), status_code=200)
+
+
+@app.get("/api/reports/stats")
+async def get_report_stats():
+    """Returns summarized KPIs and recent orders for the dashboard and analytics."""
+    orders = await sqlite_repo.list_orders()
+    products = await product_repo.list_all()
+
+    total_revenue = sum(o.product_price * o.quantity for o in orders)
+    uber_orders = sum(1 for o in orders if o.destination_address)
+
+    # Breakdown por Qualidade e Categoria
+    quality_counts: Dict[str, int] = {
+        QualityTier.ORIGINAL_NACIONAL.value: 0,
+        QualityTier.PARALELA_CHINA.value: 0,
+        QualityTier.PRIMEIRA_LINHA.value: 0,
+    }
+    category_counts: Dict[str, int] = {}
+
+    for o in orders:
+        matched = next((p for p in products if p.sku == o.product_sku), None)
+        if matched:
+            q_val = matched.quality.value
+            quality_counts[q_val] = quality_counts.get(q_val, 0) + o.quantity
+            category_counts[matched.category] = category_counts.get(matched.category, 0) + o.quantity
+
+    fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
+    recent_orders = []
+    for o in orders[:25]:
+        recent_orders.append({
+            "id": o.id,
+            "created_at": o.created_at.astimezone(fortaleza_tz).strftime("%d/%m %H:%M"),
+            "customer_name": o.customer_name,
+            "customer_phone": o.customer_phone,
+            "product_sku": o.product_sku,
+            "quantity": o.quantity,
+            "product_price": o.product_price,
+            "destination_address": o.destination_address,
+            "status": o.status.value,
+            "expires_at": o.expires_at.astimezone(fortaleza_tz).strftime("%H:%M"),
+        })
+
+    return {
+        "total_revenue": total_revenue,
+        "total_orders": len(orders),
+        "uber_orders": uber_orders,
+        "total_products": len(products),
+        "is_store_open": settings.is_store_open(),
+        "quality_breakdown": quality_counts,
+        "category_breakdown": category_counts,
+        "recent_orders": recent_orders,
+    }
+
+
+@app.get("/api/reports/orders.csv")
+async def get_orders_csv():
+    """
+    Direct CSV Feed for Power BI Desktop Web connector.
+    Strictly follows:
+    - Line 1: Title
+    - Line 2: Headers
+    - Line 3+: Data rows
+    """
+    orders = await sqlite_repo.list_orders()
+    csv_path = exporter.export_orders_log_csv(orders)
+
+    with open(csv_path, "rb") as f:
+        content = f.read()
+
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=Logs_Expedicao_PowerBI.csv"},
+    )
+
+
+@app.post("/api/reports/sync-sheets")
+async def sync_google_sheets():
+    """Forces cache refresh from Google Sheets."""
+    if isinstance(product_repo, GoogleSheetsRepository):
+        product_repo._last_cache_update = None
+        products = await product_repo.list_all()
+        return {"status": "synced", "total_items": len(products)}
+    return {"status": "ignored", "reason": "Not using GoogleSheetsRepository"}
+
+
+# --- WHATSAPP PAIRING VIA EVOLUTION API ---
+
+
+@app.get("/api/whatsapp/qrcode")
+async def get_whatsapp_qrcode():
+    """Fetches connection status or QR code from Evolution API v2."""
+    url = f"{settings.EVOLUTION_API_URL}/instance/connect/{settings.EVOLUTION_INSTANCE_NAME}"
+    headers = {"apikey": settings.EVOLUTION_API_KEY}
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            res = await client.get(url, headers=headers)
+            if res.status_code == 200:
+                data = res.json()
+                # A Evolution API v2 retorna base64 do QRCode em data.get('base64') ou data.get('code')
+                qr_base64 = data.get("base64") or data.get("qrcode", {}).get("base64")
+                if qr_base64:
+                    if not qr_base64.startswith("data:image"):
+                        qr_base64 = f"data:image/png;base64,{qr_base64}"
+                    return {"status": "qrcode", "qrcode": qr_base64}
+                state = data.get("instance", {}).get("state")
+                if state == "open":
+                    return {"status": "connected"}
+                return {"status": "waiting", "data": data}
+            elif res.status_code == 404:
+                # Criar a instância se ainda não existir
+                create_url = f"{settings.EVOLUTION_API_URL}/instance/create"
+                payload = {
+                    "instanceName": settings.EVOLUTION_INSTANCE_NAME,
+                    "token": settings.EVOLUTION_API_KEY,
+                    "qrcode": True,
+                }
+                c_res = await client.post(create_url, json=payload, headers=headers)
+                if c_res.status_code in [200, 201]:
+                    c_data = c_res.json()
+                    qr = c_data.get("qrcode", {}).get("base64")
+                    if qr:
+                        return {"status": "qrcode", "qrcode": qr}
+                    return {"status": "created", "message": "Instância criada. Clique novamente para gerar o QR code."}
+                return {"status": "error", "message": f"Erro ao criar instância: {c_res.text}"}
+            else:
+                return {"status": "error", "message": f"Evolution API status {res.status_code}: {res.text}"}
+    except Exception as e:
+        return {"status": "offline", "message": f"Evolution API inacessível em {settings.EVOLUTION_API_URL}: {e}"}
+
+
+# --- ENDPOINTS PADRÃO ---
 
 
 @app.get("/health", status_code=status.HTTP_200_OK)
@@ -92,6 +245,7 @@ async def list_products():
 
 
 @app.post("/webhook")
+@app.post("/webhook/whatsapp")
 async def evolution_webhook(
     request: Request,
     background_tasks: BackgroundTasks,

@@ -12,7 +12,7 @@ services:
     networks:
       - bot_network
 
-  # 2. Gateway do WhatsApp (Evolution API v2 - Porta 8085 para evitar conflitos)
+  # 2. Gateway do WhatsApp (Evolution API v2 - Porta 8085 para evitar conflitos na VM)
   evolution-api:
     image: atendai/evolution-api:v2.1.2
     container_name: victor_cell_evolution
@@ -24,7 +24,7 @@ services:
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-ChaveSecretaLoja123}
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379
-      - WEBHOOK_GLOBAL_URL=http://pecas-backend:8000/webhook/whatsapp
+      - WEBHOOK_GLOBAL_URL=http://pecas-backend:8000/webhook
       - WEBHOOK_GLOBAL_ENABLED=true
       - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
     volumes:
@@ -34,7 +34,7 @@ services:
     networks:
       - bot_network
 
-  # 3. Backend Python (FastAPI + Gemini + SQLite - Porta 8005)
+  # 3. Backend Python (FastAPI + Gemini + Google Sheets + Power BI Dashboard - Porta 8005)
   pecas-backend:
     build:
       context: .
@@ -45,13 +45,16 @@ services:
       - "${PORT_BACKEND:-8005}:8000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_SHEET_ID=${GOOGLE_SHEET_ID}
+      - GOOGLE_SHEETS_API_KEY=${GOOGLE_SHEETS_API_KEY}
       - EVOLUTION_API_URL=http://evolution-api:8080
       - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-ChaveSecretaLoja123}
       - EVOLUTION_INSTANCE_NAME=${EVOLUTION_INSTANCE_NAME:-victor-cell-01}
-      - CAIXA_STAFF_PHONE=${CAIXA_STAFF_PHONE:-5585999999999}
+      - STAFF_PHONES=${STAFF_PHONES:-5585999999999}
       - STORE_TIMEZONE=America/Fortaleza
       - STORE_OPENING_TIME=08:30
       - STORE_CLOSING_TIME=18:00
+      - STORE_SAT_CLOSING_TIME=13:00
       - DATABASE_PATH=/app/data/pecasbot.db
     volumes:
       - ./data:/app/data
