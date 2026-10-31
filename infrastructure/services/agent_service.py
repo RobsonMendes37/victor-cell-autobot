@@ -63,12 +63,13 @@ Responda SEMPRE em formato JSON estrito:
 
 class AIAgentService(AIServiceInterface):
     SUPPORTED_MODELS = [
-        "gemini-3.5-flash-lite",      # Prioridade 1: 500 req/dia (15 RPM, texto e fotos ultrarrápido)
-        "gemini-3.8-flash",           # Prioridade 2: 20 req/dia (Multimodal completo, áudio nativo)
-        "gemini-3.5-flash",           # Prioridade 3: 20 req/dia
-        "gemini-flash-latest",        # Prioridade 4: 20 req/dia
-        "gemini-2.5-flash",           # Prioridade 5: 20 req/dia
-        "gemini-2.5-flash-lite",      # Prioridade 6: 20 req/dia
+        "gemini-3.5-flash-lite",      # Prioridade 1: 500 req/dia (15 RPM - Super rápido, texto e visão)
+        "gemini-3.1-flash-lite",      # Prioridade 2: 500 req/dia (15 RPM - Super rápido, texto e visão)
+        "gemini-3-flash-preview",     # Prioridade 3: 20 req/dia (5 RPM - Multimodal completo)
+        "gemini-3.8-flash",           # Prioridade 4: 20 req/dia (5 RPM - Multimodal completo)
+        "gemini-3.6-flash",           # Prioridade 5: 20 req/dia (5 RPM - Multimodal completo)
+        "gemini-flash-latest",        # Prioridade 6: Transbordo automático
+        "gemma-4-26b-a4b-it",         # Prioridade 7: 14.400 req/dia (Reserva massiva)
     ]
 
     def __init__(self):
