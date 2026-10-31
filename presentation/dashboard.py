@@ -456,6 +456,7 @@ def render_dashboard_html() -> str:
       <p style="font-size: 0.85rem; color: var(--text-muted);">
         Abra o WhatsApp no celular da Victor Cell ➔ Aparelhos Conectados ➔ Conectar um aparelho.
       </p>
+      <div style="margin: 1rem 0;"><a href="http://161.153.2.148:8085/manager" target="_blank" class="btn btn-primary" style="width: 100%; justify-content: center; font-size: 0.95rem; margin-bottom: 0.75rem;">🔑 Abrir Painel Oficial do WhatsApp (Manager)</a><p style="font-size: 0.75rem; color: #9CA3AF;">API Key: <code style="color: #FCD34D;">ChaveSecretaLoja123</code></p></div>
       <div id="qr-container">
         <div style="color: #6B7280; font-size: 0.9rem; padding: 2rem;" id="qr-placeholder">
           Consultando Evolution API...
