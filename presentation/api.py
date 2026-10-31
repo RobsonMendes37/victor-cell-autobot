@@ -80,7 +80,7 @@ async def health():
         "store_open": settings.is_store_open(),
         "timezone": settings.STORE_TIMEZONE,
         "evolution_gateway": settings.EVOLUTION_API_URL,
-        "caixa_staff_phone": settings.CAIXA_STAFF_PHONE,
+        "staff_phones": settings.get_staff_phone_list(),
     }
 
 

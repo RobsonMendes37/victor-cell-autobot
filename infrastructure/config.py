@@ -1,10 +1,11 @@
 """
 Application Configuration using Pydantic Settings.
-Includes Business Hours logic with local timezone and safe port defaults.
+Includes Business Hours logic with local timezone, safe non-conflicting ports,
+and multi-recipient staff notification settings.
 """
 
 from datetime import datetime, time
-from typing import Optional
+from typing import List, Optional
 
 import pytz
 from pydantic import ConfigDict
@@ -17,7 +18,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = "demo_key"
     GEMINI_API_KEY_BACKUP: Optional[str] = None
 
-    # Portas seguras para não conflitar com 8080 (Java local) nem 3000/3010 (VM Oracle)
+    # Portas seguras (não conflitam com 8080 nem 3000/3010 já em uso na VM da Oracle)
     PORT_BACKEND: int = 8005
     PORT_EVOLUTION: int = 8085
 
@@ -25,7 +26,8 @@ class Settings(BaseSettings):
     EVOLUTION_API_KEY: str = "ChaveSecretaLoja123"
     EVOLUTION_INSTANCE_NAME: str = "victor-cell-01"
 
-    CAIXA_STAFF_PHONE: str = "5585999999999"
+    # Lista de números do balcão/caixa (separados por vírgula no .env)
+    STAFF_PHONES: str = "5585999999999"
 
     DATABASE_PATH: str = "data/pecasbot.db"
 
@@ -38,13 +40,22 @@ class Settings(BaseSettings):
     HOLD_HOURS: int = 2
     ACTIVE_SKU_TIMEOUT_HOURS: int = 2
 
+    def get_staff_phone_list(self) -> List[str]:
+        """Retorna a lista de telefones da equipe do balcão limpos de caracteres."""
+        phones = []
+        for raw in self.STAFF_PHONES.split(","):
+            clean = "".join(filter(str.isdigit, raw))
+            if clean:
+                phones.append(clean)
+        return phones or ["5585999999999"]
+
     def get_local_now(self) -> datetime:
-        """Returns current datetime in Fortaleza timezone."""
+        """Retorna o datetime atual no fuso de Fortaleza."""
         tz = pytz.timezone(self.STORE_TIMEZONE)
         return datetime.now(tz)
 
     def is_store_open(self, now_dt: Optional[datetime] = None) -> bool:
-        """Checks whether the physical store is open based on Fortaleza timezone."""
+        """Verifica se a loja física está em horário de atendimento."""
         tz = pytz.timezone(self.STORE_TIMEZONE)
         local_now = now_dt.astimezone(tz) if now_dt else datetime.now(tz)
 

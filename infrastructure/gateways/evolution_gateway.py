@@ -1,7 +1,7 @@
 """
 Evolution API Client Gateway (WhatsApp Provider).
 Implements MessagingGatewayInterface.
-Tracks sent message IDs to prevent self-silencing loops.
+Supports multi-recipient staff alerts and tracks sent message IDs.
 """
 
 import logging
@@ -20,12 +20,18 @@ class EvolutionGateway(MessagingGatewayInterface):
         self.api_key = settings.EVOLUTION_API_KEY
         self.instance = settings.EVOLUTION_INSTANCE_NAME
         self.message_recorder = message_recorder
-        self.headers = {"apikey": self.api_key, "Content-Type": "application/json"}
+        self.headers = {
+            "apikey": self.api_key,
+            "Content-Type": "application/json",
+        }
 
     async def send_text(self, to_phone: str, text: str) -> bool:
         clean_number = "".join(filter(str.isdigit, to_phone))
         url = f"{self.base_url}/message/sendText/{self.instance}"
-        payload = {"number": clean_number, "text": text}
+        payload = {
+            "number": clean_number,
+            "text": text,
+        }
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -47,6 +53,15 @@ class EvolutionGateway(MessagingGatewayInterface):
             return True
 
     async def send_internal_staff_alert(self, alert_text: str) -> bool:
-        """Dispara mensagem de alerta urgente para a equipe de expedição/caixa da loja."""
-        logger.info(f"Disparando alerta para o WhatsApp do Caixa ({settings.CAIXA_STAFF_PHONE})")
-        return await self.send_text(settings.CAIXA_STAFF_PHONE, alert_text)
+        """
+        Dispara mensagem de alerta urgente para TODOS os números cadastrados
+        da equipe do balcão/caixa (ex: Luan, atendentes da bancada, dono).
+        """
+        staff_numbers = settings.get_staff_phone_list()
+        success = True
+        for phone in staff_numbers:
+            logger.info(f"Disparando alerta para o balcão ({phone})")
+            sent = await self.send_text(phone, alert_text)
+            if not sent:
+                success = False
+        return success
