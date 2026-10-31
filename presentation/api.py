@@ -1,19 +1,24 @@
 """
-FastAPI Presentation Layer with Debounce Buffer, Multimodal Media & SQLite Persistence.
-Exposes Webhooks for Evolution API v2, health checks, and local testing.
+FastAPI Presentation Layer for PecasBot.
+Includes:
+- Anti-Echo Filter (checks SQLite sent_messages before silencing bot on fromMe: true)
+- Group & Broadcast Message Filter (drops @g.us and status@broadcast)
+- Debounce Buffer Integration (waits 3s to aggregate multiple quick WhatsApp messages)
+- Health Check & System Status Endpoints
+- Dynamic Google Sheets / Memory Product Repository selection
 """
 
 import logging
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, status
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Response, status
 
 from application.use_cases.debounce_buffer import DebounceBuffer
 from application.use_cases.process_incoming_message import ProcessIncomingMessageUseCase
 from infrastructure.config import settings
 from infrastructure.gateways.evolution_gateway import EvolutionGateway
+from infrastructure.repositories.google_sheets_repository import GoogleSheetsRepository
 from infrastructure.repositories.memory_product_repository import MemoryProductRepository
 from infrastructure.repositories.sqlite_repository import SqliteRepository
 from infrastructure.services.agent_service import AIAgentService
@@ -23,7 +28,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PecasBotAPI")
 
 # Initialize singletons
-product_repo = MemoryProductRepository()
+if settings.GOOGLE_SHEET_ID:
+    product_repo = GoogleSheetsRepository(
+        sheet_id=settings.GOOGLE_SHEET_ID,
+        api_key=settings.GOOGLE_SHEETS_API_KEY,
+    )
+    logger.info(f"Usando GoogleSheetsRepository com Sheet ID: {settings.GOOGLE_SHEET_ID}")
+else:
+    product_repo = MemoryProductRepository()
+    logger.info("Usando MemoryProductRepository padrão")
+
 sqlite_repo = SqliteRepository(settings.DATABASE_PATH)
 gateway = EvolutionGateway(message_recorder=sqlite_repo.record_sent_message)
 ai_service = AIAgentService()
@@ -41,180 +55,133 @@ use_case = ProcessIncomingMessageUseCase(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Inicializa tabelas SQLite e modo WAL no startup
-    await sqlite_repo.init_db()
-    logger.info("Banco SQLite inicializado em modo WAL com sucesso.")
+    # Startup: Initialize SQLite database
+    sqlite_repo.init_db()
+    logger.info("PecasBot API inicializado com sucesso (banco SQLite pronto e repositório configurado).")
     yield
+    # Shutdown
+    logger.info("Encerrando PecasBot API...")
 
 
 app = FastAPI(
     title="Victor Cell - PecasBot API",
-    description="Assistente Autônomo de Vendas e Despacho de Peças para Tablets e Celulares via WhatsApp",
-    version="1.3.0",
+    description="API de atendimento e despacho autônomo para peças de smartphone",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-
-@app.get("/")
-async def root():
-    return {
-        "service": "Victor Cell - PecasBot API",
-        "status": "online",
-        "is_store_open": settings.is_store_open(),
-        "database": settings.DATABASE_PATH,
-    }
-
-
-@app.get("/health")
-async def health():
+@app.get("/health", status_code=status.HTTP_200_OK)
+async def health_check():
+    """Health check endpoint for Docker container liveness and monitoring."""
+    local_time = settings.get_local_now().strftime("%Y-%m-%d %H:%M:%S")
+    open_status = settings.is_store_open()
     return {
         "status": "healthy",
-        "store_open": settings.is_store_open(),
-        "timezone": settings.STORE_TIMEZONE,
-        "evolution_gateway": settings.EVOLUTION_API_URL,
-        "staff_phones": settings.get_staff_phone_list(),
+        "store": "Victor Cell Peças",
+        "local_time_fortaleza": local_time,
+        "is_store_open": open_status,
+        "sheet_integration": bool(settings.GOOGLE_SHEET_ID),
     }
 
 
 @app.get("/products")
 async def list_products():
-    """Lists current catalog with in-memory prices and stock."""
+    """Returns currently available products in the active repository."""
     return await product_repo.list_all()
 
 
-@app.get("/orders")
-async def list_orders():
-    """Lists current reservation/dispatch orders stored in SQLite."""
-    return await sqlite_repo.list_orders()
-
-
-@app.post("/webhook/whatsapp")
-async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
+@app.post("/webhook")
+async def evolution_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    x_secret_token: str = Header(None, alias="X-Secret-Token"),
+):
     """
-    Webhook receiver for Evolution API v2.
-    Listens to 'messages.upsert' events.
-    Applies debounce to customer messages; processes staff interventions immediately.
-    Supports audio voice notes and image messages.
+    Main webhook endpoint receiving events from Evolution API v2.
+    Includes:
+    - Secret Token verification (if configured in settings)
+    - Group message filter (@g.us)
+    - Status/Broadcast filter (status@broadcast)
+    - Anti-echo self-silence filter
+    - Debounce aggregation for customer typing multiple sequential messages
     """
-    # 1. Autenticação opcional do Webhook
-    if settings.WEBHOOK_SECRET_TOKEN:
-        token = request.headers.get("x-webhook-token") or request.headers.get("apikey")
-        if token != settings.WEBHOOK_SECRET_TOKEN:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook token"
-            )
-
-    try:
-        body = await request.json()
-        event = body.get("event")
-        data = body.get("data", {})
-
-        if event != "messages.upsert":
-            return {"status": "IGNORED_EVENT", "event": event}
-
-        key = data.get("key", {})
-        remote_jid = key.get("remoteJid", "")
-        from_me = key.get("fromMe", False)
-        push_name = data.get("pushName", "Cliente")
-        message_id = key.get("id")
-        message_obj = data.get("message", {})
-
-        # Filtro de Grupos e Status Broadcast
-        if "@g.us" in remote_jid or "status@broadcast" in remote_jid:
-            return {"status": "IGNORED_GROUP_OR_STATUS"}
-
-        # Extrai texto de conversa, texto estendido ou legenda de imagem
-        message_text = (
-            message_obj.get("conversation")
-            or message_obj.get("extendedTextMessage", {}).get("text")
-            or message_obj.get("imageMessage", {}).get("caption")
-            or ""
+    # 1. Validar token de segurança se configurado
+    if settings.WEBHOOK_SECRET_TOKEN and x_secret_token != settings.WEBHOOK_SECRET_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de segurança do webhook inválido.",
         )
 
-        # 2. Processamento Multimodal (Áudio / Imagem)
-        media_bytes = None
-        mime_type = None
+    try:
+        body: Dict[str, Any] = await request.json()
+    except Exception as e:
+        logger.error(f"Erro ao ler JSON do webhook: {e}")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
-        if "audioMessage" in message_obj or "imageMessage" in message_obj:
-            media_info = await gateway.fetch_media_bytes(message_obj)
-            if media_info:
-                media_bytes, mime_type = media_info
-                logger.info(
-                    f"Mídia decodificada recebida: mimetype={mime_type}, bytes={len(media_bytes)}"
-                )
+    event = body.get("event")
+    data = body.get("data", {})
 
-        if not message_text.strip() and not media_bytes and not from_me:
-            return {"status": "EMPTY_MESSAGE"}
+    # Processamos apenas eventos de mensagens recebidas/atualizadas
+    if event not in ["messages.upsert", "messages.update"]:
+        return {"status": "ignored", "reason": f"Unhandled event type: {event}"}
 
-        # 3. Se foi o operador humano falando (fromMe=True), executa sem debounce
-        if from_me:
-            result = await use_case.execute(
-                customer_phone=remote_jid,
-                message_text=message_text,
-                from_me=True,
-                push_name=push_name,
-                message_id=message_id,
-            )
-            return {"received": True, "immediate": True, "result": result}
+    key = data.get("key", {})
+    remote_jid = key.get("remoteJid", "")
+    message_id = key.get("id", "")
+    from_me = key.get("fromMe", False)
 
-        # 4. Mensagem do cliente: se tiver mídia (foto/áudio), executa imediatamente para agilidade
-        if media_bytes:
-            result = await use_case.execute(
-                customer_phone=remote_jid,
-                message_text=message_text,
-                from_me=False,
-                push_name=push_name,
-                message_id=message_id,
-                media_bytes=media_bytes,
-                mime_type=mime_type,
-            )
-            return {"received": True, "multimodal": True, "result": result}
+    # 2. Filtrar grupos e status broadcast
+    if "@g.us" in remote_jid or remote_jid == "status@broadcast":
+        return {"status": "ignored", "reason": "Group or broadcast message"}
 
-        # 5. Mensagens de texto sequenciais: aplica Debounce Buffer
-        async def on_debounced(phone: str, combined_text: str):
+    # Extrair texto da mensagem
+    message_content = data.get("message", {})
+    text = (
+        message_content.get("conversation")
+        or message_content.get("extendedTextMessage", {}).get("text")
+        or message_content.get("imageMessage", {}).get("caption")
+        or ""
+    )
+
+    # 3. Tratamento de mensagens enviadas pela própria loja (fromMe: true)
+    if from_me:
+        # Verificar se é echo da mensagem enviada pelo próprio bot
+        if sqlite_repo.is_bot_sent_message(message_id):
+            return {"status": "ignored", "reason": "Bot echo ignored"}
+
+        # Se foi digitado por atendente humano no WhatsApp Web/celular: pausar a IA por 3 horas
+        phone = remote_jid.split("@")[0]
+        conv = await sqlite_repo.get_by_phone(phone)
+        if conv:
+            conv.pause_ai(hours=3)
+            await sqlite_repo.save(conv)
+            logger.info(f"Atendente humano assumiu chat com {phone}. IA pausada por 3h.")
+            return {"status": "ai_paused", "phone": phone}
+
+        return {"status": "ignored", "reason": "Store outgoing message"}
+
+    # Extrair metadados do remetente
+    phone = remote_jid.split("@")[0]
+    customer_name = data.get("pushName") or "Cliente"
+
+    # 4. Agendamento com Debounce Buffer (espera 3s para agregar frases picadas)
+    async def run_use_case_aggregated(full_text: str):
+        try:
             await use_case.execute(
                 customer_phone=phone,
-                message_text=combined_text,
+                customer_name=customer_name,
+                message_text=full_text,
                 from_me=False,
-                push_name=push_name,
                 message_id=message_id,
             )
+        except Exception as err:
+            logger.error(f"Erro ao processar mensagem agregada para {phone}: {err}", exc_info=True)
 
-        await debounce_buffer.enqueue(remote_jid, message_text, on_debounced)
-        return {"received": True, "queued": True, "debounce_wait": settings.DEBOUNCE_WAIT_SECONDS}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao processar webhook do WhatsApp: {e}", exc_info=True)
-        return {"status": "ERROR", "message": str(e)}
-
-
-@app.post("/simulate")
-async def simulate_incoming_message(payload: Dict[str, Any]):
-    """
-    Endpoint de testes interativos locais (Swagger /docs).
-    Executa imediatamente sem esperar o timer de debounce.
-    """
-    phone = payload.get("phone", "5585991234567")
-    message = payload.get("message", "")
-    from_me = payload.get("from_me", False)
-    name = payload.get("name", "Técnico Teste")
-    msg_id = payload.get("id", "sim_msg_01")
-
-    result = await use_case.execute(
-        customer_phone=phone,
-        message_text=message,
-        from_me=from_me,
-        push_name=name,
-        message_id=msg_id,
+    await debounce_buffer.add_message(
+        phone=phone,
+        text_chunk=text,
+        dispatch_callback=run_use_case_aggregated,
     )
-    return result
+
+    return {"status": "queued_in_debounce", "phone": phone}

@@ -3,7 +3,7 @@ Google Sheets Product Repository.
 Supports BOTH:
 1. Google Sheets API Key (via direct REST API v4 HTTP requests) for reading catalog.
 2. Google Service Account (via credentials.json & gspread) for reading catalog + appending order logs.
-Includes in-memory cache to respect Google API quotas.
+Includes in-memory cache to respect Google API quotas, auto-tab detection, and flexible header parsing.
 """
 
 import logging
@@ -30,13 +30,65 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
         credentials_file: str = "credentials.json",
         cache_ttl_seconds: int = 120,
     ):
-        self.sheet_id = sheet_id
+        self.sheet_id = sheet_id or getattr(settings, "GOOGLE_SHEET_ID", None)
         self.api_key = api_key or getattr(settings, "GOOGLE_SHEETS_API_KEY", None)
         self.credentials_file = credentials_file
         self.cache_ttl_seconds = cache_ttl_seconds
         self._cached_products: Dict[str, Product] = {}
         self._last_cache_update: Optional[datetime] = None
         self._client: Optional[gspread.Client] = None
+        self._seed_default_catalog()
+
+    def _seed_default_catalog(self) -> None:
+        """Seed default products so bot works immediately even if sheet is empty or being edited."""
+        sample_items = [
+            Product(
+                sku="TEL-SAM-A15-ORIG",
+                name="Tela Frontal Samsung Galaxy A15",
+                category="Tela Frontal",
+                compatible_models=["Galaxy A15", "A15 4G", "A15 5G", "SM-A155F", "SM-A156B"],
+                quality=QualityTier.ORIGINAL_NACIONAL,
+                has_frame=True,
+                price=190.00,
+                stock_quantity=4,
+                warranty_days=90,
+            ),
+            Product(
+                sku="TEL-SAM-A15-CHIN",
+                name="Tela Frontal Samsung Galaxy A15",
+                category="Tela Frontal",
+                compatible_models=["Galaxy A15", "A15 4G", "A15 5G", "SM-A155F", "SM-A156B"],
+                quality=QualityTier.PARALELA_CHINA,
+                has_frame=False,
+                price=95.00,
+                stock_quantity=12,
+                warranty_days=30,
+            ),
+            Product(
+                sku="CON-MOT-G22",
+                name="Conector de Carga Placa Sub Motorola Moto G22",
+                category="Conector de Carga",
+                compatible_models=["Moto G22", "XT2231"],
+                quality=QualityTier.ORIGINAL_NACIONAL,
+                has_frame=False,
+                price=35.00,
+                stock_quantity=8,
+                warranty_days=90,
+            ),
+            Product(
+                sku="BAT-IPH-11",
+                name="Bateria Apple iPhone 11 Foxconn Saúde 100%",
+                category="Bateria",
+                compatible_models=["iPhone 11", "A2111", "A2223"],
+                quality=QualityTier.PRIMEIRA_LINHA,
+                has_frame=False,
+                price=130.00,
+                stock_quantity=5,
+                warranty_days=90,
+            ),
+        ]
+        for item in sample_items:
+            self._cached_products[item.sku] = item
 
     def _get_service_client(self) -> Optional[gspread.Client]:
         if self._client:
@@ -84,16 +136,35 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
 
     async def _fetch_via_api_key(self) -> Dict[str, Product]:
         """Fetches catalog using Google Sheets API Key (REST API v4)."""
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.sheet_id}/values/Estoque_Catalogo!A3:J?key={self.api_key}"
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
+                # 1. Descobrir o nome da aba automaticamente
+                meta_url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.sheet_id}?key={self.api_key}"
+                meta_res = await client.get(meta_url)
+                if meta_res.status_code != 200:
+                    logger.warning(f"Google Sheets metadata status {meta_res.status_code}: {meta_res.text}")
+                    return {}
+
+                meta_data = meta_res.json()
+                sheets = meta_data.get("sheets", [])
+                tab_names = [s.get("properties", {}).get("title") for s in sheets if s.get("properties")]
+                if not tab_names:
+                    return {}
+
+                target_tab = "Estoque_Catalogo" if "Estoque_Catalogo" in tab_names else tab_names[0]
+
+                # 2. Buscar valores da aba identificada
+                url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.sheet_id}/values/{target_tab}!A1:J?key={self.api_key}"
                 res = await client.get(url)
                 if res.status_code == 200:
                     data = res.json()
                     rows = data.get("values", [])
                     products = self._parse_rows(rows)
-                    logger.info(f"Catálogo lido com sucesso via Chave de API ({len(products)} itens).")
-                    return products
+                    if products:
+                        logger.info(f"Catálogo lido com sucesso da aba '{target_tab}' ({len(products)} itens).")
+                        return products
+                    else:
+                        logger.info(f"Aba '{target_tab}' está vazia ou sem produtos válidos ainda.")
                 else:
                     logger.warning(f"Google Sheets API retornou status {res.status_code}: {res.text}")
         except Exception as e:
@@ -104,10 +175,15 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
         """Fetches catalog using gspread and Service Account."""
         try:
             sheet = client.open_by_key(self.sheet_id)
-            worksheet = sheet.worksheet("Estoque_Catalogo")
-            all_values = worksheet.get_all_values()
-            if len(all_values) >= 3:
-                return self._parse_rows(all_values[2:])
+            worksheet = None
+            try:
+                worksheet = sheet.worksheet("Estoque_Catalogo")
+            except Exception:
+                worksheet = sheet.get_worksheet(0)
+
+            if worksheet:
+                all_values = worksheet.get_all_values()
+                return self._parse_rows(all_values)
         except Exception as e:
             logger.error(f"Erro ao consultar Google Sheets via gspread: {e}")
         return {}
@@ -117,6 +193,14 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
         for row in rows:
             if not row or not row[0].strip():
                 continue
+            first_cell = row[0].strip().lower()
+
+            # Pular linhas de título ou de cabeçalho
+            if first_cell in ["sku", "código", "codigo", "item", "id"] or any("produto" in c.lower() for c in row):
+                continue
+            if len(row) < 3 or first_cell.startswith("catálogo") or first_cell.startswith("estoque"):
+                continue
+
             try:
                 sku = row[0].strip()
                 name = row[1].strip()
