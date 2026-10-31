@@ -39,6 +39,10 @@ DIRETRIZES DE ATENDIMENTO:
      3. Defina a intent como "ORDER_PENDING_CONFIRMATION" (requires_staff_alert: false).
    - SOMENTE defina "ORDER_DISPATCH" (requires_staff_alert: true) se o cliente responder SIM CONFIRMANDO de forma clara (ex: "pode sim", "pode confirmar", "manda ver", "separa aí", "vou querer").
    - Elogios, risadas e mensagens curtas ("tá boa a resposta", "show", "kkk", "valeu", "economiza um funcionário") NUNCA são confirmações de pedido! Responda com simpatia e cordialidade.
+7. RETORNO DE CLIENTE E EXPIRAÇÃO DE SESSÃO:
+   - Se o cliente mandar uma saudação simples ("Opa", "Bom dia", "Tudo bem?") sem especificar a peça, cumprimente com alegria cearense de balcão e pergunte qual modelo de celular ou tablet ele está precisando hoje.
+   - Se a 'PEÇA DISCUTIDA ANTERIORMENTE' estiver 'Nenhuma até o momento' (sessão expirada após 2h ou contato novo), trate como novo atendimento limpo, sem presumir pedidos antigos.
+   - Se o cliente perguntar "Ainda tem aquela peça que cotei?", confirme no estoque atualizado antes de passar o preço.
 
 ESTADO DA LOJA:
 - Aberta agora: {is_open}
@@ -137,7 +141,29 @@ class AIAgentService(AIServiceInterface):
 
             contents.append({"role": "user", "parts": current_turn_parts})
 
-            for model_name in self.SUPPORTED_MODELS:
+            # Seleção Inteligente de Modelos por Tipo de Mídia (Smart Media Router)
+            if media_bytes and mime_type and mime_type.startswith("audio/"):
+                # Áudio requer decodificador acústico nativo (Flash Multimodal de Voz)
+                models_to_try = [
+                    "gemini-3.6-flash",
+                    "gemini-3-flash-preview",
+                    "gemini-3.8-flash",
+                    "gemini-flash-latest",
+                ]
+            elif media_bytes and mime_type and mime_type.startswith("image/"):
+                # Fotos de peças/etiquetas: modelos ultra-rápidos com visão computacional (500 req/dia)
+                models_to_try = [
+                    "gemini-3.5-flash-lite",
+                    "gemini-3.1-flash-lite",
+                    "gemini-3-flash-preview",
+                    "gemini-3.8-flash",
+                    "gemini-3.6-flash",
+                ]
+            else:
+                # Mensagens de texto: prioriza 1.000 req/dia gratuitos do Flash Lite + fallbacks e Gemma
+                models_to_try = self.SUPPORTED_MODELS
+
+            for model_name in models_to_try:
                 try:
                     response = await self._client.aio.models.generate_content(
                         model=model_name,

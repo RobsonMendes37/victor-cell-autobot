@@ -56,13 +56,22 @@ async def test_order_deducts_stock_and_uses_active_sku(use_case, test_sqlite, pr
         from_me=False,
     )
 
-    # 2. Confirmação com endereço
-    res = await use_case.execute(
+    # 2. Envio do endereço (Bot pede confirmação explícita antes de gerar pedido)
+    res_pending = await use_case.execute(
         customer_phone=phone,
         message_text="Pode separar essa! Manda o Uber pra Rua Floriano Peixoto, 1250 - Centro",
         from_me=False,
     )
+    assert res_pending["status"] == "SUCCESS"
+    assert res_pending["intent"] == "ORDER_PENDING_CONFIRMATION"
+    assert res_pending["order_created"] is False
 
+    # 3. Confirmação explícita do cliente
+    res = await use_case.execute(
+        customer_phone=phone,
+        message_text="Pode confirmar sim, patrão!",
+        from_me=False,
+    )
     assert res["status"] == "SUCCESS"
     assert res["order_created"] is True
     assert res["target_sku"] == "TEL-SAM-A15-ORIG"
@@ -138,3 +147,55 @@ async def test_manual_bot_resume(use_case, test_sqlite):
     assert res["status"] == "AI_RESUMED"
     conv_after = await test_sqlite.get_or_create(phone)
     assert conv_after.state == ConversationState.AI_ACTIVE
+
+
+@pytest.mark.asyncio
+async def test_inactivity_resets_context_and_prevents_stale_orders(use_case, test_sqlite):
+    """
+    Testa se o silêncio de mais de 2 horas expira o contexto da sessão,
+    limpa a peça ativa e impede que uma mensagem aleatória após 2 horas
+    seja interpretada como confirmação de pedido pendente.
+    """
+    from datetime import datetime, timezone, timedelta
+    phone = "5585991117777"
+
+    # 1. Cotação
+    await use_case.execute(
+        customer_phone=phone,
+        message_text="Quanto tá a tela do A15 original?",
+        from_me=False,
+    )
+    conv = await test_sqlite.get_or_create(phone)
+    assert conv.active_sku == "TEL-SAM-A15-ORIG"
+
+    # 2. Simula passagem do tempo de 3 horas de inatividade na conversa e no histórico
+    past_iso = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
+    conv.last_activity_at = datetime.fromisoformat(past_iso)
+    conv.state = ConversationState.WAITING_CONFIRMATION
+    conv.notes = "Rua Teste, 100"
+    await test_sqlite.save(conv)
+    import aiosqlite
+    async with aiosqlite.connect(test_sqlite.db_path) as db:
+        await db.execute("UPDATE messages SET timestamp = ? WHERE customer_phone = ?", (past_iso, phone))
+        await db.commit()
+
+    # 3. Cliente reaparece 3 horas depois dizendo apenas "Beleza"
+    res = await use_case.execute(
+        customer_phone=phone,
+        message_text="Beleza amigo",
+        from_me=False,
+    )
+
+    # 4. Verifica que NÃO gerou pedido falso e a sessão foi resetada
+    assert res["status"] == "SUCCESS"
+    assert res["order_created"] is False
+
+    conv_after = await test_sqlite.get_or_create(phone)
+    assert conv_after.active_sku is None
+    assert conv_after.notes is None
+
+    # Histórico recente com corte de 2 horas não traz as mensagens de 3h atrás
+    recent_in_window = await test_sqlite.get_recent_messages(phone, max_age_hours=2)
+    # Apenas a mensagem de agora e a resposta do modelo (2 itens)
+    assert len(recent_in_window) == 2
+    assert "Beleza amigo" in recent_in_window[0]["content"]

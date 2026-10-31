@@ -69,7 +69,7 @@ class ConversationRepositoryInterface(ABC):
 
     @abstractmethod
     async def get_recent_messages(
-        self, customer_phone: str, limit: int = 8
+        self, customer_phone: str, limit: int = 8, max_age_hours: int = 2
     ) -> List[Dict[str, str]]:
         """Retrieves recent conversation turns for multi-turn context."""
         pass

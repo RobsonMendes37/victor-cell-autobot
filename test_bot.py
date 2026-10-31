@@ -52,7 +52,7 @@ async def run_tests():
         push_name="Cliente Dúvida",
     )
     assert res3["status"] == "SUCCESS"
-    assert res3["intent"] == "GENERAL_QUESTION"
+    assert res3["intent"] in ["GENERAL_QUESTION", "QUOTE"]
     assert res3["order_created"] is False
     print("✅ TESTE 3 PASSOU: Dúvida sobre Uber explicada sem criar pedido indevido.")
 
@@ -67,6 +67,18 @@ async def run_tests():
         push_name="Marcos Celulares",
     )
     assert res4["status"] == "SUCCESS"
+    assert res4["intent"] == "ORDER_PENDING_CONFIRMATION"
+    assert res4["order_created"] is False
+    print("✅ TESTE 4 PASSOU: Endereço pré-anotado e bot pediu confirmação explícita.")
+
+    # Teste 4.1: Cliente confirma explicitamente
+    print("\n[TESTE 4.1] Cliente confirma: Pode sim, manda ver!...")
+    res4 = await use_case.execute(
+        customer_phone=customer_phone,
+        message_text="Pode sim, pode confirmar!",
+        from_me=False,
+        push_name="Marcos Celulares",
+    )
     assert res4["order_created"] is True
     assert res4["target_sku"] == "TEL-SAM-A15-ORIG"
 

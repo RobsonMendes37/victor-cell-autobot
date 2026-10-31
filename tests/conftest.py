@@ -3,7 +3,7 @@ Pytest configuration and fixtures.
 """
 
 import os
-
+from typing import Any, Dict, Optional, Tuple
 import pytest
 
 from application.use_cases.process_incoming_message import ProcessIncomingMessageUseCase
@@ -13,6 +13,23 @@ from infrastructure.repositories.sqlite_repository import SqliteRepository
 from infrastructure.services.agent_service import AIAgentService
 
 TEST_DB_PATH = "data/test_pecasbot.db"
+
+
+class FastMockEvolutionGateway(EvolutionGateway):
+    def __init__(self, message_recorder=None):
+        super().__init__(message_recorder=message_recorder)
+        self.sent_messages = []
+
+    async def send_text(self, to_phone: str, text: str) -> bool:
+        self.sent_messages.append({"to": to_phone, "text": text})
+        return True
+
+    async def send_internal_staff_alert(self, alert_text: str) -> bool:
+        self.sent_messages.append({"alert": alert_text})
+        return True
+
+    async def fetch_media_bytes(self, message_obj: Dict[str, Any]) -> Optional[Tuple[bytes, str]]:
+        return None
 
 
 @pytest.fixture
@@ -28,7 +45,7 @@ async def test_sqlite():
 
 @pytest.fixture
 def mock_gateway(test_sqlite):
-    return EvolutionGateway(message_recorder=test_sqlite.record_sent_message)
+    return FastMockEvolutionGateway(message_recorder=test_sqlite.record_sent_message)
 
 
 @pytest.fixture

@@ -91,21 +91,28 @@ class ProcessIncomingMessageUseCase:
             )
             return {"status": "SKIPPED_HUMAN_IN_CONTROL"}
 
-        # 4. Timeout da peça ativa na memória (limpa após 2 horas de inatividade)
+        # 4. Timeout de sessão e contexto (limpa após 2 horas de inatividade)
         now_utc = datetime.now(timezone.utc)
-        if conversation.active_sku and conversation.last_activity_at:
-            if now_utc - conversation.last_activity_at > timedelta(
-                hours=settings.ACTIVE_SKU_TIMEOUT_HOURS
-            ):
+        if conversation.last_activity_at:
+            time_since_last = now_utc - conversation.last_activity_at
+            if time_since_last > timedelta(hours=settings.ACTIVE_SKU_TIMEOUT_HOURS):
+                logger.info(
+                    f"Sessão expirada para {clean_phone} após {time_since_last}. "
+                    "Resetando contexto ativo (peça, confirmações pendentes e notas)."
+                )
                 conversation.active_sku = None
+                if conversation.state == ConversationState.WAITING_CONFIRMATION:
+                    conversation.state = ConversationState.AI_ACTIVE
+                conversation.notes = None
 
         conversation.last_activity_at = now_utc
 
-        # 5. Carrega histórico recente de mensagens (Multi-Turn)
+        # 5. Carrega histórico recente da sessão ativa (Multi-Turn limitado a 2 horas)
         recent_history = []
         if hasattr(self.conversation_repo, "get_recent_messages"):
-            recent_history = await self.conversation_repo.get_recent_messages(clean_phone, limit=8)
-
+            recent_history = await self.conversation_repo.get_recent_messages(
+                clean_phone, limit=8, max_age_hours=settings.ACTIVE_SKU_TIMEOUT_HOURS
+            )
         # 6. Carrega catálogo atualizado
         catalog = await self.product_repo.list_all()
         catalog_lines = []
@@ -145,7 +152,22 @@ class ProcessIncomingMessageUseCase:
         if reply_text:
             await self.messaging_gateway.send_text(clean_phone, reply_text)
 
-        # 10. Se o pedido está aguardando confirmação explícita do cliente
+        # Ao realizar nova cotação ou pergunta geral, garante que a conversa está em AI_ACTIVE e limpa notas antigas
+        if intent in ["QUOTE", "GENERAL_QUESTION"]:
+            conversation.state = ConversationState.AI_ACTIVE
+            if intent == "QUOTE":
+                conversation.notes = None
+
+        # 10. Proteção de Ouro: ORDER_DISPATCH EXIGE que a conversa estivesse em WAITING_CONFIRMATION
+        # NUNCA cria pedido na primeira menção ou sem confirmação prévia explícita
+        if intent == "ORDER_DISPATCH":
+            if conversation.state != ConversationState.WAITING_CONFIRMATION or (not destination_address and not conversation.notes):
+                logger.info(
+                    f"Downgrade ORDER_DISPATCH -> ORDER_PENDING_CONFIRMATION para {clean_phone} (estado={conversation.state.value}, sem confirmação em 2 etapas)"
+                )
+                intent = "ORDER_PENDING_CONFIRMATION"
+                requires_staff_alert = False
+
         order_created = False
         if intent == "ORDER_PENDING_CONFIRMATION":
             conversation.state = ConversationState.WAITING_CONFIRMATION

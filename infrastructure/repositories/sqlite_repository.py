@@ -4,7 +4,7 @@ Persists Conversations, Orders, Messages (history), and Sent Message IDs.
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional
 
 import aiosqlite
@@ -172,19 +172,20 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             await db.commit()
 
     async def get_recent_messages(
-        self, customer_phone: str, limit: int = 8
+        self, customer_phone: str, limit: int = 8, max_age_hours: int = 2
     ) -> List[Dict[str, str]]:
-        """Retrieves recent conversation turns for multi-turn context."""
+        """Retrieves recent conversation turns within the active session window (default 2 hours)."""
         clean_phone = "".join(filter(str.isdigit, customer_phone))
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
                 """
                 SELECT role, content FROM messages
-                WHERE customer_phone = ?
+                WHERE customer_phone = ? AND timestamp >= ?
                 ORDER BY id DESC LIMIT ?
             """,
-                (clean_phone, limit),
+                (clean_phone, cutoff.isoformat(), limit),
             )
             rows = await cursor.fetchall()
             # Inverte para ordem cronológica (mais antiga para mais recente)
