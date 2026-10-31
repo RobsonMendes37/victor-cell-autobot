@@ -1,6 +1,6 @@
 """
 AI Agent Service using Google Gemini with Async Client (client.aio).
-Enforces semantic extraction and avoids crude keyword matching.
+Enforces semantic extraction with gemini-3.5-flash and automatic fallback.
 """
 
 import json
@@ -55,6 +55,8 @@ Responda SEMPRE em formato JSON estrito:
 
 
 class AIAgentService(AIServiceInterface):
+    SUPPORTED_MODELS = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-latest"]
+
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY
         self._client = None
@@ -66,49 +68,59 @@ class AIAgentService(AIServiceInterface):
 
             if self.api_key and self.api_key != "demo_key":
                 self._client = genai.Client(api_key=self.api_key)
+                logger.info("Google GenAI client inicializado com chave de API real.")
         except Exception as e:
             logger.warning(
                 f"Google GenAI client não inicializado ({e}). Operando com fallback semântico seguro."
             )
 
     async def process_and_reply(
-        self, conversation: Conversation, user_message: str, catalog_context: str
+        self,
+        conversation: Conversation,
+        user_message: str,
+        catalog_context: str
     ) -> Dict[str, Any]:
         is_open = settings.is_store_open()
 
-        # Chamada assíncrona ao Gemini quando API Key estiver configurada
+        # Chamada assíncrona ao Gemini com tentativa de modelos flash suportados
         if self._client:
-            try:
-                prompt = SYSTEM_PROMPT.format(
-                    catalog_context=catalog_context,
-                    active_sku=conversation.active_sku or "Nenhuma até o momento",
-                    is_open="SIM" if is_open else "NÃO (Fora do expediente)",
-                    opening_time=settings.STORE_OPENING_TIME,
-                    closing_time=settings.STORE_CLOSING_TIME,
-                )
+            prompt = SYSTEM_PROMPT.format(
+                catalog_context=catalog_context,
+                active_sku=conversation.active_sku or "Nenhuma até o momento",
+                is_open="SIM" if is_open else "NÃO (Fora do expediente)",
+                opening_time=settings.STORE_OPENING_TIME,
+                closing_time=settings.STORE_CLOSING_TIME,
+            )
 
-                response = await self._client.aio.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=[
-                        {
-                            "role": "user",
-                            "parts": [
-                                {
-                                    "text": (
-                                        f"Peça ativa na sessão: {conversation.active_sku}\n"
-                                        f"Mensagem do cliente: {user_message}"
-                                    )
-                                }
-                            ],
-                        }
-                    ],
-                    config={"system_instruction": prompt, "response_mime_type": "application/json"},
-                )
-                return json.loads(response.text)
-            except Exception as e:
-                logger.error(
-                    f"Erro na chamada do Gemini API (async): {e}. Acionando fallback semântico."
-                )
+            for model_name in self.SUPPORTED_MODELS:
+                try:
+                    response = await self._client.aio.models.generate_content(
+                        model=model_name,
+                        contents=[
+                            {
+                                "role": "user",
+                                "parts": [
+                                    {
+                                        "text": (
+                                            f"Peça ativa na sessão: {conversation.active_sku}\n"
+                                            f"Mensagem do cliente: {user_message}"
+                                        )
+                                    }
+                                ],
+                            }
+                        ],
+                        config={"system_instruction": prompt, "response_mime_type": "application/json"},
+                    )
+                    cleaned_text = response.text.strip()
+                    # Remove markdown fences caso o modelo retorne ```json ... ```
+                    if cleaned_text.startswith("```"):
+                        cleaned_text = re.sub(r"^```(?:json)?\s*", "", cleaned_text)
+                        cleaned_text = re.sub(r"\s*```$", "", cleaned_text)
+                    result = json.loads(cleaned_text)
+                    logger.info(f"Resposta gerada com sucesso via {model_name}: intent={result.get('intent')}")
+                    return result
+                except Exception as e:
+                    logger.warning(f"Tentativa com modelo {model_name} falhou ({e}). Tentando próximo...")
 
         # Fallback Semântico Seguro (Não comete os erros de substring)
         return self._semantic_fallback(user_message, conversation, is_open)
@@ -126,22 +138,15 @@ class AIAgentService(AIServiceInterface):
         return None
 
     def _semantic_fallback(
-        self, user_msg: str, conversation: Conversation, is_open: bool
+        self,
+        user_msg: str,
+        conversation: Conversation,
+        is_open: bool
     ) -> Dict[str, Any]:
         msg = user_msg.lower().strip()
 
         # 1. Transbordo Humano
-        if any(
-            w in msg
-            for w in [
-                "desconto",
-                "faz por menos",
-                "garantia",
-                "defeito",
-                "falar com dono",
-                "falar com atendente",
-            ]
-        ):
+        if any(w in msg for w in ["desconto", "faz por menos", "garantia", "defeito", "falar com dono", "falar com atendente"]):
             return {
                 "intent": "HUMAN_HANDOFF",
                 "reply_text": "Entendi, meu amigo! Já avisei o gerente aqui na loja para verificar sua solicitação com prioridade. Um minuto que ele já assume a conversa aqui com você!",
@@ -155,9 +160,7 @@ class AIAgentService(AIServiceInterface):
         is_only_uber_question = (
             ("quanto fica" in msg or "qual o valor" in msg or "quanto é" in msg)
             and ("uber" in msg or "frete" in msg or "entrega" in msg)
-            and not any(
-                w in msg for w in ["separa", "separar", "manda essa", "pode mandar", "vou querer"]
-            )
+            and not any(w in msg for w in ["separa", "separar", "manda essa", "pode mandar", "vou querer"])
         )
         if is_only_uber_question:
             return {
@@ -176,35 +179,21 @@ class AIAgentService(AIServiceInterface):
         real_address = self._extract_real_address(user_msg)
 
         # 3. Intenção de Pedido / Separação ou Envio de Endereço
-        is_order_intent = any(
-            w in msg
-            for w in [
-                "separa",
-                "separar",
-                "manda entregar",
-                "vou querer",
-                "fecha essa",
-                "manda essa",
-                "pode mandar",
-                "manda pro",
-                "manda pra",
-                "manda para",
-                "entrega em",
-                "entrega na",
-                "entrega no",
-                "endereço",
-                "endereco",
-            ]
-        ) or (real_address is not None and conversation.active_sku is not None)
+        is_order_intent = (
+            any(
+                w in msg for w in [
+                    "separa", "separar", "manda entregar", "vou querer", "fecha essa",
+                    "manda essa", "pode mandar", "manda pro", "manda pra", "manda para",
+                    "entrega em", "entrega na", "entrega no", "endereço", "endereco"
+                ]
+            )
+            or (real_address is not None and conversation.active_sku is not None)
+        )
 
         if is_order_intent:
             resolved_sku = conversation.active_sku
             if "a15" in msg:
-                resolved_sku = (
-                    "TEL-SAM-A15-ORIG"
-                    if "original" in msg
-                    else (conversation.active_sku or "TEL-SAM-A15-ORIG")
-                )
+                resolved_sku = "TEL-SAM-A15-ORIG" if "original" in msg else (conversation.active_sku or "TEL-SAM-A15-ORIG")
             elif "tab a8" in msg or "x200" in msg:
                 resolved_sku = "CON-TAB-A8-ORIG" if "conector" in msg else "TEL-TAB-A8-1LINHA"
 
