@@ -1,3 +1,4 @@
+		
 
 # RFC-002: Documento de Arquitetura de Software & Design Técnico
 

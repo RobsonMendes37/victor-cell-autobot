@@ -270,3 +270,9 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             )
             row = await cursor.fetchone()
             return row is not None
+
+    async def is_bot_sent_message(self, message_id: str) -> bool:
+        return await self.is_sent_by_bot(message_id)
+
+    async def get_by_phone(self, customer_phone: str) -> Optional[Conversation]:
+        return await self.get_or_create(customer_phone)

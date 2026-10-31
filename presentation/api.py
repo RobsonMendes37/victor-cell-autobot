@@ -1,3 +1,5 @@
+import os
+import re
 """
 FastAPI Presentation Layer for PecasBot.
 Includes:
@@ -72,7 +74,7 @@ use_case = ProcessIncomingMessageUseCase(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize SQLite database
-    sqlite_repo.init_db()
+    await sqlite_repo.init_db()
     logger.info("PecasBot API inicializado com sucesso (banco SQLite pronto e repositório configurado).")
     yield
     # Shutdown
@@ -333,6 +335,89 @@ async def list_products():
     return await product_repo.list_all()
 
 
+
+class UpdateKeyRequest(BaseModel):
+    new_key: str
+
+
+@app.get("/api/catalog")
+async def get_catalog():
+    """Returns live catalog items for the dashboard."""
+    products = await product_repo.list_all()
+    return {
+        "items": [
+            {
+                "sku": p.sku,
+                "name": p.name,
+                "category": p.category,
+                "quality": p.quality.value,
+                "has_frame": p.has_frame,
+                "price": p.price,
+                "stock_quantity": p.stock_quantity,
+                "warranty_days": p.warranty_days,
+                "compatible_models": p.compatible_models,
+            }
+            for p in products
+        ],
+        "total": len(products),
+        "source": "Google Sheets (Aba Estoque)",
+    }
+
+
+@app.get("/api/ai/quota-info")
+async def get_ai_quota_info():
+    """Returns current Gemini model, masked key and quota information."""
+    key = settings.GEMINI_API_KEY or ""
+    masked_key = (key[:6] + "..." + key[-4:]) if len(key) > 10 else "Não configurada"
+    return {
+        "status": "active" if key and key != "demo_key" else "fallback_mode",
+        "masked_key": masked_key,
+        "models": AIAgentService.SUPPORTED_MODELS,
+        "limits": {
+            "free_tier_rpm": "15 requisições por minuto",
+            "free_tier_rpd": "20 a 1.500 requisições por dia (conforme projeto GCP)",
+            "paid_tier_rpm": "1.000 requisições por minuto (sem limite diário)",
+            "token_limit": "1.000.000 tokens por requisição",
+        },
+        "links": {
+            "monitor_usage": "https://ai.dev/rate-limit",
+            "plan_info": "https://aistudio.google.com/app/plan_information",
+            "get_new_key": "https://aistudio.google.com/app/apikey",
+        },
+    }
+
+
+@app.post("/api/ai/update-key")
+async def update_gemini_key(req: UpdateKeyRequest):
+    """Allows the store owner to update and test their Gemini API key directly from the dashboard."""
+    new_key = req.new_key.strip()
+    if not new_key or len(new_key) < 20:
+        raise HTTPException(status_code=400, detail="Chave de API inválida ou muito curta.")
+
+    # Update in memory
+    settings.GEMINI_API_KEY = new_key
+    ai_service.api_key = new_key
+    ai_service._init_client()
+
+    # Save to .env on disk so it persists across restarts
+    for env_path in ["/app/.env", ".env", "/home/ubuntu/victor-cell-autobot/.env"]:
+        try:
+            if os.path.exists(env_path):
+                with open(env_path, "r") as f:
+                    content = f.read()
+                if "GEMINI_API_KEY=" in content:
+                    content = re.sub(r"GEMINI_API_KEY=.*", f"GEMINI_API_KEY={new_key}", content)
+                else:
+                    content += "\nGEMINI_API_KEY=" + new_key + "\n"
+                with open(env_path, "w") as f:
+                    f.write(content)
+                logger.info(f"Nova chave salva com sucesso em {env_path}")
+        except Exception as e:
+            logger.warning(f"Não foi possível persistir no arquivo {env_path}: {e}")
+
+    return {"status": "success", "message": "Chave Gemini atualizada e ativada com sucesso!"}
+
+
 @app.post("/webhook")
 @app.post("/webhook/whatsapp")
 async def evolution_webhook(
@@ -342,7 +427,7 @@ async def evolution_webhook(
 ):
     """
     Main webhook endpoint receiving events from Evolution API v2.
-    Includes anti-echo, group filter, debounce buffer, and local Fortaleza business hours.
+    Includes anti-echo, group filter, debounce buffer, and 3-hour human intervention pause.
     """
     if settings.WEBHOOK_SECRET_TOKEN and x_secret_token != settings.WEBHOOK_SECRET_TOKEN:
         raise HTTPException(
@@ -370,6 +455,10 @@ async def evolution_webhook(
     if "@g.us" in remote_jid or remote_jid == "status@broadcast":
         return {"status": "ignored", "reason": "Group or broadcast message"}
 
+    clean_phone = "".join(filter(str.isdigit, remote_jid.split("@")[0]))
+    if not clean_phone:
+        return {"status": "ignored", "reason": "Missing or invalid phone"}
+
     message_content = data.get("message", {})
     text = (
         message_content.get("conversation")
@@ -379,38 +468,49 @@ async def evolution_webhook(
     )
 
     if from_me:
-        if sqlite_repo.is_bot_sent_message(message_id):
+        # 1. Anti-Loop: Se foi o próprio bot que enviou a mensagem, ignora o eco
+        if message_id and await sqlite_repo.is_sent_by_bot(message_id):
+            logger.debug(f"Eco de mensagem própria do bot ignorado ({message_id})")
             return {"status": "ignored", "reason": "Bot echo ignored"}
 
-        phone = remote_jid.split("@")[0]
-        conv = await sqlite_repo.get_by_phone(phone)
-        if conv:
-            conv.pause_ai(hours=3)
+        # 2. Intervenção Humana: O atendente ou dono da loja digitou no WhatsApp Web ou celular
+        conv = await sqlite_repo.get_or_create(clean_phone)
+        if "#bot" in text.lower():
+            conv.resume_ai()
             await sqlite_repo.save(conv)
-            logger.info(f"Atendente humano assumiu chat com {phone}. IA pausada por 3h.")
-            return {"status": "ai_paused", "phone": phone}
+            logger.info(f"IA reativada manualmente (#bot) para {clean_phone}.")
+            return {"status": "ai_resumed", "phone": clean_phone}
 
-        return {"status": "ignored", "reason": "Store outgoing message"}
+        conv.pause_for_human(duration_hours=3)
+        await sqlite_repo.save(conv)
+        logger.info(f"Atendente humano digitou para {clean_phone}. IA silenciada por 3 horas.")
+        return {"status": "ai_paused", "phone": clean_phone}
 
-    phone = remote_jid.split("@")[0]
+    # Mensagem recebida de um cliente
     customer_name = data.get("pushName") or "Cliente"
+
+    # Verificar se a conversa está com IA silenciada por atendimento humano
+    conv = await sqlite_repo.get_or_create(clean_phone)
+    if not conv.is_ai_allowed():
+        logger.info(f"Mensagem de {clean_phone} recebida, mas IA está silenciada (atendente humano no controle).")
+        return {"status": "ignored", "reason": "AI paused for human intervention", "phone": clean_phone}
 
     async def run_use_case_aggregated(full_text: str):
         try:
             await use_case.execute(
-                customer_phone=phone,
+                customer_phone=clean_phone,
                 push_name=customer_name,
                 message_text=full_text,
                 from_me=False,
                 message_id=message_id,
             )
         except Exception as err:
-            logger.error(f"Erro ao processar mensagem agregada para {phone}: {err}", exc_info=True)
+            logger.error(f"Erro ao processar mensagem agregada para {clean_phone}: {err}", exc_info=True)
 
     await debounce_buffer.add_message(
-        phone=phone,
+        phone=clean_phone,
         text_chunk=text,
         dispatch_callback=run_use_case_aggregated,
     )
 
-    return {"status": "queued_in_debounce", "phone": phone}
+    return {"status": "queued_in_debounce", "phone": clean_phone}
