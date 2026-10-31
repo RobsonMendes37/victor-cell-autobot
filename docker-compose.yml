@@ -1,6 +1,19 @@
-
 services:
-  # 1. Redis Cache para sessões da Evolution API
+  # 1. Postgres para sessões e instâncias da Evolution API v2
+  postgres:
+    image: postgres:16-alpine
+    container_name: victor_cell_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=evolution
+      - POSTGRES_PASSWORD=evolution_secret_pass
+      - POSTGRES_DB=evolution
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bot_network
+
+  # 2. Redis Cache para a Evolution API
   redis:
     image: redis:7-alpine
     container_name: victor_cell_redis
@@ -11,7 +24,7 @@ services:
     networks:
       - bot_network
 
-  # 2. Gateway do WhatsApp (Evolution API v2 - Porta 8085 para evitar conflitos na VM)
+  # 3. Gateway do WhatsApp (Evolution API v2 - Porta 8085 para evitar conflitos na VM)
   evolution-api:
     image: evoapicloud/evolution-api:v2.2.0
     container_name: victor_cell_evolution
@@ -21,6 +34,14 @@ services:
     environment:
       - SERVER_URL=http://localhost:${PORT_EVOLUTION:-8085}
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-ChaveSecretaLoja123}
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://evolution:evolution_secret_pass@postgres:5432/evolution?schema=public
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=false
+      - DATABASE_SAVE_MESSAGE_UPDATE=false
+      - DATABASE_SAVE_DATA_CONTACTS=false
+      - DATABASE_SAVE_DATA_CHATS=false
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379
       - WEBHOOK_GLOBAL_URL=http://pecas-backend:8000/webhook
@@ -30,10 +51,11 @@ services:
       - evolution_instances:/evolution/instances
     depends_on:
       - redis
+      - postgres
     networks:
       - bot_network
 
-  # 3. Backend Python (FastAPI + Gemini + Google Sheets + Power BI Dashboard - Porta 8005)
+  # 4. Backend Python (FastAPI + Gemini + Google Sheets + Power BI Dashboard - Porta 8005)
   pecas-backend:
     build:
       context: .
@@ -65,6 +87,7 @@ services:
 volumes:
   redis_data:
   evolution_instances:
+  postgres_data:
 
 networks:
   bot_network:
