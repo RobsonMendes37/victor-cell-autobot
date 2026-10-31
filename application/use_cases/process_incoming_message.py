@@ -145,10 +145,20 @@ class ProcessIncomingMessageUseCase:
         if reply_text:
             await self.messaging_gateway.send_text(clean_phone, reply_text)
 
-        # 10. Se fechou pedido de separação com endereço válido
+        # 10. Se o pedido está aguardando confirmação explícita do cliente
         order_created = False
-        if intent == "ORDER_DISPATCH" and requires_staff_alert and destination_address:
+        if intent == "ORDER_PENDING_CONFIRMATION":
+            conversation.state = ConversationState.WAITING_CONFIRMATION
+            conversation.active_sku = target_sku or conversation.active_sku
+            if destination_address:
+                conversation.notes = destination_address
+            order_created = False
+            logger.info(f"Conversa com {clean_phone} em WAITING_CONFIRMATION (endereço pré-anotado: {destination_address})")
+
+        # 11. Se o cliente CONFIRMOU explicitamente e fechou o pedido de separação
+        elif intent == "ORDER_DISPATCH" and requires_staff_alert:
             final_sku = target_sku or conversation.active_sku or "TEL-SAM-A15-ORIG"
+            final_address = destination_address or conversation.notes or "Retirada no Balcão"
             product = await self.product_repo.get_by_sku(final_sku)
             prod_name = product.name if product else "Peça solicitada pelo cliente"
             prod_price = product.price if product else 0.0
@@ -159,7 +169,7 @@ class ProcessIncomingMessageUseCase:
                 product_sku=final_sku,
                 quantity=1,
                 product_price=prod_price,
-                destination_address=destination_address,
+                destination_address=final_address,
             )
             await self.order_repo.save_order(order)
             order_created = True
@@ -173,7 +183,7 @@ class ProcessIncomingMessageUseCase:
             expires_str = expires_local.strftime("%H:%M")
 
             alert_msg = (
-                f"🚨 *NOVO DESPACHO VIA UBER FLASH REQUISITADO!*\n"
+                f"🚨 *NOVO DESPACHO VIA UBER FLASH CONFIRMADO PELO CLIENTE!*\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"• *ID Pedido:* #{order.id}\n"
                 f"• *Cliente:* {order.customer_name} ({clean_phone})\n"
@@ -188,6 +198,7 @@ class ProcessIncomingMessageUseCase:
             )
             await self.messaging_gateway.send_internal_staff_alert(alert_msg)
             conversation.state = ConversationState.WAITING_DISPATCH
+            conversation.notes = None
 
         elif intent == "HUMAN_HANDOFF":
             conversation.pause_for_human(duration_hours=2)

@@ -12,6 +12,7 @@ from typing import List, Optional
 
 class ConversationState(str, Enum):
     AI_ACTIVE = "AI_ACTIVE"
+    WAITING_CONFIRMATION = "WAITING_CONFIRMATION"
     HUMAN_ACTIVE = "HUMAN_ACTIVE"
     WAITING_DISPATCH = "WAITING_DISPATCH"
     CLOSED = "CLOSED"

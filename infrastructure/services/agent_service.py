@@ -11,7 +11,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 
-from domain.entities import Conversation
+from domain.entities import Conversation, ConversationState
 from domain.gateways import AIServiceInterface
 from infrastructure.config import settings
 
@@ -31,13 +31,14 @@ DIRETRIZES DE ATENDIMENTO:
 5. Multimodalidade:
    - Se o cliente enviar FOTO de etiqueta, flex, conector ou tela quebrada: identifique o modelo exato (ex: SM-X200, A155F), confirme com o catálogo e responda.
    - Se o cliente enviar ÁUDIO de voz: ouça a gravação com atenção, extraia a dúvida técnica ou pedido e responda normalmente.
-6. Quando o cliente solicitar entrega ou cotar Uber:
-   - Se apenas perguntou quanto custa o Uber ("quanto fica o Uber até o centro?"): NÃO crie pedido! Explique que os meninos do caixa calculam a rota pelo app do Uber Flash na hora do envio.
-   - Se disse "separa essa", "pode mandar", "vou querer" ou enviou o endereço de entrega:
-     - Verifique se informou endereço de entrega real (ex: Rua, Número, Bairro).
-     - Se NÃO informou endereço, peça o endereço completo.
-     - Se informou endereço, extraia apenas o endereço real no campo "destination_address".
-     - Palavras de cortesia como "por favor", "obrigado", "valeu" NUNCA são endereços!
+6. FLUXO OBRIGATÓRIO DE PEDIDO E CONFIRMAÇÃO (MUITO IMPORTANTE):
+   - REGRA DE OURO: NUNCA crie ou finalize um pedido ("ORDER_DISPATCH") na primeira mensagem do cliente!
+   - Se o cliente perguntar se entrega, cotar Uber ou mandar endereço (ex: "Pode mandar pro Centro? Rua Floriano, 1250"):
+     1. Informe o valor da peça e anote o endereço.
+     2. PERGUNTE EXPLICITAMENTE: "Posso confirmar a reserva da peça para você e passar pros meninos do caixa cotarem o Uber Flash?"
+     3. Defina a intent como "ORDER_PENDING_CONFIRMATION" (requires_staff_alert: false).
+   - SOMENTE defina "ORDER_DISPATCH" (requires_staff_alert: true) se o cliente responder SIM CONFIRMANDO de forma clara (ex: "pode sim", "pode confirmar", "manda ver", "separa aí", "vou querer").
+   - Elogios, risadas e mensagens curtas ("tá boa a resposta", "show", "kkk", "valeu", "economiza um funcionário") NUNCA são confirmações de pedido! Responda com simpatia e cordialidade.
 
 ESTADO DA LOJA:
 - Aberta agora: {is_open}
@@ -50,7 +51,7 @@ CATÁLOGO EM ESTOQUE:
 
 Responda SEMPRE em formato JSON estrito:
 {{
-  "intent": "QUOTE" | "ORDER_DISPATCH" | "HUMAN_HANDOFF" | "GENERAL_QUESTION",
+  "intent": "QUOTE" | "ORDER_PENDING_CONFIRMATION" | "ORDER_DISPATCH" | "HUMAN_HANDOFF" | "GENERAL_QUESTION",
   "reply_text": "Texto para o cliente no WhatsApp",
   "target_sku": "SKU da peça identificada ou null",
   "requires_staff_alert": true | false,
@@ -210,27 +211,78 @@ class AIAgentService(AIServiceInterface):
                 "handoff_reason": None,
             }
 
+        # 2.5 Elogios, reações amigáveis e feedback (evita resposta robótica repetitiva)
+        is_compliment = any(
+            w in msg
+            for w in [
+                "tá boa", "ta boa", "boa a resposta", "gostei", "economiza",
+                "kkk", "top", "massa", "legal", "show", "valeu", "obrigado",
+                "obg", "tmj", "abraço", "funcionou", "maravilha", "blz, tá top", "blz ta top"
+            ]
+        )
+        if is_compliment:
+            return {
+                "intent": "GENERAL_QUESTION",
+                "reply_text": "Show de bola, meu patrão! Ficamos à disposição aqui no balcão da Victor Cell. Precisando de qualquer peça, cotação ou retirada no balcão, é só chamar que a gente desenrola pra você! Tamo junto!",
+                "target_sku": conversation.active_sku,
+                "requires_staff_alert": False,
+                "destination_address": None,
+                "handoff_reason": None,
+            }
+
         real_address = self._extract_real_address(user_msg)
 
-        # 3. Intenção de Pedido / Separação ou Envio de Endereço
+        # 3. Se a conversa está AGUARDANDO CONFIRMAÇÃO DO CLIENTE para fechar o pedido
+        if conversation.state == ConversationState.WAITING_CONFIRMATION:
+            is_confirmed = any(
+                w in msg
+                for w in [
+                    "sim", "pode", "confirma", "manda", "separa", "vou querer",
+                    "bora", "pode ser", "isso", "blz pode", "show pode", "ok",
+                    "manda ver", "fecha", "com certeza", "positivo", "pode mandar"
+                ]
+            )
+            if is_confirmed:
+                sku = conversation.active_sku or "TEL-SAM-A15-ORIG"
+                addr = conversation.notes or real_address or "Retirada no Balcão"
+                if is_open:
+                    reply = (
+                        "Show de bola, meu patrão! Pedido confirmado com sucesso!\n\n"
+                        f"Já deixei a peça reservada na bancada e os meninos do caixa já estão calculando a rota do Uber Flash para o endereço: {addr}.\n"
+                        "Em 2 minutinhos te mandam o valor certinho do frete e o Pix para despachar, combinado?"
+                    )
+                else:
+                    reply = (
+                        "Show de bola, meu patrão! Pedido confirmado com sucesso!\n\n"
+                        f"Como encerramos o expediente físico por hoje, a sua peça já ficou reservada na bancada prioritária de amanhã ({addr}).\n"
+                        f"Às {settings.STORE_OPENING_TIME} os meninos do caixa cotam a rota e te mandam o Pix para despachar logo na primeira hora, combinado?"
+                    )
+                return {
+                    "intent": "ORDER_DISPATCH",
+                    "reply_text": reply,
+                    "target_sku": sku,
+                    "requires_staff_alert": True,
+                    "destination_address": addr,
+                    "handoff_reason": None,
+                }
+            else:
+                # Cliente não confirmou (ex: desistiu, perguntou outra coisa, etc)
+                return {
+                    "intent": "GENERAL_QUESTION",
+                    "reply_text": "Tranquilo meu amigo! Não confirmei a reserva. Qualquer dúvida ou se quiser que a gente separe alguma peça depois, é só dar um alô por aqui. Tamo junto!",
+                    "target_sku": conversation.active_sku,
+                    "requires_staff_alert": False,
+                    "destination_address": None,
+                    "handoff_reason": None,
+                }
+
+        # 4. Intenção Inicial de Pedido / Separação ou Envio de Endereço (NUNCA FECHA SEM CONFIRMAR)
         is_order_intent = any(
             w in msg
             for w in [
-                "separa",
-                "separar",
-                "manda entregar",
-                "vou querer",
-                "fecha essa",
-                "manda essa",
-                "pode mandar",
-                "manda pro",
-                "manda pra",
-                "manda para",
-                "entrega em",
-                "entrega na",
-                "entrega no",
-                "endereço",
-                "endereco",
+                "separa", "separar", "manda entregar", "vou querer", "fecha essa",
+                "manda essa", "pode mandar", "manda pro", "manda pra", "manda para",
+                "entrega em", "entrega na", "entrega no", "endereço", "endereco"
             ]
         ) or (real_address is not None and conversation.active_sku is not None)
 
@@ -256,32 +308,26 @@ class AIAgentService(AIServiceInterface):
                 }
 
             if real_address:
-                if is_open:
-                    reply = (
-                        "Show de bola, meu patrão! Já anotei o seu endereço e passei a peça para os meninos do caixa.\n\n"
-                        "Eles já estão calculando o Uber Flash aqui e em 2 minutinhos te passam o valor certinho "
-                        "e a chave Pix para liberar o motorista, beleza?"
-                    )
-                else:
-                    reply = (
-                        "Show de bola, meu patrão! Como nossa expedição física já encerrou o expediente por hoje, "
-                        "já deixei o seu pedido na fila prioritária de amanhã!\n\n"
-                        f"Às {settings.STORE_OPENING_TIME} em ponto os meninos do caixa cotam o Uber Flash e te mandam o Pix para despachar logo na primeira hora, combinado?"
-                    )
-
+                # Pergunta confirmação EXPLÍCITA ao cliente antes de criar o pedido!
+                target_desc = "Original Nacional (R$ 190,00)" if "TEL-SAM-A15-ORIG" in (resolved_sku or "") else "peça solicitada"
+                reply = (
+                    f"Show de bola, meu patrão! Temos a pronta entrega. Já anotei o seu endereço de entrega: {real_address}.\n\n"
+                    f"A tela {target_desc} tá pronta pra saída na bancada.\n"
+                    "Posso confirmar o pedido para você e passar pros meninos do caixa cotarem o Uber Flash?"
+                )
                 return {
-                    "intent": "ORDER_DISPATCH",
+                    "intent": "ORDER_PENDING_CONFIRMATION",
                     "reply_text": reply,
                     "target_sku": resolved_sku,
-                    "requires_staff_alert": True,
+                    "requires_staff_alert": False,
                     "destination_address": real_address,
                     "handoff_reason": None,
                 }
             else:
                 return {
-                    "intent": "ORDER_DISPATCH",
+                    "intent": "QUOTE",
                     "reply_text": (
-                        "Opa, perfeito! Já deixo separada aqui no balcão.\n\n"
+                        "Opa, perfeito! Já deixo pré-anotada aqui no balcão.\n\n"
                         "Para os meninos do caixa cotarem o Uber Flash para você, me manda o endereço completo com número e bairro, por favor!"
                     ),
                     "target_sku": resolved_sku,
