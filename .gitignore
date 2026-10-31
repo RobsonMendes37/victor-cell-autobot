@@ -1,0 +1,34 @@
+# Ambientes virtuais e dependências
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Variáveis de ambiente e segredos (NUNCA COMMITTAR)
+.env
+.env.*
+!.env.example
+credentials.json
+*.pem
+*.key
+
+# Banco de dados e arquivos locais
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Testes, Linter e Cache
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Logs e IDEs
+*.log
+.vscode/
+.idea/
+.DS_Store

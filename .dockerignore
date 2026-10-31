@@ -1,0 +1,15 @@
+.venv
+venv
+__pycache__
+*.pyc
+.git
+.gitignore
+.env
+data/*.db
+data/*.sqlite
+.pytest_cache
+.ruff_cache
+tests
+docs
+test_bot.py
+README.md

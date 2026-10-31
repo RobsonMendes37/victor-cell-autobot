@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # 1. Redis Cache para sessões da Evolution API e debounce
+  redis:
+    image: redis:7-alpine
+    container_name: pecas_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - bot_network
+
+  # 2. Gateway do WhatsApp (Evolution API v2 - Open Source)
+  evolution-api:
+    image: atendai/evolution-api:v2.1.2
+    container_name: pecas_evolution
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-ChaveSecretaLoja123}
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379
+      - WEBHOOK_GLOBAL_URL=http://pecas-backend:8000/webhook/whatsapp
+      - WEBHOOK_GLOBAL_ENABLED=true
+      - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      - redis
+    networks:
+      - bot_network
+
+  # 3. Backend Python (FastAPI + Google Antigravity + Gemini + Google Sheets)
+  pecas-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pecas_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - EVOLUTION_API_URL=http://evolution-api:8080
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-ChaveSecretaLoja123}
+      - CAIXA_STAFF_PHONE=${CAIXA_STAFF_PHONE:-5585999999999}
+      - STORE_OPENING_TIME=08:30
+      - STORE_CLOSING_TIME=18:00
+      - GOOGLE_SHEET_ID=${GOOGLE_SHEET_ID:-}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - evolution-api
+    networks:
+      - bot_network
+
+volumes:
+  redis_data:
+  evolution_instances:
+
+networks:
+  bot_network:
+    driver: bridge
