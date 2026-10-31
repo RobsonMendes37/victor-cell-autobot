@@ -276,3 +276,33 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
 
     async def get_by_phone(self, customer_phone: str) -> Optional[Conversation]:
         return await self.get_or_create(customer_phone)
+
+    async def list_conversations(self, limit: int = 30) -> List[Conversation]:
+        await self.init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT * FROM conversations ORDER BY last_activity_at DESC LIMIT ?",
+                (limit,),
+            )
+            rows = await cursor.fetchall()
+            conversations = []
+            for row in rows:
+                human_resumed_at = (
+                    datetime.fromisoformat(row["human_resumed_at"])
+                    if row["human_resumed_at"]
+                    else None
+                )
+                conversations.append(
+                    Conversation(
+                        id=row["id"],
+                        customer_phone=row["customer_phone"],
+                        state=ConversationState(row["state"]),
+                        last_activity_at=datetime.fromisoformat(row["last_activity_at"]),
+                        human_resumed_at=human_resumed_at,
+                        human_silence_duration_hours=row["human_silence_duration_hours"],
+                        active_sku=row["active_sku"],
+                        notes=row["notes"],
+                    )
+                )
+            return conversations

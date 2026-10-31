@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta, timezone
 import re
 """
 FastAPI Presentation Layer for PecasBot.
@@ -418,6 +419,55 @@ async def update_gemini_key(req: UpdateKeyRequest):
     return {"status": "success", "message": "Chave Gemini atualizada e ativada com sucesso!"}
 
 
+
+@app.get("/api/conversations")
+async def list_conversations():
+    """Lists recent conversations with their AI pause/active status."""
+    convs = await sqlite_repo.list_conversations(limit=25)
+    fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
+    now_utc = datetime.now(timezone.utc)
+
+    result = []
+    for c in convs:
+        is_paused = not c.is_ai_allowed()
+        paused_until_str = None
+        if c.human_resumed_at:
+            until = c.human_resumed_at + timedelta(hours=c.human_silence_duration_hours)
+            if now_utc < until:
+                paused_until_str = until.astimezone(fortaleza_tz).strftime("%H:%M")
+
+        result.append({
+            "phone": c.customer_phone,
+            "is_ai_active": not is_paused,
+            "state": c.state.value,
+            "paused_until": paused_until_str,
+            "last_activity": c.last_activity_at.astimezone(fortaleza_tz).strftime("%d/%m %H:%M"),
+        })
+    return {"conversations": result}
+
+
+@app.post("/api/conversations/{phone}/resume")
+async def resume_conversation_ai(phone: str):
+    """Re-enables the AI silently via dashboard without the customer seeing any command."""
+    clean_phone = "".join(filter(str.isdigit, phone))
+    conv = await sqlite_repo.get_or_create(clean_phone)
+    conv.resume_ai()
+    await sqlite_repo.save(conv)
+    logger.info(f"IA reativada silenciosamente pelo dashboard para {clean_phone}.")
+    return {"status": "success", "message": f"IA reativada com sucesso para {clean_phone}!"}
+
+
+@app.post("/api/conversations/{phone}/pause")
+async def pause_conversation_ai(phone: str, hours: int = 3):
+    """Manually pauses the AI via dashboard for human takeover."""
+    clean_phone = "".join(filter(str.isdigit, phone))
+    conv = await sqlite_repo.get_or_create(clean_phone)
+    conv.pause_for_human(duration_hours=hours)
+    await sqlite_repo.save(conv)
+    logger.info(f"IA pausada manualmente pelo dashboard por {hours}h para {clean_phone}.")
+    return {"status": "success", "message": f"IA pausada por {hours}h para {clean_phone}!"}
+
+
 @app.post("/webhook")
 @app.post("/webhook/whatsapp")
 async def evolution_webhook(
@@ -475,10 +525,17 @@ async def evolution_webhook(
 
         # 2. Intervenção Humana: O atendente ou dono da loja digitou no WhatsApp Web ou celular
         conv = await sqlite_repo.get_or_create(clean_phone)
-        if "#bot" in text.lower():
+        resume_triggers = [
+            "#bot", "#ia",
+            "passar pro sistema", "passar para o sistema",
+            "sistema vai continuar", "sistema continua",
+            "atendimento automático", "atendimento virtual",
+            "robô vai continuar"
+        ]
+        if any(trig in text.lower() for trig in resume_triggers):
             conv.resume_ai()
             await sqlite_repo.save(conv)
-            logger.info(f"IA reativada manualmente (#bot) para {clean_phone}.")
+            logger.info(f"IA reativada para {clean_phone} por gatilho natural no chat: '{text[:30]}'")
             return {"status": "ai_resumed", "phone": clean_phone}
 
         conv.pause_for_human(duration_hours=3)

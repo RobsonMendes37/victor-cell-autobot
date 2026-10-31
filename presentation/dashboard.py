@@ -647,6 +647,42 @@ def render_dashboard_html() -> str:
           </table>
         </div>
       </div>
+
+      <!-- Controle de Conversas & Atendimento Silencioso -->
+      <div class="table-container-card">
+        <div class="table-toolbar">
+          <div class="table-title-area">
+            <h2 class="table-title">💬 Controle de Atendimento (Humano vs Robô IA)</h2>
+            <span class="table-badge" id="convs-badge-count">0 conversas</span>
+          </div>
+          <div class="table-controls">
+            <button class="btn btn-secondary btn-sm" onclick="fetchConversations()">
+              🔄 Atualizar Conversas
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente / WhatsApp</th>
+                <th>Status da IA</th>
+                <th>Última Interação</th>
+                <th>Silêncio até</th>
+                <th>Ação (100% Silenciosa sem o cliente ver)</th>
+              </tr>
+            </thead>
+            <tbody id="convs-tbody">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                  Carregando conversas...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- TAB 3: CATÁLOGO GOOGLE SHEETS -->
@@ -854,6 +890,7 @@ def render_dashboard_html() -> str:
       const target = document.getElementById('tab-' + tabId);
       if (target) target.classList.add('active');
 
+      if (tabId === 'orders') fetchConversations();
       if (tabId === 'catalog') fetchCatalog();
       if (tabId === 'ai-quota') fetchAiQuota();
     }
@@ -1239,8 +1276,84 @@ def render_dashboard_html() -> str:
       }
     }
 
+    // Controle de Conversas
+    async function fetchConversations() {
+      try {
+        const res = await fetch('/api/conversations');
+        const data = await res.json();
+        const tbody = document.getElementById('convs-tbody');
+        const convs = data.conversations || [];
+        document.getElementById('convs-badge-count').innerText = `${convs.length} conversas`;
+
+        if (convs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhuma conversa registrada ainda.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = convs.map(c => {
+          const cleanPhone = (c.phone || '').replace(/\D/g, '');
+          const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : '#';
+          const isActive = c.is_ai_active;
+
+          return `
+            <tr>
+              <td>
+                <a href="${waLink}" target="_blank" class="customer-wa" style="font-size: 0.9rem; font-weight: 700;">
+                  📱 ${c.phone}
+                </a>
+              </td>
+              <td>
+                ${isActive
+                  ? `<span class="badge badge-emerald"><span class="badge-dot"></span> 🤖 Robô Respondendo</span>`
+                  : `<span class="badge badge-amber"><span class="badge-dot"></span> ⏸️ Humano no Controle (Silenciado)</span>`
+                }
+              </td>
+              <td>${c.last_activity || '--'}</td>
+              <td>
+                ${c.paused_until
+                  ? `<span style="color: #FBBF24; font-weight: 600;">⏰ Até ${c.paused_until}</span>`
+                  : `<span style="color: var(--text-dim);">Automático</span>`
+                }
+              </td>
+              <td>
+                ${!isActive
+                  ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">🤖 Reativar IA Agora (Silencioso)</button>`
+                  : `<button class="btn btn-secondary btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Pausar IA por 3h</button>`
+                }
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Erro ao buscar conversas:', err);
+      }
+    }
+
+    async function resumeConversation(phone) {
+      try {
+        const res = await fetch(`/api/conversations/${phone}/resume`, { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message || 'IA reativada para o cliente!', 'success');
+        fetchConversations();
+      } catch (err) {
+        showToast('Erro ao reativar IA: ' + err, 'error');
+      }
+    }
+
+    async function pauseConversation(phone) {
+      try {
+        const res = await fetch(`/api/conversations/${phone}/pause`, { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message || 'IA pausada por 3h!', 'success');
+        fetchConversations();
+      } catch (err) {
+        showToast('Erro ao pausar IA: ' + err, 'error');
+      }
+    }
+
     // Inicialização
     fetchStats();
+    fetchConversations();
   </script>
 </body>
 </html>
