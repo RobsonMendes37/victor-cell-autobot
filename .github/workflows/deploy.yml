@@ -1,0 +1,82 @@
+name: Deploy PecasBot na Oracle VM
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: # Permite disparar o deploy manualmente pelo botão no GitHub
+
+jobs:
+  test:
+    name: Executar Testes Automatizados
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar Dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Executar Testes de Unidade
+        env:
+          GEMINI_API_KEY: "demo_test_key"
+        run: |
+          pytest tests/test_domain.py
+
+  deploy:
+    name: Deploy na Oracle Cloud VM
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conectar na VM e Subir Containers
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -e
+            echo "🚀 Iniciando Deploy do PecasBot na VM..."
+
+            # 1. Definir diretório do projeto na VM
+            PROJECT_DIR="${{ secrets.VM_PROJECT_DIR || '~/pecasbot-api' }}"
+            eval PROJECT_DIR=$PROJECT_DIR
+
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "Pasta não encontrada, clonando repositório..."
+              git clone https://github.com/${{ github.repository }}.git "$PROJECT_DIR"
+            fi
+
+            cd "$PROJECT_DIR"
+
+            # 2. Atualizar código pelo Git
+            echo "📥 Atualizando código fonte da branch main..."
+            git fetch --all
+            git reset --hard origin/main
+
+            # 3. Atualizar o arquivo .env se fornecido no GitHub Secrets
+            if [ -n "${{ secrets.ENV_FILE }}" ]; then
+              echo "🔒 Atualizando arquivo .env com segredos seguros..."
+              echo "${{ secrets.ENV_FILE }}" > .env
+              chmod 600 .env
+            fi
+
+            # 4. Reconstruir e subir os containers Docker
+            echo "🐳 Subindo containers via Docker Compose..."
+            docker compose down --remove-orphans || true
+            docker compose up -d --build
+
+            # 5. Limpar imagens antigas sem uso para economizar disco na VM
+            docker image prune -f
+
+            # 6. Checar status dos containers
+            echo "✅ Status dos containers após deploy:"
+            docker compose ps
