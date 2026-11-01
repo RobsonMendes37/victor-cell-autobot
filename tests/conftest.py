@@ -24,7 +24,7 @@ class FastMockEvolutionGateway(EvolutionGateway):
         self.sent_messages.append({"to": to_phone, "text": text})
         return True
 
-    async def send_internal_staff_alert(self, alert_text: str) -> bool:
+    async def send_internal_staff_alert(self, alert_text: str, *args, **kwargs) -> bool:
         self.sent_messages.append({"alert": alert_text})
         return True
 

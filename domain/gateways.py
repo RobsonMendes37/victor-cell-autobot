@@ -16,8 +16,15 @@ class MessagingGatewayInterface(ABC):
         pass
 
     @abstractmethod
-    async def send_internal_staff_alert(self, alert_text: str) -> bool:
-        """Sends an urgent alert to the store cashier/dispatch team WhatsApp."""
+    async def send_internal_staff_alert(
+        self,
+        alert_text: str,
+        title: Optional[str] = None,
+        customer_phone: Optional[str] = None,
+        priority: str = "urgent",
+        tags: Optional[str] = None,
+    ) -> bool:
+        """Sends an urgent alert to the store cashier/dispatch team WhatsApp and ntfy mobile push."""
         pass
 
     @abstractmethod

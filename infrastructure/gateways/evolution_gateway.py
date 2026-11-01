@@ -80,18 +80,53 @@ class EvolutionGateway(MessagingGatewayInterface):
             print(f"\n[MOCK WA ENVIADO PARA {clean_number}]:\n{text}\n")
             return True
 
-    async def send_internal_staff_alert(self, alert_text: str) -> bool:
+    async def send_internal_staff_alert(
+        self,
+        alert_text: str,
+        title: Optional[str] = None,
+        customer_phone: Optional[str] = None,
+        priority: str = "urgent",
+        tags: Optional[str] = None,
+    ) -> bool:
         """
         Dispara mensagem de alerta urgente para TODOS os números cadastrados
-        da equipe do balcão/caixa (ex: Luan, atendentes da bancada, dono).
+        da equipe do balcão/caixa (WhatsApp) e também emite notificação push sonora
+        no celular da equipe via ntfy.sh com link direto para o WhatsApp do cliente.
         """
         staff_numbers = settings.get_staff_phone_list()
         success = True
+
+        # 1. Alerta via WhatsApp para a lista de telefones do balcão
         for phone in staff_numbers:
-            logger.info(f"Disparando alerta para o balcão ({phone})")
+            logger.info(f"Disparando alerta WhatsApp para o balcão ({phone})")
             sent = await self.send_text(phone, alert_text)
             if not sent:
                 success = False
+
+        # 2. Alerta sonoro de alta prioridade no celular da equipe via ntfy.sh (100% gratuito)
+        if settings.NTFY_ENABLED and settings.NTFY_TOPIC:
+            try:
+                ntfy_url = f"{settings.NTFY_SERVER.rstrip('/')}/{settings.NTFY_TOPIC}"
+                headers = {
+                    "Title": title or "🚨 ALERTA BALCÃO VICTOR CELL",
+                    "Priority": priority,
+                    "Tags": tags or "rotating_light,phone,package",
+                }
+                clean_cust_phone = "".join(filter(str.isdigit, customer_phone)) if customer_phone else ""
+                if clean_cust_phone:
+                    wa_link = f"https://wa.me/{clean_cust_phone}"
+                    headers["Click"] = wa_link
+                    headers["Actions"] = f"view, Abrir Conversa no WhatsApp, {wa_link}"
+
+                async with httpx.AsyncClient(timeout=6.0) as client:
+                    res = await client.post(ntfy_url, content=alert_text.encode("utf-8"), headers=headers)
+                    if res.status_code in [200, 201]:
+                        logger.info(f"Notificação sonora ntfy enviada com sucesso pro canal '{settings.NTFY_TOPIC}'")
+                    else:
+                        logger.warning(f"ntfy retornou status {res.status_code}: {res.text}")
+            except Exception as e:
+                logger.error(f"Erro ao disparar notificação ntfy: {e}")
+
         return success
 
     async def fetch_media_bytes(

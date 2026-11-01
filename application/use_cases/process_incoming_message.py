@@ -185,6 +185,24 @@ class ProcessIncomingMessageUseCase:
             order_created = False
             logger.info(f"Conversa com {clean_phone} em WAITING_CONFIRMATION (endereço pré-anotado: {destination_address})")
 
+            # Se o cliente pediu para deixar no balcão ou separar, notifica o celular do atendente
+            if any(w in message_text.lower() for w in ["balcão", "balcao", "buscar", "pegar", "passo aí", "passo ai", "separa", "separar"]):
+                sku_desc = target_sku or conversation.active_sku or "Peça consultada"
+                balcao_alert = (
+                    f"📦 *CLIENTE PEDINDO PRA SEPARAR NO BALCÃO!*\n"
+                    f"• Cliente: {push_name or 'Cliente'} ({clean_phone})\n"
+                    f"• Peça: {sku_desc}\n"
+                    f'• Mensagem do cliente: "{message_text}"\n'
+                    f"👉 *Verifique na bancada e assuma a conversa no WhatsApp!*"
+                )
+                await self.messaging_gateway.send_internal_staff_alert(
+                    alert_text=balcao_alert,
+                    title=f"📦 SEPARAR BALCÃO: {push_name or 'Cliente'}",
+                    customer_phone=clean_phone,
+                    priority="urgent",
+                    tags="package,person,bell",
+                )
+
         # 11. Se o cliente CONFIRMOU explicitamente e fechou o pedido de separação
         elif intent == "ORDER_DISPATCH":
             requires_staff_alert = True
@@ -227,7 +245,13 @@ class ProcessIncomingMessageUseCase:
                 f"2. Mandar o valor do frete e a chave Pix pro cliente.\n"
                 f"3. Separar a peça na bancada de saída."
             )
-            await self.messaging_gateway.send_internal_staff_alert(alert_msg)
+            await self.messaging_gateway.send_internal_staff_alert(
+                alert_text=alert_msg,
+                title=f"📦 SEPARAR PEÇA: {prod_name}",
+                customer_phone=clean_phone,
+                priority="urgent",
+                tags="package,rotating_light,motorcycle",
+            )
             conversation.state = ConversationState.WAITING_DISPATCH
             conversation.notes = None
 
@@ -240,7 +264,13 @@ class ProcessIncomingMessageUseCase:
                 f'• Mensagem do cliente: "{message_text}"\n'
                 f"👉 *A IA NÃO respondeu ao cliente. Por favor, assuma e responda diretamente no WhatsApp!*"
             )
-            await self.messaging_gateway.send_internal_staff_alert(handoff_alert)
+            await self.messaging_gateway.send_internal_staff_alert(
+                alert_text=handoff_alert,
+                title=f"⚠️ ATENDIMENTO: {push_name or 'Cliente'}",
+                customer_phone=clean_phone,
+                priority="urgent",
+                tags="warning,phone,person",
+            )
 
         await self.conversation_repo.save(conversation)
 

@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     HOLD_HOURS: int = 2
     ACTIVE_SKU_TIMEOUT_HOURS: int = 2
 
+    # Configurações do ntfy (Alertas sonoros com vibração no celular da equipe)
+    NTFY_ENABLED: bool = True
+    NTFY_SERVER: str = "https://ntfy.sh"
+    NTFY_TOPIC: str = "victor-cell-balcao-alertas"
+
     def get_staff_phone_list(self) -> List[str]:
         """Retorna a lista de telefones da equipe do balcão limpos de caracteres."""
         phones = []

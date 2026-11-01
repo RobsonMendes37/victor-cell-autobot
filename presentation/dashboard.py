@@ -811,6 +811,9 @@ def render_dashboard_html() -> str:
         <span class="pill-dot"></span>
         <span id="wa-status">WhatsApp Conectado</span>
       </div>
+      <a href="https://ntfy.sh/victor-cell-balcao-alertas" target="_blank" class="btn btn-secondary btn-sm" style="color: #60A5FA; border-color: rgba(96, 165, 250, 0.3); text-decoration: none; font-weight: 500;" title="Receber alertas com alarme e nome do cliente no celular">
+        🔔 Alertas no Celular
+      </a>
       <button class="btn btn-secondary btn-sm" onclick="refreshAll()" title="Recarregar dados">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar
       </button>
