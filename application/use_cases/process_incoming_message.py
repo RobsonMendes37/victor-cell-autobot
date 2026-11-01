@@ -121,8 +121,9 @@ class ProcessIncomingMessageUseCase:
         catalog_lines = []
         for p in catalog:
             frame_str = "com aro" if p.has_frame else "sem aro"
+            status_str = "DISPONÍVEL (TEM EM ESTOQUE)" if p.is_in_stock else "ESGOTADO (EM FALTA NO MOMENTO)"
             catalog_lines.append(
-                f"- SKU: {p.sku} | {p.name} | {p.quality.value} ({frame_str}) | Preço: R$ {p.price:.2f} | Estoque: {p.stock_quantity} un."
+                f"- SKU: {p.sku} | {p.name} | {p.quality.value} ({frame_str}) | Preço: R$ {p.price:.2f} | Status: {status_str}"
             )
         catalog_context = "\n".join(catalog_lines)
 

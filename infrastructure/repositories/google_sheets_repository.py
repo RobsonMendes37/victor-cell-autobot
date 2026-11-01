@@ -154,7 +154,7 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
                 target_tab = "Estoque_Catalogo" if "Estoque_Catalogo" in tab_names else tab_names[0]
 
                 # 2. Buscar valores da aba identificada
-                url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.sheet_id}/values/{target_tab}!A1:J?key={self.api_key}"
+                url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.sheet_id}/values/{target_tab}!A1:N?key={self.api_key}"
                 res = await client.get(url)
                 if res.status_code == 200:
                     data = res.json()
@@ -207,10 +207,29 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
                 models = [m.strip() for m in row[2].split(",") if m.strip()]
                 category = row[3].strip() if len(row) > 3 else "Geral"
                 quality_str = row[4].strip() if len(row) > 4 else "ORIGINAL_NACIONAL"
-                has_frame = (row[5].strip().upper() == "SIM") if len(row) > 5 else False
+                has_frame = (row[5].strip().upper() in ["SIM", "TRUE", "S", "1"]) if len(row) > 5 else False
                 price = float(row[6].replace("R$", "").replace(",", ".").strip()) if len(row) > 6 else 0.0
-                stock = int(row[7].strip()) if len(row) > 7 else 0
-                warranty = int(row[8].strip()) if len(row) > 8 else 90
+                
+                # Suporte inteligente a Booleano de Estoque (Checkbox TRUE/FALSE, SIM/NÃO, ou Contagem numérica)
+                stock_raw = row[7].strip() if len(row) > 7 else "SIM"
+                s_upper = stock_raw.upper()
+                if s_upper in ["TRUE", "SIM", "S", "TEM", "DISPONIVEL", "DISPONÍVEL", "1", "V"]:
+                    has_stock = True
+                    stock = 1
+                elif s_upper in ["FALSE", "NAO", "NÃO", "N", "ESGOTADO", "SEM ESTOQUE", "0", "ACABOU", ""]:
+                    has_stock = False
+                    stock = 0
+                else:
+                    try:
+                        num = int(float(stock_raw.replace(",", ".")))
+                        has_stock = (num > 0)
+                        stock = max(num, 0)
+                    except ValueError:
+                        has_stock = True
+                        stock = 1
+
+                warranty = int(row[8].strip()) if len(row) > 8 and row[8].strip().isdigit() else 90
+                location = row[10].strip() if len(row) > 10 and row[10].strip() else None
 
                 q_upper = quality_str.upper()
                 if "ORIGINAL_CHINA" in q_upper or "ORIGINAL CHINA" in q_upper:
@@ -232,6 +251,8 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
                     price=price,
                     stock_quantity=stock,
                     warranty_days=warranty,
+                    has_stock=has_stock,
+                    location=location,
                 )
                 products[sku] = prod
             except Exception as parse_err:

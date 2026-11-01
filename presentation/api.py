@@ -509,6 +509,7 @@ async def get_catalog(request: Request):
                 "has_frame": p.has_frame,
                 "price": p.price,
                 "stock_quantity": p.stock_quantity,
+                "has_stock": p.is_in_stock,
                 "warranty_days": p.warranty_days,
                 "compatible_models": p.compatible_models or [],
             }

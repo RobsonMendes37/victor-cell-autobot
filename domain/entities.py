@@ -64,12 +64,17 @@ class Product:
     quality: QualityTier
     has_frame: bool  # Com aro / Sem aro
     price: float
-    stock_quantity: int
+    stock_quantity: int = 1
     warranty_days: int = 90
+    has_stock: bool = True  # Controle Booleano: TEM em estoque vs NÃO TEM (Esgotado)
+    location: Optional[str] = None  # Localização física (ex: Gaveta A3)
+    cost_price: Optional[float] = None  # Preço de custo
     last_updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def is_in_stock(self) -> bool:
+        if not self.has_stock:
+            return False
         return self.stock_quantity > 0
 
 

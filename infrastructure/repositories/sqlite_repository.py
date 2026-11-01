@@ -124,6 +124,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                     price REAL NOT NULL,
                     stock_quantity INTEGER NOT NULL,
                     warranty_days INTEGER DEFAULT 90,
+                    has_stock INTEGER DEFAULT 1,
                     updated_at TEXT NOT NULL
                 )
             """)
@@ -430,8 +431,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 await db.execute(
                     """
                     INSERT OR REPLACE INTO cached_products (
-                        sku, name, category, compatible_models, quality, has_frame, price, stock_quantity, warranty_days, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        sku, name, category, compatible_models, quality, has_frame, price, stock_quantity, warranty_days, has_stock, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         p.sku,
@@ -443,6 +444,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                         float(p.price),
                         int(p.stock_quantity),
                         int(p.warranty_days),
+                        1 if getattr(p, "has_stock", True) else 0,
                         now_str,
                     ),
                 )
@@ -475,7 +477,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                         has_frame=bool(r["has_frame"]),
                         price=float(r["price"]),
                         stock_quantity=int(r["stock_quantity"]),
-                        warranty_days=int(r["warranty_days"]),
+                        warranty_days=int(r["warranty_days"]), has_stock=bool(r["has_stock"]) if "has_stock" in r.keys() else (int(r["stock_quantity"]) > 0),
                     )
                 )
             return products
