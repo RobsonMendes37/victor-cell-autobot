@@ -912,14 +912,14 @@ def render_dashboard_html() -> str:
         <div style="padding: 1.25rem;">
           <!-- CHIPS DE PERGUNTAS RÁPIDAS -->
           <div class="quick-chips-wrapper">
-            <span class="chips-label">Perguntas Rápidas:</span>
+            <span class="chips-label">Consultas Executivas:</span>
             <div class="chips-scroller">
-              <button class="chip-btn" onclick="sendQuickPrompt('Como foi o desempenho de hoje? Faça um resumo executivo com vendas e ticket médio.')">📊 Resumo do Dia</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Quais peças estão com estoque crítico ou esgotadas? O que preciso repor com urgência?')">⚠️ O que tá faltando?</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Vendemos muito hoje? Como foi o volume de saída comparado ao esperado?')">💰 Vendemos muito?</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Como estão os pedidos com entrega pelo Uber Flash? Tem algum parado ou pendente?')">🛵 Entregas Uber Flash</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Qual o status dos atendimentos no WhatsApp agora? Quantos clientes estão pausados pra atendimento humano e quais peças estão cotando?')">👥 Atendimentos no Balcão</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Me dê 3 sugestões práticas e estratégicas para aumentar o faturamento e vendas da Victor Cell amanhã.')">💡 3 Dicas p/ Vender Mais</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Apresente um diagnóstico executivo consolidado com o desempenho de hoje, detalhando faturamento, ticket médio e volume de pedidos em prosa analítica sem tópicos pontilhados.')">Diagnóstico do Dia</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Quais peças do catálogo estão com estoque crítico ou esgotadas? Apresente uma análise das prioridades de reposição imediata.')">Estoque Crítico & Reposição</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Como se comportou o volume e a velocidade das vendas de hoje em comparação com a operação padrão da loja?')">Volume de Vendas</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Qual o status operacional e a taxa de adesão dos pedidos despachados via modal Uber Flash?')">Logística & Uber Flash</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Qual o panorama de produtividade dos atendimentos no WhatsApp, incluindo proporção de clientes com a equipe humana e peças com maior procura?')">Produtividade do Atendimento</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Apresente diretrizes estratégicas e acionáveis fundamentadas em dados para alavancar a receita e otimizar a margem da Victor Cell amanhã.')">Direcionamento Estratégico</button>
             </div>
           </div>
 
@@ -927,11 +927,11 @@ def render_dashboard_html() -> str:
           <div class="copilot-chat-container">
             <div class="copilot-messages" id="copilot-messages">
               <div class="copilot-msg bot">
-                <div class="copilot-avatar">🧠</div>
+                <div class="copilot-avatar">✦</div>
                 <div class="copilot-bubble">
-                  <p><strong>Olá! Sou o seu Consultor Executivo de Negócios da Victor Cell.</strong></p>
-                  <p>Estou monitorando seu estoque, vendas e pedidos de balcão em tempo real. Você pode me perguntar como foi o dia, quais peças estão faltando, faturamento de hoje ou dicas para lucrar mais.</p>
-                  <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #9CA3AF;">👉 Toque em uma das perguntas rápidas acima ou digite sua dúvida no campo abaixo!</p>
+                  <p><strong>Consultor Estratégico Victor Cell</strong></p>
+                  <p>Painel de inteligência de negócios ativo. Monitoro em tempo real o fluxo financeiro, pedidos confirmados, logística via Uber Flash e níveis de estoque para subsidiar decisões táticas.</p>
+                  <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #9CA3AF;">Selecione uma das consultas executivas acima ou insira uma diretriz no campo abaixo para gerar um relatório analítico.</p>
                 </div>
               </div>
             </div>
@@ -1083,10 +1083,10 @@ def render_dashboard_html() -> str:
       if (messagesDiv) {
         messagesDiv.innerHTML = `
           <div class="copilot-msg bot">
-            <div class="copilot-avatar">💡</div>
+            <div class="copilot-avatar">✦</div>
             <div class="copilot-bubble">
-              <p><strong>Conversa reiniciada com sucesso.</strong></p>
-              <p>Estou pronto para analisar novos dados de faturamento, pedidos e estoque da Victor Cell. O que gostaria de conferir?</p>
+              <p><strong>Sessão de Análise Reiniciada</strong></p>
+              <p>Pronto para examinar novos indicadores de faturamento, pedidos e estoque da Victor Cell. Qual métrica ou diagnóstico deseja consultar?</p>
             </div>
           </div>
         `;
@@ -1117,19 +1117,28 @@ def render_dashboard_html() -> str:
 
       for (let line of lines) {
         line = line.trim();
-        if (line.startsWith('• ') || line.startsWith('- ') || line.startsWith('* ')) {
+        if (line.startsWith('### ')) {
+          if (inList) { htmlOut += '</ul>'; inList = false; }
+          htmlOut += `<h4 style="margin: 1.15rem 0 0.45rem 0; font-size: 0.95rem; font-weight: 700; color: #93C5FD; letter-spacing: 0.03em; text-transform: uppercase;">${line.substring(4)}</h4>`;
+        } else if (line.startsWith('## ')) {
+          if (inList) { htmlOut += '</ul>'; inList = false; }
+          htmlOut += `<h3 style="margin: 1.3rem 0 0.55rem 0; font-size: 1.05rem; font-weight: 700; color: #F3F4F6;">${line.substring(3)}</h3>`;
+        } else if (line.startsWith('# ')) {
+          if (inList) { htmlOut += '</ul>'; inList = false; }
+          htmlOut += `<h2 style="margin: 1.5rem 0 0.65rem 0; font-size: 1.15rem; font-weight: 700; color: #FFFFFF;">${line.substring(2)}</h2>`;
+        } else if (line.startsWith('• ') || line.startsWith('- ') || line.startsWith('* ')) {
           if (!inList) {
-            htmlOut += '<ul>';
+            htmlOut += '<ul style="margin: 0.5rem 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.35rem;">';
             inList = true;
           }
-          htmlOut += `<li>${line.substring(2)}</li>`;
+          htmlOut += `<li style="line-height: 1.6; color: #E5E7EB;">${line.substring(2)}</li>`;
         } else {
           if (inList) {
             htmlOut += '</ul>';
             inList = false;
           }
           if (line) {
-            htmlOut += `<p>${line}</p>`;
+            htmlOut += `<p style="margin-bottom: 0.75rem; line-height: 1.65; color: #E5E7EB;">${line}</p>`;
           }
         }
       }
@@ -1164,7 +1173,7 @@ def render_dashboard_html() -> str:
       const loadingMsg = document.createElement('div');
       loadingMsg.className = 'copilot-msg bot loading-msg';
       loadingMsg.innerHTML = `
-        <div class="copilot-avatar">💡</div>
+        <div class="copilot-avatar">✦</div>
         <div class="copilot-bubble">
           <span class="copilot-loading-dot"></span> Analisando dados da loja em tempo real...
         </div>
@@ -1185,7 +1194,7 @@ def render_dashboard_html() -> str:
         botMsg.className = 'copilot-msg bot';
         const formatted = formatMarkdownText(data.reply || 'Sem resposta do assistente.');
         botMsg.innerHTML = `
-          <div class="copilot-avatar">💡</div>
+          <div class="copilot-avatar">✦</div>
           <div class="copilot-bubble">${formatted}</div>
         `;
         messagesDiv.appendChild(botMsg);
@@ -1200,7 +1209,7 @@ def render_dashboard_html() -> str:
         const errorMsg = document.createElement('div');
         errorMsg.className = 'copilot-msg bot';
         errorMsg.innerHTML = `
-          <div class="copilot-avatar">💡</div>
+          <div class="copilot-avatar">✦</div>
           <div class="copilot-bubble" style="border-color: rgba(239, 68, 68, 0.4);">
             <p style="color: #F87171;">⚠️ Erro ao consultar o Consultor de Negócios. Verifique sua conexão e tente novamente.</p>
           </div>
