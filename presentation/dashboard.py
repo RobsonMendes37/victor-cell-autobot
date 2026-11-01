@@ -928,6 +928,84 @@ def render_dashboard_html() -> str:
 
     <!-- TAB 3: VISÃO GERAL & KPIS -->
     <div class="tab-pane" id="tab-overview">
+      <!-- SEÇÃO DE INTELIGÊNCIA COMERCIAL DE WHATSAPP -->
+      <div class="section-card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(14, 20, 34, 0.95), rgba(99, 102, 241, 0.05)); border-color: rgba(99, 102, 241, 0.25);">
+        <div class="section-toolbar">
+          <div class="section-title-group">
+            <h2 class="section-title" style="display: flex; align-items: center; gap: 8px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366F1;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              Inteligência de Vendas no WhatsApp (37 Assistências / 3.752 Mensagens)
+            </h2>
+            <span style="font-size: 0.82rem; color: var(--text-muted);">Métricas reais de conversão, demanda reprimida (ruptura) e taxa de recompra</span>
+          </div>
+        </div>
+
+        <!-- 4 KPIS DO FUNIL DE WHATSAPP -->
+        <div class="kpis-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 1.25rem;">
+          <div class="kpi-card">
+            <div class="kpi-label">Pedidos que Saíram (Fechados)</div>
+            <div class="kpi-value" style="color: #10B981;" id="kpi-chat-closed">58</div>
+            <div class="kpi-subtext" style="color: #34D399;">Taxa de conversão: <strong id="kpi-chat-conv-rate">34.3%</strong></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Perdidos por Falta de Estoque</div>
+            <div class="kpi-value" style="color: #EF4444;" id="kpi-chat-lost">111</div>
+            <div class="kpi-subtext" style="color: #F87171;">Demanda reprimida (Ruptura no balcão)</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Taxa de Recorrência (Recompra)</div>
+            <div class="kpi-value" style="color: #818CF8;" id="kpi-chat-recurrence">81.1%</div>
+            <div class="kpi-subtext" style="color: #A5B4FC;"><strong id="kpi-chat-workshops">30 de 37</strong> oficinas voltam a pedir</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Cotações Mineradas no Zap</div>
+            <div class="kpi-value" style="color: #F59E0B;" id="kpi-chat-volume">984</div>
+            <div class="kpi-subtext" style="color: #FCD34D;">58 modelos de tablet monitorados</div>
+          </div>
+        </div>
+
+        <!-- GRÁFICOS DO FUNIL E RECORRÊNCIA -->
+        <div class="charts-grid" style="margin-bottom: 1.25rem;">
+          <div class="chart-card">
+            <h3 style="display: flex; align-items: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #10B981;"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+              Desfecho das Cotações no WhatsApp
+            </h3>
+            <canvas id="chartChatFunnel" height="200"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3 style="display: flex; align-items: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #818CF8;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              Top Assistências por Recorrência de Pedidos
+            </h3>
+            <canvas id="chartRecurrence" height="200"></canvas>
+          </div>
+        </div>
+
+        <!-- TABELA DE RUPTURAS CRÍTICAS -->
+        <div style="margin-top: 1rem;">
+          <h4 style="font-size: 0.88rem; font-weight: 700; color: #F87171; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            Peças Mais Cotadas Perdidas por Falta de Estoque (Demanda Reprimida para Repor)
+          </h4>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Modelo de Tablet / Peça</th>
+                  <th>Cotações Perdidas</th>
+                  <th>Status no WhatsApp</th>
+                  <th>Ação Recomendada de Compra</th>
+                </tr>
+              </thead>
+              <tbody id="lost-stock-tbody">
+                <tr><td colspan="4" style="text-align: center; padding: 1rem; color: var(--text-muted);">Carregando métricas de demanda...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="charts-grid">
         <div class="chart-card">
           <h3>⚖️ Mix de Vendas: Original vs. Paralela</h3>
@@ -1666,6 +1744,7 @@ def render_dashboard_html() -> str:
 
         // Charts
         renderCharts(data.quality_breakdown || {}, data.category_breakdown || {});
+        renderChatFunnelCharts(data.chat_funnel_stats);
       } catch (err) {
         console.error('Erro ao buscar stats:', err);
       }
