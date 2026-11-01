@@ -18,56 +18,56 @@ from infrastructure.config import settings
 logger = logging.getLogger("AIAgentService")
 
 SYSTEM_PROMPT = """
-Você é o atendente do WhatsApp da Victor Cell, loja de peças para celulares e tablets em Fortaleza/CE.
-Seu objetivo é conversar com o calor humano, a simpatia e a presteza de um atendente de balcão de verdade: acolhedor, gentil, simpático e prestativo.
+Você é o atendente de balcão da Victor Cell no WhatsApp (Fortaleza/CE).
+Você responde EXATAMENTE como um atendente humano de balcão de assistência técnica responde no WhatsApp: ultra-curto, direto, objetivo, sem enrolação e com ZERO cara de inteligência artificial.
 
-DIRETRIZES DE COMUNICAÇÃO (CALOR HUMANO E CORDIALIDADE DE BALCÃO):
+PROIBIÇÃO TOTAL DE ECO E RESPOSTAS ARTIFICIAIS DE CHATBOT (ZERO CARA DE IA):
+- NUNCA use saudações formais longas ("Olá! Seja bem-vindo à Victor Cell", "Opa, tudo bem? Como posso te ajudar hoje?", "Agradecemos o contato").
+- NUNCA use justificativas prolixas ("Infelizmente no momento não dispomos...", "Pior que capa a gente não tem por aqui, nosso forte são peças...").
+- NUNCA use frases de telemarketing ou entusiasmo falso ("Show de bola!", "Maravilha!", "A peça está aqui reservadinha").
+- NUNCA use emojis decorativos no texto.
+- EXTENSÃO DA RESPOSTA: 1 a 6 palavras no máximo (estilo rápido e seco de balcão).
 
-1. CORDIALIDADE, SIMPATIA E ACOLHIMENTO:
-   - Seja caloroso e humano, NUNCA seco ou frio como uma máquina.
-   - Use expressões naturais e empáticas do dia a dia de balcão:
-     * "Pior que capa a gente não tem por aqui... Nosso forte são as peças mesmo (telas, baterias e conectores)!"
-     * "Do 17 ainda não chegou nada no estoque, como é lançamento deve tá pra chegar logo mais! Se precisar de tela ou bateria pra outro modelo me dá um toque."
-     * "Pior que essa tá em falta no momento, mas já tá pra chegar reposição! Se quiser posso te avisar assim que chegar."
-     * "Opa, tudo bem?", "Com certeza!", "Tranquilo!", "Beleza!".
-   - Pode usar "Opa", "Olá", "Tranquilo", mas com VARIEDADE natural (não repita o mesmo cumprimento em todas as mensagens seguidas).
-   - Seja cordial e gentil com todos (homens e mulheres). Evite apenas ficar repetindo "patrão" ou "meu amigo" em toda frase como um carimbo automático.
+REGRA DE CERTEZA 100% E TRANSBORDO PARA O BALCÃO HUMANO:
+- Se você tiver CERTEZA ABSOLUTA da peça no catálogo e ela estiver DISPONÍVEL: passe direto o valor da peça. Ex: "R0", "Touch 25", "300 frontal completa".
+- Se a peça estiver ESGOTADA no catálogo: responda direto: "Tem não", "Tenho não patrão" ou "Chega próxima semana".
+- Se a foto ou mensagem do cliente não der CERTEZA de 100% do modelo (ex: tela apagada, só frente, ou modelo com mais de uma versão):
+  Peça a foto da traseira: "Foto dele parte trás" ou "Qual a versão do touch?".
+- Se a peça NÃO estiver no catálogo, envolver conserto técnico de placa, negociação de preço, garantia de produto antigo ou você tiver QUALQUER DÚVIDA:
+  NÃO invente, NÃO chute e NÃO tente enrolar o cliente.
+  Transfira imediatamente para o atendente humano de balcão:
+  intent: "HUMAN_HANDOFF"
+  reply_text: "Vou ver com os meninos no balcão e te passo"
+  requires_staff_alert: true
+  handoff_reason: "Dúvida técnica / peça fora do catálogo / balcão"
 
-2. FLUIDEZ E COESÃO (NÃO SEJA SECO, NEM FALE COMO TELEMARKETING):
-   - Não dê respostas secas estilo telegrama ("Não trabalhamos com isso. Nosso foco é X."). Mostre que você quer ajudar e ofereça alternativas acolhedoras.
-   - Não fique repetindo o nome da loja ("aqui na Victor Cell a gente...") em toda mensagem. O cliente já sabe onde está. Fale naturalmente como funcionário da loja.
-
-3. TAMANHO IDEAL (MENSAGENS VIVAS DE WHATSAPP):
-   - Responda em 1 a 3 frases curtas e vivas (nem textão burocrático, nem resposta monossilábica seca).
-   - Pontuação leve, amigável e conversacional.
-
-4. MULTIMODALIDADE (FOTOS DE CARCAÇAS/TABLETS E ÁUDIOS):
-   - RECONHECIMENTO DE TABLETS E CELULARES POR FOTO:
-     * Ao receber foto de tablet, tela ou carcaça, examine atentamente os detalhes e o texto impresso na carcaça traseira ou tela (ex: Philco PTB7SRG, Samsung SM-T290/T220, Positivo T800/T2040, Multilaser M7/M10, Lenovo TB...).
-     * Se identificar o modelo na foto, já confirme com presteza e informe o valor da peça (ex: "Reconheci aqui pela foto, é o Philco PTB7SRG!...").
-     * Se a foto enviada estiver escura, cortada ou for só da frente com a tela apagada sem dar certeza do modelo, peça a foto da traseira de forma natural e amigável:
-       "Consegue me mandar uma foto dele pela parte de trás? Pela carcaça ou etiqueta eu já te confirmo o modelo e o valor certinho!"
-   - Se o cliente mandar foto de celular ou caixa (ex: iPhone, Samsung):
-     Identifique com simpatia e explique que nosso foco são as peças de manutenção (telas, baterias, conectores).
-   - Se mandar áudio: ouça com atenção e responda com a mesma simpatia e presteza de balcão.
-
-5. REGRAS DE DISPONIBILIDADE DE ESTOQUE (MUITO IMPORTANTE):
-   - Cada peça no catálogo tem o status 'DISPONÍVEL (TEM EM ESTOQUE)' ou 'ESGOTADO (EM FALTA NO MOMENTO)'.
-   - Se a peça estiver 'DISPONÍVEL': passe o valor com presteza e confirme que temos sim pronta entrega!
-   - Se a peça estiver 'ESGOTADO': avise com simpatia que essa peça específica está em falta no momento, mas já tem pedido para reposição logo logo, e pergunte se ele quer que você avise assim que chegar!
-   - NUNCA invente preço ou diga que tem uma peça que está como ESGOTADO.
-
-6. CONTINUIDADE DA CONVERSA:
-   - Se o cliente insistir numa peça que não tem, responda com bom humor e gentileza: "Pior que capa a gente não trabalha mesmo! Nosso foco é só manutenção e peças de bancada. Mas precisando de qualquer tela ou bateria me avisa que vejo no estoque!"
-
-7. FLUXO DE PEDIDO E CONFIRMAÇÃO:
-   - Se o cliente passar endereço ou pedir pra entregar:
-     "Show de bola! A peça tá aqui reservadinha. Quer que eu passe o endereço pros meninos do caixa cotarem o Uber Flash pra você?" (intent: ORDER_PENDING_CONFIRMATION).
-   - Só marque ORDER_DISPATCH se o cliente confirmar com clareza ("pode sim", "confirma", "manda ver").
-
-8. FORMATAÇÃO:
-   - NUNCA use bullet points (*, -, •).
-   - Use no máximo 1 emoji amigável ou nenhum, mantendo a conversa humana e autêntica.
+EXEMPLOS REAIS MINERADOS DAS CONVERSAS DO BALCÃO DA VICTOR CELL (FEW-SHOT):
+- Cliente: "Quanto tá o touch do T2040?"
+  Atendente: "R0" (intent: QUOTE, target_sku: "TOU-POS-T2040")
+- Cliente: "Tem a tela do x205?"
+  Atendente: "R00 frontal completa" (intent: QUOTE, target_sku: "TEL-SAM-X205")
+- Cliente: "Touch tablet m7 plus tem?"
+  Atendente: "25" (intent: QUOTE, target_sku: "TOU-MUL-M7P")
+- Cliente: "Bateria T295 tem?"
+  Atendente: "Tem não" (intent: QUOTE, target_sku: "BAT-SAM-T295")
+- Cliente: "Tem a tela do tablet Multilaser M8?"
+  Atendente: "Display 150\nTouch 70" (intent: QUOTE)
+- Cliente: "Original?"
+  Atendente: "Original China" (intent: GENERAL_QUESTION)
+- Cliente: "Tem alguma garantia?"
+  Atendente: "Garantia só de teste" (intent: GENERAL_QUESTION)
+- Cliente: [Foto da frente do tablet apagado] "Tem essa tela?"
+  Atendente: "Foto dele parte trás" (intent: GENERAL_QUESTION)
+- Cliente: "Vocês consertam placa ou tem placa do A50?"
+  Atendente: "Vou ver com os meninos no balcão e te passo" (intent: HUMAN_HANDOFF, requires_staff_alert: true)
+- Cliente: "Faz por menos? Tem desconto se levar 3?"
+  Atendente: "Vou ver com o gerente e já te aviso" (intent: HUMAN_HANDOFF, requires_staff_alert: true)
+- Cliente: "Separa aí, manda pelo Uber Flash"
+  Atendente: "Passa o endereço pra calcular o Uber" (intent: ORDER_PENDING_CONFIRMATION)
+- Cliente: "Separa aí, manda pelo Uber Flash pro endereço Rua Floriano Peixoto 1250 Centro"
+  Atendente: "Passa o endereço pra calcular o Uber" ou se já passou o endereço: "Posso confirmar o envio pelo Uber Flash?" (intent: ORDER_PENDING_CONFIRMATION, destination_address: "Rua Floriano Peixoto 1250 Centro")
+- Cliente: "Pode confirmar sim, patrão!" ou "Pode mandar", "Confirma", "Manda ver":
+  Atendente: "Certo, separando aqui" (intent: ORDER_DISPATCH, requires_staff_alert: true, destination_address: [endereço da conversa])
 
 HISTÓRICO DE PEDIDOS DO CLIENTE:
 {customer_orders_context}
@@ -84,14 +84,13 @@ CATÁLOGO EM ESTOQUE:
 Responda SEMPRE em formato JSON estrito:
 {{
   "intent": "QUOTE" | "ORDER_PENDING_CONFIRMATION" | "ORDER_DISPATCH" | "HUMAN_HANDOFF" | "GENERAL_QUESTION",
-  "reply_text": "Texto simpático, humano e acolhedor para o cliente no WhatsApp",
+  "reply_text": "Texto ultra-curto e direto de balcão (1 a 6 palavras)",
   "target_sku": "SKU da peça identificada ou null",
-  "requires_staff_alert": true | false,
+  "requires_staff_alert": true (SEMPRE true em ORDER_DISPATCH e HUMAN_HANDOFF, false nos demais),
   "destination_address": "Endereço extraído ou null",
   "handoff_reason": "Motivo caso seja HUMAN_HANDOFF ou null"
 }}
 """
-
 
 class AIAgentService(AIServiceInterface):
     SUPPORTED_MODELS = [
@@ -235,7 +234,7 @@ class AIAgentService(AIServiceInterface):
     ) -> Dict[str, Any]:
         msg = user_msg.lower().strip()
 
-        # 1. Transbordo Humano
+        # 1. Transbordo Humano (Negociação, placa, garantia ou atendente humano)
         if any(
             w in msg
             for w in [
@@ -245,15 +244,18 @@ class AIAgentService(AIServiceInterface):
                 "defeito",
                 "falar com dono",
                 "falar com atendente",
+                "placa",
+                "conserto",
+                "reparo",
             ]
         ):
             return {
                 "intent": "HUMAN_HANDOFF",
-                "reply_text": "Entendi, meu amigo! Já avisei o gerente aqui na loja para verificar sua solicitação com prioridade. Um minuto que ele já assume a conversa aqui com você!",
+                "reply_text": "Vou ver com os meninos no balcão e te passo",
                 "target_sku": None,
                 "requires_staff_alert": True,
                 "destination_address": None,
-                "handoff_reason": "Negociação ou Garantia",
+                "handoff_reason": "Dúvida técnica / negociação / balcão",
             }
 
         # 2. Dúvida sobre frete/Uber sem pedido de compra ("quanto fica o uber?")
@@ -267,29 +269,27 @@ class AIAgentService(AIServiceInterface):
         if is_only_uber_question:
             return {
                 "intent": "GENERAL_QUESTION",
-                "reply_text": (
-                    "Opa! O valor do Uber Flash depende da distância da nossa loja até sua assistência. "
-                    "Assim que você confirmar a peça e passar o endereço com bairro, os meninos do caixa calculam a rota exata no app e te passam o valor sem acréscimo nenhum, beleza?"
-                ),
+                "reply_text": "Passa o endereço pra calcular o Uber",
                 "target_sku": conversation.active_sku,
                 "requires_staff_alert": False,
                 "destination_address": None,
                 "handoff_reason": None,
             }
 
-        # 2.5 Elogios, reações amigáveis e feedback (evita resposta robótica repetitiva)
+        # 2.5 Elogios, reações amigáveis e feedback
         is_compliment = any(
             w in msg
             for w in [
                 "tá boa", "ta boa", "boa a resposta", "gostei", "economiza",
                 "kkk", "top", "massa", "legal", "show", "valeu", "obrigado",
-                "obg", "tmj", "abraço", "funcionou", "maravilha", "blz, tá top", "blz ta top"
+                "obg", "tmj", "abraço", "funcionou", "maravilha", "blz, tá top", "blz ta top",
+                "blz", "ok", "certo"
             ]
         )
         if is_compliment:
             return {
                 "intent": "GENERAL_QUESTION",
-                "reply_text": "Show de bola, meu patrão! Ficamos à disposição aqui no balcão da Victor Cell. Precisando de qualquer peça, cotação ou retirada no balcão, é só chamar que a gente desenrola pra você! Tamo junto!",
+                "reply_text": "Valeu, precisando tamo aí!",
                 "target_sku": conversation.active_sku,
                 "requires_staff_alert": False,
                 "destination_address": None,
@@ -310,39 +310,26 @@ class AIAgentService(AIServiceInterface):
             )
             if is_confirmed:
                 sku = conversation.active_sku or "TEL-SAM-A15-ORIG"
-                addr = conversation.notes or real_address or "Retirada no Balcão"
-                if is_open:
-                    reply = (
-                        "Show de bola, meu patrão! Pedido confirmado com sucesso!\n\n"
-                        f"Já deixei a peça reservada na bancada e os meninos do caixa já estão calculando a rota do Uber Flash para o endereço: {addr}.\n"
-                        "Em 2 minutinhos te mandam o valor certinho do frete e o Pix para despachar, combinado?"
-                    )
-                else:
-                    reply = (
-                        "Show de bola, meu patrão! Pedido confirmado com sucesso!\n\n"
-                        f"Como encerramos o expediente físico por hoje, a sua peça já ficou reservada na bancada prioritária de amanhã ({addr}).\n"
-                        f"Às {settings.STORE_OPENING_TIME} os meninos do caixa cotam a rota e te mandam o Pix para despachar logo na primeira hora, combinado?"
-                    )
+                addr = conversation.notes or real_address or "Balcão"
                 return {
                     "intent": "ORDER_DISPATCH",
-                    "reply_text": reply,
+                    "reply_text": f"Certo, separando aqui pra mandar pelo Uber Flash pro endereço: {addr}. Já te passo o Pix.",
                     "target_sku": sku,
                     "requires_staff_alert": True,
                     "destination_address": addr,
                     "handoff_reason": None,
                 }
             else:
-                # Cliente não confirmou (ex: desistiu, perguntou outra coisa, etc)
                 return {
                     "intent": "GENERAL_QUESTION",
-                    "reply_text": "Tranquilo meu amigo! Não confirmei a reserva. Qualquer dúvida ou se quiser que a gente separe alguma peça depois, é só dar um alô por aqui. Tamo junto!",
+                    "reply_text": "Tranquilo, precisando só chamar",
                     "target_sku": conversation.active_sku,
                     "requires_staff_alert": False,
                     "destination_address": None,
                     "handoff_reason": None,
                 }
 
-        # 4. Intenção Inicial de Pedido / Separação ou Envio de Endereço (NUNCA FECHA SEM CONFIRMAR)
+        # 4. Intenção Inicial de Pedido / Separação ou Envio de Endereço
         is_order_intent = any(
             w in msg
             for w in [
@@ -366,7 +353,7 @@ class AIAgentService(AIServiceInterface):
             if not resolved_sku:
                 return {
                     "intent": "GENERAL_QUESTION",
-                    "reply_text": "Com certeza, meu patrão! Me diz só qual modelo e peça você quer que a gente separe para você?",
+                    "reply_text": "Qual peça você quer que separe?",
                     "target_sku": None,
                     "requires_staff_alert": False,
                     "destination_address": None,
@@ -374,16 +361,9 @@ class AIAgentService(AIServiceInterface):
                 }
 
             if real_address:
-                # Pergunta confirmação EXPLÍCITA ao cliente antes de criar o pedido!
-                target_desc = "Original Nacional (R$ 190,00)" if "TEL-SAM-A15-ORIG" in (resolved_sku or "") else "peça solicitada"
-                reply = (
-                    f"Show de bola, meu patrão! Temos a pronta entrega. Já anotei o seu endereço de entrega: {real_address}.\n\n"
-                    f"A tela {target_desc} tá pronta pra saída na bancada.\n"
-                    "Posso confirmar o pedido para você e passar pros meninos do caixa cotarem o Uber Flash?"
-                )
                 return {
                     "intent": "ORDER_PENDING_CONFIRMATION",
-                    "reply_text": reply,
+                    "reply_text": f"Anotado: {real_address}. Posso confirmar o envio pelo Uber Flash?",
                     "target_sku": resolved_sku,
                     "requires_staff_alert": False,
                     "destination_address": real_address,
@@ -392,22 +372,19 @@ class AIAgentService(AIServiceInterface):
             else:
                 return {
                     "intent": "QUOTE",
-                    "reply_text": (
-                        "Opa, perfeito! Já deixo pré-anotada aqui no balcão.\n\n"
-                        "Para os meninos do caixa cotarem o Uber Flash para você, me manda o endereço completo com número e bairro, por favor!"
-                    ),
+                    "reply_text": "Passa o endereço pra calcular o Uber",
                     "target_sku": resolved_sku,
                     "requires_staff_alert": False,
                     "destination_address": None,
                     "handoff_reason": None,
                 }
 
-        # 4. Consulta de Peça: Atualiza o active_sku da conversa
+        # 5. Consulta de Peça: Atualiza o active_sku da conversa
         if "a15" in msg:
             if "original" in msg:
                 return {
                     "intent": "QUOTE",
-                    "reply_text": "Opa, beleza meu patrão? Temos sim! A tela do A15 Original Nacional com aro tá saindo a R$ 190,00 com 90 dias de garantia. Já quer que eu passe pros meninos deixarem separada?",
+                    "reply_text": "Original com aro R$ 190",
                     "target_sku": "TEL-SAM-A15-ORIG",
                     "requires_staff_alert": False,
                     "destination_address": None,
@@ -416,7 +393,7 @@ class AIAgentService(AIServiceInterface):
             elif "paralela" in msg or "china" in msg:
                 return {
                     "intent": "QUOTE",
-                    "reply_text": "Temos sim! A tela do A15 Paralela China (Incell sem aro) tá saindo a R$ 95,00. Recomendo sempre testar antes de colar. Posso separar uma pra você?",
+                    "reply_text": "Paralela China R$ 95",
                     "target_sku": "TEL-SAM-A15-CHIN",
                     "requires_staff_alert": False,
                     "destination_address": None,
@@ -425,12 +402,7 @@ class AIAgentService(AIServiceInterface):
             else:
                 return {
                     "intent": "QUOTE",
-                    "reply_text": (
-                        "Opa, temos o A15 sim! Temos duas opções na bancada:\n\n"
-                        "1. Original Nacional (com aro): R$ 190,00 (90 dias garantia)\n"
-                        "2. Paralela China Incell (sem aro): R$ 95,00\n\n"
-                        "Qual das duas você prefere que a gente separe pro seu serviço?"
-                    ),
+                    "reply_text": "Original 190 / China 95",
                     "target_sku": "TEL-SAM-A15-ORIG",
                     "requires_staff_alert": False,
                     "destination_address": None,
@@ -441,12 +413,7 @@ class AIAgentService(AIServiceInterface):
             sku = "CON-TAB-A8-ORIG" if "conector" in msg else "TEL-TAB-A8-1LINHA"
             return {
                 "intent": "QUOTE",
-                "reply_text": (
-                    "Opa, pro Tab A8 (X200/X205) temos a pronta entrega:\n\n"
-                    "• Tela Frontal 1ª Linha: R$ 140,00\n"
-                    "• Conector de Carga: R$ 25,00\n\n"
-                    "Qual delas você tá precisando no momento?"
-                ),
+                "reply_text": "Tela R$ 140 / Conector R$ 25",
                 "target_sku": sku,
                 "requires_staff_alert": False,
                 "destination_address": None,
@@ -455,7 +422,7 @@ class AIAgentService(AIServiceInterface):
 
         return {
             "intent": "GENERAL_QUESTION",
-            "reply_text": "Opa, bom dia meu amigo! Tudo certo? Me diz qual modelo de celular ou tablet você tá precisando de peça hoje que já consulto nosso estoque aqui no balcão!",
+            "reply_text": "Qual modelo e peça você precisa?",
             "target_sku": None,
             "requires_staff_alert": False,
             "destination_address": None,

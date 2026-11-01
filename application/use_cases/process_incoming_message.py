@@ -182,7 +182,8 @@ class ProcessIncomingMessageUseCase:
             logger.info(f"Conversa com {clean_phone} em WAITING_CONFIRMATION (endereço pré-anotado: {destination_address})")
 
         # 11. Se o cliente CONFIRMOU explicitamente e fechou o pedido de separação
-        elif intent == "ORDER_DISPATCH" and requires_staff_alert:
+        elif intent == "ORDER_DISPATCH":
+            requires_staff_alert = True
             final_sku = target_sku or conversation.active_sku or "TEL-SAM-A15-ORIG"
             final_address = destination_address or conversation.notes or "Retirada no Balcão"
             product = await self.product_repo.get_by_sku(final_sku)
