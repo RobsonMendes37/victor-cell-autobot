@@ -736,25 +736,25 @@ def render_dashboard_html() -> str:
   <div class="nav-bar-wrapper">
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="switchTab('conversations')">
-        💬 Atendimentos (IA vs Humano)
+        💬 Central de Atendimento & Balcão
         <span class="tab-badge" id="badge-convs-count">0</span>
       </button>
       <button class="nav-tab" onclick="switchTab('orders')">
-        📦 Expedição & Uber Flash
+        🛵 Expedição & Entregas Expressas
         <span class="tab-badge" id="badge-orders-count">0</span>
       </button>
       <button class="nav-tab" onclick="switchTab('overview')">
-        📊 Visão Geral & KPIs
+        📈 Indicadores & Vendas
       </button>
       <button class="nav-tab" onclick="switchTab('catalog')">
-        📋 Estoque & Catálogo
+        🏷️ Catálogo de Peças & Estoque
         <span class="tab-badge" id="badge-catalog-count">0</span>
       </button>
       <button class="nav-tab" onclick="switchTab('copilot')">
-        🧠 Copiloto IA do Gestor
+        💡 Consultor Executivo de Negócios
       </button>
       <button class="nav-tab" onclick="switchTab('gemini')">
-        ⚡ Google Gemini & Cotas
+        ⚙️ Configurações & Conectividade
       </button>
     </div>
   </div>
@@ -779,7 +779,7 @@ def render_dashboard_html() -> str:
           <div class="kpi-icon" style="background: rgba(99, 102, 241, 0.15); color: #818CF8;">💬</div>
         </div>
         <div class="kpi-val" id="kpi-active-chats">0</div>
-        <div class="kpi-sub" id="kpi-ai-status">Robô no controle</div>
+        <div class="kpi-sub" id="kpi-ai-status">🟢 Atendimento Automático Ativo</div>
       </div>
 
       <div class="kpi-card">
@@ -961,13 +961,13 @@ def render_dashboard_html() -> str:
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">🧠 Copiloto IA do Gestor • Business Intelligence</h2>
-            <p class="section-subtitle">Consultor executivo em tempo real com acesso ao faturamento, estoque e atendimentos.</p>
+            <h2 class="section-title">💡 Consultor Executivo de Negócios • Inteligência Victor Cell</h2>
+            <p class="section-subtitle">Inteligência analítica em tempo real integrada a vendas, estoque e movimentação do balcão.</p>
           </div>
           <div class="toolbar-actions">
             <div class="pill pill-emerald">
               <span class="pill-dot"></span>
-              <span>Gemini 3.5 Flash Lite Ativo</span>
+              <span>Análise Operacional Conectada</span>
             </div>
             <button class="btn btn-secondary btn-sm" onclick="clearCopilotChat()">🗑️ Limpar Conversa</button>
           </div>
@@ -993,7 +993,7 @@ def render_dashboard_html() -> str:
               <div class="copilot-msg bot">
                 <div class="copilot-avatar">🧠</div>
                 <div class="copilot-bubble">
-                  <p><strong>Olá, patrão! Sou seu Copiloto Executivo da Victor Cell.</strong></p>
+                  <p><strong>Olá! Sou o seu Consultor Executivo de Negócios da Victor Cell.</strong></p>
                   <p>Estou monitorando seu estoque, vendas e pedidos de balcão em tempo real. Você pode me perguntar como foi o dia, quais peças estão faltando, faturamento de hoje ou dicas para lucrar mais.</p>
                   <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #9CA3AF;">👉 Toque em uma das perguntas rápidas acima ou digite sua dúvida no campo abaixo!</p>
                 </div>
@@ -1018,7 +1018,7 @@ def render_dashboard_html() -> str:
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">⚡ Monitor de Cotas & Modelos Google Gemini</h2>
+            <h2 class="section-title">⚡ Capacidade Operacional do Motor de Atendimento</h2>
           </div>
         </div>
 
@@ -1067,7 +1067,7 @@ def render_dashboard_html() -> str:
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">🧪 Simulador de Atendimento WhatsApp</h2>
+            <h2 class="section-title">🧪 Laboratório de Testes de Atendimento</h2>
           </div>
           <div class="toolbar-actions">
             <button class="btn btn-secondary btn-sm" onclick="clearChat()">🗑️ Limpar Conversa</button>
@@ -1116,7 +1116,21 @@ def render_dashboard_html() -> str:
 
   </main>
 
-  <script>
+    <script>
+    // Interceptor global: Redireciona imediatamente para o login se a sessão expirar
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+      try {
+        const response = await originalFetch.apply(this, args);
+        if (response.status === 401 && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+        return response;
+      } catch (err) {
+        throw err;
+      }
+    };
+
     // Variáveis Globais
     let allConversations = [];
     let allOrders = [];
@@ -1218,8 +1232,8 @@ def render_dashboard_html() -> str:
             </td>
             <td>
               ${isActive
-                ? `<span class="status-pill status-robot">🤖 Robô Ativo</span>`
-                : `<span class="status-pill status-human">👨‍🔧 Humano (${c.paused_until ? 'até ' + c.paused_until : 'Pausado'})</span>`
+                ? `<span class="status-pill status-robot">🟢 Atendimento Automático</span>`
+                : `<span class="status-pill status-human">🟡 Balcão (${c.paused_until ? 'até ' + c.paused_until : 'Pausado'})</span>`
               }
             </td>
             <td style="font-size: 0.775rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;">
@@ -1227,8 +1241,8 @@ def render_dashboard_html() -> str:
             </td>
             <td>
               ${!isActive
-                ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">🤖 Devolver para Robô</button>`
-                : `<button class="btn btn-amber btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Pausar IA (3h)</button>`
+                ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">▶️ Liberar p/ Automação</button>`
+                : `<button class="btn btn-amber btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Assumir Atendimento</button>`
               }
             </td>
           </tr>
@@ -1256,8 +1270,8 @@ def render_dashboard_html() -> str:
               </div>
               <div>
                 ${isActive
-                  ? `<span class="status-pill status-robot">🤖 Robô</span>`
-                  : `<span class="status-pill status-human">👨‍🔧 Humano</span>`
+                  ? `<span class="status-pill status-robot">🟢 Automático</span>`
+                  : `<span class="status-pill status-human">🟡 Balcão</span>`
                 }
               </div>
             </div>
@@ -1270,8 +1284,8 @@ def render_dashboard_html() -> str:
 
             <div class="card-mobile-actions">
               ${!isActive
-                ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">🤖 Devolver pro Robô</button>`
-                : `<button class="btn btn-amber btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Pausar IA (3 Horas)</button>`
+                ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">▶️ Liberar p/ Automação</button>`
+                : `<button class="btn btn-amber btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Assumir Atendimento</button>`
               }
             </div>
           </div>
