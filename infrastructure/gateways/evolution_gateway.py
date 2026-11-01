@@ -27,8 +27,33 @@ class EvolutionGateway(MessagingGatewayInterface):
             "Content-Type": "application/json",
         }
 
-    async def send_text(self, to_phone: str, text: str) -> bool:
+    async def send_presence(self, to_phone: str, presence: str = "composing", delay_ms: int = 2000) -> bool:
+        """Envia status de 'digitando...' para o WhatsApp para simular digitação humana real."""
         clean_number = "".join(filter(str.isdigit, to_phone))
+        url = f"{self.base_url}/chat/sendPresence/{self.instance}"
+        payload = {
+            "number": clean_number,
+            "presence": presence,
+            "delay": delay_ms,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                res = await client.post(url, json=payload, headers=self.headers)
+                return res.status_code in [200, 201]
+        except Exception as e:
+            logger.debug(f"Aviso ao enviar sendPresence para {clean_number}: {e}")
+            return False
+
+    async def send_text(self, to_phone: str, text: str, simulate_typing: bool = True) -> bool:
+        clean_number = "".join(filter(str.isdigit, to_phone))
+
+        if simulate_typing and text:
+            # Cadência humana de digitação: calcula tempo natural (1.8s a 3.8s)
+            # Mostra 'digitando...' no WhatsApp antes de entregar a resposta
+            calc_delay = min(max(int(len(text) * 35), 1800), 3800)
+            await self.send_presence(clean_number, "composing", delay_ms=calc_delay)
+            await asyncio.sleep(calc_delay / 1000.0)
+
         url = f"{self.base_url}/message/sendText/{self.instance}"
         payload = {
             "number": clean_number,
