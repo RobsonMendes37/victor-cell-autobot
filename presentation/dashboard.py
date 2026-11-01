@@ -422,6 +422,27 @@ def render_dashboard_html() -> str:
       background: rgba(255, 255, 255, 0.1);
       border-radius: 4px;
     }
+    .catalog-filter-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: #94A3B8;
+      border-radius: 999px;
+      padding: 0.25rem 0.65rem;
+      font-size: 0.725rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .catalog-filter-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #FFFFFF;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .catalog-filter-btn.active {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: #10B981;
+      color: #34D399;
+    }
     .chip-btn {
       background: rgba(16, 185, 129, 0.08);
       color: #A7F3D0;
@@ -856,16 +877,73 @@ def render_dashboard_html() -> str:
         </div>
       </div>
 
+      <!-- KPIS RÁPIDOS DO INVENTÁRIO -->
+      <div class="kpi-grid" style="margin-bottom: 1.25rem;">
+        <div class="kpi-card">
+          <div class="kpi-icon-wrapper" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">📦</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Total de Peças Ativas</div>
+            <div class="kpi-value" id="kpi-catalog-total">0</div>
+            <div class="kpi-sub">Sincronizadas com Google Sheets</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon-wrapper" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">✅</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Estoque Saudável</div>
+            <div class="kpi-value" id="kpi-catalog-healthy">0</div>
+            <div class="kpi-sub">Saldo acima de 2 unidades</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon-wrapper" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;">⚠️</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Nível Crítico (<= 2 un)</div>
+            <div class="kpi-value" id="kpi-catalog-critical">0</div>
+            <div class="kpi-sub">Prioridade de reposição</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon-wrapper" style="background: rgba(239, 68, 68, 0.15); color: #F87171;">⛔</div>
+          <div class="kpi-body">
+            <div class="kpi-label">Esgotadas em Loja</div>
+            <div class="kpi-value" id="kpi-catalog-out">0</div>
+            <div class="kpi-sub">Ruptura imediata de estoque</div>
+          </div>
+        </div>
+      </div>
+
       <!-- TABELA DINÂMICA DE PEÇAS & FILTROS -->
       <div class="section-card">
-        <div class="section-toolbar">
-          <div class="section-title-group">
-            <h2 class="section-title">🏷️ Catálogo de Peças Sincronizadas</h2>
-            <span class="badge-count" id="catalog-counter">0 peças</span>
+        <div class="section-toolbar" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div class="section-title-group">
+              <h2 class="section-title">🏷️ Catálogo de Peças Sincronizadas</h2>
+              <span class="badge-count" id="catalog-counter">0 peças</span>
+            </div>
+            <div class="toolbar-actions" style="gap: 0.5rem;">
+              <input type="text" id="catalog-search" placeholder="🔍 Buscar por nome, modelo (ex: P615, A15), SKU..." class="search-input" oninput="filterCatalogTable()" style="min-width: 260px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.45rem 0.75rem; color: #fff; font-size: 0.85rem;">
+              <button class="btn btn-secondary btn-sm" onclick="fetchCatalog()">🔄 Atualizar</button>
+            </div>
           </div>
-          <div class="toolbar-actions">
-            <input type="text" id="catalog-search" placeholder="🔍 Buscar por nome, SKU ou modelo..." class="search-input" oninput="filterCatalogTable()" style="max-width: 280px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.45rem 0.75rem; color: #fff; font-size: 0.85rem;">
-            <button class="btn btn-secondary btn-sm" onclick="fetchCatalog()">🔄 Atualizar</button>
+
+          <!-- CHIPS DE FILTRO RÁPIDO (MARCAS & CATEGORIAS) -->
+          <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.06);">
+            <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+              <span style="font-size: 0.75rem; color: #94A3B8; font-weight: 600; margin-right: 0.25rem;">Marca:</span>
+              <button class="catalog-filter-btn active" data-filter-type="brand" data-filter-val="all" onclick="setBrandFilter('all', this)">Todas</button>
+              <button class="catalog-filter-btn" data-filter-type="brand" data-filter-val="samsung" onclick="setBrandFilter('samsung', this)">Samsung (Galaxy/Tab)</button>
+              <button class="catalog-filter-btn" data-filter-type="brand" data-filter-val="motorola" onclick="setBrandFilter('motorola', this)">Motorola</button>
+              <button class="catalog-filter-btn" data-filter-type="brand" data-filter-val="xiaomi" onclick="setBrandFilter('xiaomi', this)">Xiaomi / Redmi</button>
+              <button class="catalog-filter-btn" data-filter-type="brand" data-filter-val="apple" onclick="setBrandFilter('apple', this)">Apple / iPhone</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+              <span style="font-size: 0.75rem; color: #94A3B8; font-weight: 600; margin-right: 0.25rem;">Categoria:</span>
+              <button class="catalog-filter-btn active" data-filter-type="cat" data-filter-val="all" onclick="setCatFilter('all', this)">Todas</button>
+              <button class="catalog-filter-btn" data-filter-type="cat" data-filter-val="tela" onclick="setCatFilter('tela', this)">Telas Frontais</button>
+              <button class="catalog-filter-btn" data-filter-type="cat" data-filter-val="bateria" onclick="setCatFilter('bateria', this)">Baterias</button>
+              <button class="catalog-filter-btn" data-filter-type="cat" data-filter-val="conector" onclick="setCatFilter('conector', this)">Conectores de Carga</button>
+            </div>
           </div>
         </div>
 
@@ -874,7 +952,7 @@ def render_dashboard_html() -> str:
             <thead>
               <tr>
                 <th>SKU</th>
-                <th>Nome da Peça</th>
+                <th>Peça / Modelos Compatíveis</th>
                 <th>Categoria</th>
                 <th>Aro</th>
                 <th>Qualidade</th>
@@ -1577,54 +1655,145 @@ def render_dashboard_html() -> str:
     }
 
     // 3. CATÁLOGO GOOGLE SHEETS
+    let currentBrandFilter = 'all';
+    let currentCatFilter = 'all';
+
+    function setBrandFilter(val, btn) {
+      currentBrandFilter = val;
+      document.querySelectorAll('[data-filter-type="brand"]').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderCatalogRows();
+    }
+
+    function setCatFilter(val, btn) {
+      currentCatFilter = val;
+      document.querySelectorAll('[data-filter-type="cat"]').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderCatalogRows();
+    }
+
+    function filterCatalogTable() {
+      renderCatalogRows();
+    }
+
+    function renderQualityBadge(q) {
+      const qUp = (q || '').toUpperCase();
+      if (qUp.includes('ORIGINAL_NACIONAL') || qUp.includes('ORIGINAL NACIONAL')) {
+        return '<span style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#34D399; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">🛡️ Original Nacional (90d)</span>';
+      } else if (qUp.includes('ORIGINAL_CHINA') || qUp.includes('ORIGINAL CHINA')) {
+        return '<span style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); color:#38BDF8; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">💎 Original China</span>';
+      } else if (qUp.includes('PRIMEIRA') || qUp.includes('1ª')) {
+        return '<span style="background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.3); color:#C084FC; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">⭐ 1ª Linha Premium</span>';
+      } else {
+        return '<span style="background:rgba(251,146,60,0.15); border:1px solid rgba(251,146,60,0.3); color:#FB923C; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">⚡ Paralela Incell</span>';
+      }
+    }
+
+    function renderStockBadge(qty) {
+      if (qty <= 0) {
+        return '<span style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#F87171; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">⛔ Esgotado</span>';
+      } else if (qty <= 2) {
+        return `<span style="background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.4); color:#FBBF24; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">⚠️ Crítico (${qty} un)</span>`;
+      } else {
+        return `<span style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#34D399; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">${qty} un</span>`;
+      }
+    }
+
+    function renderCatalogRows() {
+      const searchEl = document.getElementById('catalog-search');
+      const query = (searchEl ? searchEl.value : '').toLowerCase().trim();
+
+      const filtered = (allCatalog || []).filter(p => {
+        // Filtro de Texto (Nome, SKU, Modelos Compatíveis, Categoria)
+        const nameMatch = (p.name || '').toLowerCase().includes(query);
+        const skuMatch = (p.sku || '').toLowerCase().includes(query);
+        const catMatch = (p.category || '').toLowerCase().includes(query);
+        const modelsMatch = (p.compatible_models || []).some(m => m.toLowerCase().includes(query));
+        const matchesQuery = !query || nameMatch || skuMatch || catMatch || modelsMatch;
+
+        // Filtro de Marca
+        let matchesBrand = true;
+        if (currentBrandFilter !== 'all') {
+          const fullStr = `${p.name} ${p.sku} ${(p.compatible_models || []).join(' ')}`.toLowerCase();
+          if (currentBrandFilter === 'samsung') matchesBrand = fullStr.includes('samsung') || fullStr.includes('galaxy') || fullStr.includes('tab') || fullStr.includes('sam');
+          else if (currentBrandFilter === 'motorola') matchesBrand = fullStr.includes('moto') || fullStr.includes('motorola');
+          else if (currentBrandFilter === 'xiaomi') matchesBrand = fullStr.includes('redmi') || fullStr.includes('xiaomi') || fullStr.includes('poco');
+          else if (currentBrandFilter === 'apple') matchesBrand = fullStr.includes('iphone') || fullStr.includes('apple') || fullStr.includes('foxconn');
+        }
+
+        // Filtro de Categoria
+        let matchesCat = true;
+        if (currentCatFilter !== 'all') {
+          const fullStr = `${p.category} ${p.name}`.toLowerCase();
+          if (currentCatFilter === 'tela') matchesCat = fullStr.includes('tela') || fullStr.includes('frontal') || fullStr.includes('touch');
+          else if (currentCatFilter === 'bateria') matchesCat = fullStr.includes('bateria');
+          else if (currentCatFilter === 'conector') matchesCat = fullStr.includes('conector') || fullStr.includes('placa sub') || fullStr.includes('carga');
+        }
+
+        return matchesQuery && matchesBrand && matchesCat;
+      });
+
+      const tbody = document.getElementById('catalog-tbody');
+      const mobileDeck = document.getElementById('catalog-cards-mobile');
+      document.getElementById('catalog-counter').innerText = `${filtered.length} de ${allCatalog.length} peças`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma peça corresponde aos filtros aplicados.</td></tr>';
+        mobileDeck.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma peça encontrada.</div>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(p => `
+        <tr>
+          <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.775rem; color: var(--primary);">${p.sku}</td>
+          <td>
+            <strong>${escapeHtml(p.name)}</strong>
+            ${p.compatible_models && p.compatible_models.length ? `<div style="font-size: 0.72rem; color: #94A3B8; margin-top: 3px;">Modelos: ${escapeHtml(p.compatible_models.join(', '))}</div>` : ''}
+          </td>
+          <td><span style="font-size: 0.8rem; color: var(--text-dim);">${escapeHtml(p.category || 'Peça')}</span></td>
+          <td>${p.has_frame ? '<span style="color:#34D399; font-size: 0.8rem; font-weight: 600;">Com aro</span>' : '<span style="color:var(--text-dim); font-size: 0.8rem;">Sem aro</span>'}</td>
+          <td>${renderQualityBadge(p.quality)}</td>
+          <td style="font-weight: 700; color: #34D399; font-size: 0.95rem;">R$ ${(p.price || 0).toFixed(2)}</td>
+          <td>${renderStockBadge(p.stock_quantity)}</td>
+        </tr>
+      `).join('');
+
+      mobileDeck.innerHTML = filtered.map(p => `
+        <div class="customer-card-mobile">
+          <div class="card-mobile-top">
+            <div>
+              <strong>${escapeHtml(p.name)}</strong>
+              <div style="font-size: 0.725rem; color: var(--primary); font-family: monospace;">${p.sku}</div>
+              ${p.compatible_models && p.compatible_models.length ? `<div style="font-size: 0.7rem; color: #94A3B8; margin-top: 2px;">Compatível: ${escapeHtml(p.compatible_models.join(', '))}</div>` : ''}
+            </div>
+            <span style="font-weight: 700; color: #34D399; font-size: 1rem;">R$ ${(p.price || 0).toFixed(2)}</span>
+          </div>
+          <div class="card-mobile-body" style="font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+            <div>${renderQualityBadge(p.quality)}</div>
+            <div>${renderStockBadge(p.stock_quantity)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
     async function fetchCatalog() {
       try {
         const res = await fetch('/api/catalog');
         const data = await res.json();
-        const items = data.items || [];
-        document.getElementById('badge-catalog-count').innerText = items.length;
-        document.getElementById('catalog-counter').innerText = `${items.length} peças cadastradas`;
+        allCatalog = data.items || [];
 
-        const tbody = document.getElementById('catalog-tbody');
-        const mobileDeck = document.getElementById('catalog-cards-mobile');
+        const total = allCatalog.length;
+        const healthy = allCatalog.filter(p => p.stock_quantity > 2).length;
+        const critical = allCatalog.filter(p => p.stock_quantity > 0 && p.stock_quantity <= 2).length;
+        const outOfStock = allCatalog.filter(p => p.stock_quantity <= 0).length;
 
-        if (items.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma peça encontrada.</td></tr>';
-          mobileDeck.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma peça encontrada.</div>';
-          return;
-        }
+        document.getElementById('badge-catalog-count').innerText = total;
+        document.getElementById('kpi-catalog-total').innerText = total;
+        document.getElementById('kpi-catalog-healthy').innerText = healthy;
+        document.getElementById('kpi-catalog-critical').innerText = critical;
+        document.getElementById('kpi-catalog-out').innerText = outOfStock;
 
-        tbody.innerHTML = items.map(p => `
-          <tr>
-            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.775rem; color: var(--primary);">${p.sku}</td>
-            <td><strong>${escapeHtml(p.name)}</strong></td>
-            <td>${p.category}</td>
-            <td>${p.has_frame ? '<span style="color:#34D399;">Com aro</span>' : '<span style="color:var(--text-dim);">Sem aro</span>'}</td>
-            <td><span class="part-pill">${p.quality}</span></td>
-            <td style="font-weight: 700; color: #34D399;">R$ ${(p.price || 0).toFixed(2)}</td>
-            <td>
-              <span style="font-weight: 700; color: ${p.stock_quantity > 0 ? '#fff' : '#F43F5E'};">
-                ${p.stock_quantity} un.
-              </span>
-            </td>
-          </tr>
-        `).join('');
-
-        mobileDeck.innerHTML = items.map(p => `
-          <div class="customer-card-mobile">
-            <div class="card-mobile-top">
-              <div>
-                <strong>${escapeHtml(p.name)}</strong>
-                <div style="font-size: 0.725rem; color: var(--primary); font-family: monospace;">${p.sku}</div>
-              </div>
-              <span style="font-weight: 700; color: #34D399;">R$ ${(p.price || 0).toFixed(2)}</span>
-            </div>
-            <div class="card-mobile-body" style="font-size: 0.75rem;">
-              <div>Qualidade: ${p.quality} (${p.has_frame ? 'Com aro' : 'Sem aro'})</div>
-              <div>Estoque Atual: <strong>${p.stock_quantity} unidades</strong></div>
-            </div>
-          </div>
-        `).join('');
+        renderCatalogRows();
       } catch (err) {
         console.error('Erro ao buscar catálogo:', err);
       }

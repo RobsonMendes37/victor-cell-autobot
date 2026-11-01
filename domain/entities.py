@@ -20,6 +20,7 @@ class ConversationState(str, Enum):
 
 class QualityTier(str, Enum):
     ORIGINAL_NACIONAL = "ORIGINAL_NACIONAL"
+    ORIGINAL_CHINA = "ORIGINAL_CHINA"
     PRIMEIRA_LINHA = "PRIMEIRA_LINHA"
     PARALELA_CHINA = "PARALELA_CHINA"
 

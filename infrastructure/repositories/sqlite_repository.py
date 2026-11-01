@@ -111,6 +111,37 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                     sent_at TEXT NOT NULL
                 )
             """)
+
+            # 5. Tabela de Cache Local do Catálogo (Resiliência Offline)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS cached_products (
+                    sku TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    compatible_models TEXT NOT NULL,
+                    quality TEXT NOT NULL,
+                    has_frame INTEGER NOT NULL,
+                    price REAL NOT NULL,
+                    stock_quantity INTEGER NOT NULL,
+                    warranty_days INTEGER DEFAULT 90,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
+            # 6. Tabela de Inteligência Comercial e Demanda (Cotações de Clientes)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS quote_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_phone TEXT NOT NULL,
+                    query_text TEXT NOT NULL,
+                    target_sku TEXT,
+                    had_stock INTEGER DEFAULT 1,
+                    timestamp TEXT NOT NULL
+                )
+            """)
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_quote_logs_sku ON quote_logs(target_sku, timestamp);
+            """)
             await db.commit()
 
     # --- Conversas e Histórico Multi-Turn ---
@@ -386,3 +417,80 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                     )
                 )
             return conversations
+
+    async def cache_products(self, products: list) -> None:
+        """Salva uma cópia do catálogo do Google Sheets no SQLite para resiliência offline."""
+        await self.init_db()
+        from datetime import datetime, timezone
+        now_str = datetime.now(timezone.utc).isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            for p in products:
+                models_str = ", ".join(p.compatible_models) if hasattr(p, "compatible_models") else ""
+                q_val = p.quality.value if hasattr(p.quality, "value") else str(p.quality)
+                await db.execute(
+                    """
+                    INSERT OR REPLACE INTO cached_products (
+                        sku, name, category, compatible_models, quality, has_frame, price, stock_quantity, warranty_days, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        p.sku,
+                        p.name,
+                        p.category,
+                        models_str,
+                        q_val,
+                        1 if p.has_frame else 0,
+                        float(p.price),
+                        int(p.stock_quantity),
+                        int(p.warranty_days),
+                        now_str,
+                    ),
+                )
+            await db.commit()
+
+    async def get_cached_products(self) -> list:
+        """Recupera catálogo do cache SQLite caso a API do Google Sheets esteja fora do ar."""
+        await self.init_db()
+        from domain.entities import Product, QualityTier
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute("SELECT * FROM cached_products ORDER BY category, name")
+            rows = await cursor.fetchall()
+            products = []
+            for r in rows:
+                models = [m.strip() for m in r["compatible_models"].split(",") if m.strip()]
+                q_val = r["quality"]
+                q_enum = QualityTier.ORIGINAL_NACIONAL
+                for t in QualityTier:
+                    if t.value == q_val:
+                        q_enum = t
+                        break
+                products.append(
+                    Product(
+                        sku=r["sku"],
+                        name=r["name"],
+                        category=r["category"],
+                        compatible_models=models,
+                        quality=q_enum,
+                        has_frame=bool(r["has_frame"]),
+                        price=float(r["price"]),
+                        stock_quantity=int(r["stock_quantity"]),
+                        warranty_days=int(r["warranty_days"]),
+                    )
+                )
+            return products
+
+    async def record_quote_log(self, phone: str, query: str, sku: str = None, had_stock: bool = True) -> None:
+        """Registra intenções de compra/cotações para análise de demanda reprimida."""
+        await self.init_db()
+        from datetime import datetime, timezone
+        now_str = datetime.now(timezone.utc).isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO quote_logs (customer_phone, query_text, target_sku, had_stock, timestamp)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (phone, query, sku, 1 if had_stock else 0, now_str),
+            )
+            await db.commit()

@@ -485,25 +485,37 @@ class UpdateKeyRequest(BaseModel):
 @app.get("/api/catalog")
 async def get_catalog(request: Request):
     check_dashboard_auth(request)
-    """Returns live catalog items for the dashboard."""
+    """Returns live catalog items for the dashboard, updating the SQLite cache for offline resilience."""
     products = await product_repo.list_all()
+    
+    # Se conseguiu ler do Google Sheets, salva cópia de segurança no SQLite
+    if products and hasattr(sqlite_repo, "cache_products"):
+        try:
+            await sqlite_repo.cache_products(products)
+        except Exception as e:
+            logger.debug(f"Aviso ao salvar cache de produtos no SQLite: {e}")
+    elif not products and hasattr(sqlite_repo, "get_cached_products"):
+        # Se Google Sheets estiver offline temporariamente, carrega o cache local
+        products = await sqlite_repo.get_cached_products()
+        logger.info(f"Usando {len(products)} produtos do cache local SQLite (fallback offline).")
+
     return {
         "items": [
             {
                 "sku": p.sku,
                 "name": p.name,
                 "category": p.category,
-                "quality": p.quality.value,
+                "quality": p.quality.value if hasattr(p.quality, "value") else str(p.quality),
                 "has_frame": p.has_frame,
                 "price": p.price,
                 "stock_quantity": p.stock_quantity,
                 "warranty_days": p.warranty_days,
-                "compatible_models": p.compatible_models,
+                "compatible_models": p.compatible_models or [],
             }
             for p in products
         ],
         "total": len(products),
-        "source": "Google Sheets (Aba Estoque)",
+        "source": "Google Sheets • Conexão Ativa",
     }
 
 

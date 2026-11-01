@@ -212,15 +212,15 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
                 stock = int(row[7].strip()) if len(row) > 7 else 0
                 warranty = int(row[8].strip()) if len(row) > 8 else 90
 
-                quality_enum = (
-                    QualityTier.PARALELA_CHINA
-                    if "PARALELA" in quality_str.upper() or "CHINA" in quality_str.upper()
-                    else (
-                        QualityTier.PRIMEIRA_LINHA
-                        if "PRIMEIRA" in quality_str.upper() or "1" in quality_str
-                        else QualityTier.ORIGINAL_NACIONAL
-                    )
-                )
+                q_upper = quality_str.upper()
+                if "ORIGINAL_CHINA" in q_upper or "ORIGINAL CHINA" in q_upper:
+                    quality_enum = QualityTier.ORIGINAL_CHINA
+                elif "PARALELA" in q_upper or "CHINA" in q_upper:
+                    quality_enum = QualityTier.PARALELA_CHINA
+                elif "PRIMEIRA" in q_upper or "1" in q_upper:
+                    quality_enum = QualityTier.PRIMEIRA_LINHA
+                else:
+                    quality_enum = QualityTier.ORIGINAL_NACIONAL
 
                 prod = Product(
                     sku=sku,
