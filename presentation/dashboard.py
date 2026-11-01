@@ -890,17 +890,17 @@ def render_dashboard_html() -> str:
         <div class="kpi-card">
           <div class="kpi-icon-wrapper" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">✅</div>
           <div class="kpi-body">
-            <div class="kpi-label">Estoque Saudável</div>
-            <div class="kpi-value" id="kpi-catalog-healthy">0</div>
-            <div class="kpi-sub">Saldo acima de 2 unidades</div>
+            <div class="kpi-label">Disponíveis em Balcão</div>
+            <div class="kpi-value" id="kpi-catalog-healthy" style="color: #34D399;">0</div>
+            <div class="kpi-sub">Pronta entrega imediata</div>
           </div>
         </div>
         <div class="kpi-card">
           <div class="kpi-icon-wrapper" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;">⚠️</div>
           <div class="kpi-body">
-            <div class="kpi-label">Nível Crítico (<= 2 un)</div>
-            <div class="kpi-value" id="kpi-catalog-critical">0</div>
-            <div class="kpi-sub">Prioridade de reposição</div>
+            <div class="kpi-label">Taxa de Disponibilidade</div>
+            <div class="kpi-value" id="kpi-catalog-critical" style="color: #60A5FA;">100%</div>
+            <div class="kpi-sub">Índice de atendimento</div>
           </div>
         </div>
         <div class="kpi-card">
@@ -1689,13 +1689,12 @@ def render_dashboard_html() -> str:
       }
     }
 
-    function renderStockBadge(qty) {
-      if (qty <= 0) {
-        return '<span style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#F87171; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">⛔ Esgotado</span>';
-      } else if (qty <= 2) {
-        return `<span style="background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.4); color:#FBBF24; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">⚠️ Crítico (${qty} un)</span>`;
+    function renderStockBadge(p) {
+      const isAvail = (typeof p === "object") ? (p.has_stock !== false && (p.stock_quantity > 0 || p.has_stock === true)) : (p > 0);
+      if (isAvail) {
+        return '<span style="background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:#34D399; padding:3px 9px; border-radius:6px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px;"><span style="width:7px; height:7px; border-radius:50%; background:#10B981; display:inline-block;"></span> Em Estoque</span>';
       } else {
-        return `<span style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#34D399; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">${qty} un</span>`;
+        return '<span style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#F87171; padding:3px 9px; border-radius:6px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px;"><span style="width:7px; height:7px; border-radius:50%; background:#EF4444; display:inline-block;"></span> Esgotado</span>';
       }
     }
 
@@ -1754,7 +1753,7 @@ def render_dashboard_html() -> str:
           <td>${p.has_frame ? '<span style="color:#34D399; font-size: 0.8rem; font-weight: 600;">Com aro</span>' : '<span style="color:var(--text-dim); font-size: 0.8rem;">Sem aro</span>'}</td>
           <td>${renderQualityBadge(p.quality)}</td>
           <td style="font-weight: 700; color: #34D399; font-size: 0.95rem;">R$ ${(p.price || 0).toFixed(2)}</td>
-          <td>${renderStockBadge(p.stock_quantity)}</td>
+          <td>${renderStockBadge(p)}</td>
         </tr>
       `).join('');
 
@@ -1770,7 +1769,7 @@ def render_dashboard_html() -> str:
           </div>
           <div class="card-mobile-body" style="font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
             <div>${renderQualityBadge(p.quality)}</div>
-            <div>${renderStockBadge(p.stock_quantity)}</div>
+            <div>${renderStockBadge(p)}</div>
           </div>
         </div>
       `).join('');
@@ -1783,14 +1782,14 @@ def render_dashboard_html() -> str:
         allCatalog = data.items || [];
 
         const total = allCatalog.length;
-        const healthy = allCatalog.filter(p => p.stock_quantity > 2).length;
-        const critical = allCatalog.filter(p => p.stock_quantity > 0 && p.stock_quantity <= 2).length;
-        const outOfStock = allCatalog.filter(p => p.stock_quantity <= 0).length;
+        const healthy = allCatalog.filter(p => p.has_stock !== false && (p.stock_quantity > 0 || p.has_stock === true)).length;
+        const outOfStock = allCatalog.filter(p => p.has_stock === false || p.stock_quantity <= 0).length;
+        const rate = total > 0 ? Math.round((healthy / total) * 100) : 100;
 
         document.getElementById('badge-catalog-count').innerText = total;
         document.getElementById('kpi-catalog-total').innerText = total;
         document.getElementById('kpi-catalog-healthy').innerText = healthy;
-        document.getElementById('kpi-catalog-critical').innerText = critical;
+        document.getElementById('kpi-catalog-critical').innerText = rate + "%";
         document.getElementById('kpi-catalog-out').innerText = outOfStock;
 
         renderCatalogRows();
