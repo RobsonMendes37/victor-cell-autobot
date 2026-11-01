@@ -68,11 +68,13 @@ class EvolutionGateway(MessagingGatewayInterface):
                 success = False
         return success
 
-    async def fetch_media_bytes(self, message_obj: Dict[str, Any]) -> Optional[Tuple[bytes, str]]:
+    async def fetch_media_bytes(
+        self, message_obj: Dict[str, Any], key_obj: Optional[Dict[str, Any]] = None
+    ) -> Optional[Tuple[bytes, str]]:
         """
         Extrai os bytes brutos e o mimetype de uma mensagem de imagem ou áudio.
-        Se já vier em base64 no webhook, decodifica diretamente.
-        Caso contrário, busca na Evolution API via getBase64FromMediaMessage.
+        Se já vier em base64 no webhook (webhookBase64=True), decodifica diretamente.
+        Caso contrário, busca na Evolution API via getBase64FromMediaMessage passando key e message.
         """
         try:
             mime_type = None
@@ -87,20 +89,30 @@ class EvolutionGateway(MessagingGatewayInterface):
                 mime_type = audio_data.get("mimetype", "audio/ogg")
                 raw_base64 = audio_data.get("base64")
 
-            # Se já veio no payload
+            # Se já veio no payload em base64
             if raw_base64:
+                logger.info(f"Mídia decodificada diretamente do base64 do webhook ({mime_type})")
                 return base64.b64decode(raw_base64), mime_type
 
-            # Se não veio no payload, tenta buscar da Evolution API
+            # Se não veio no payload, busca na Evolution API via getBase64FromMediaMessage
             url = f"{self.base_url}/chat/getBase64FromMediaMessage/{self.instance}"
-            payload = {"message": message_obj, "convertToMp4": False}
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            payload = {
+                "message": {
+                    "key": key_obj or {},
+                    "message": message_obj,
+                },
+                "convertToMp4": False,
+            }
+            async with httpx.AsyncClient(timeout=12.0) as client:
                 res = await client.post(url, json=payload, headers=self.headers)
                 if res.status_code in [200, 201]:
                     data = res.json()
                     b64_str = data.get("base64")
                     if b64_str:
+                        logger.info(f"Mídia obtida com sucesso via getBase64FromMediaMessage ({mime_type})")
                         return base64.b64decode(b64_str), mime_type
+                else:
+                    logger.warning(f"Evolution API getBase64FromMediaMessage retornou status {res.status_code}: {res.text}")
         except Exception as e:
             logger.warning(f"Não foi possível obter bytes da mídia: {e}")
 

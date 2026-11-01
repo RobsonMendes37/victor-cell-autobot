@@ -686,8 +686,21 @@ async def evolution_webhook(
         message_content.get("conversation")
         or message_content.get("extendedTextMessage", {}).get("text")
         or message_content.get("imageMessage", {}).get("caption")
+        or message_content.get("audioMessage", {}).get("caption")
         or ""
     )
+
+    # Extração de Mídia (Fotos de peças/aparelhos ou Áudios de voz)
+    media_bytes = None
+    mime_type = None
+    if "imageMessage" in message_content or "audioMessage" in message_content:
+        logger.info(f"Mídia detectada no payload de {clean_phone}. Extraindo bytes via gateway...")
+        media_res = await gateway.fetch_media_bytes(message_content, key_obj=key)
+        if media_res:
+            media_bytes, mime_type = media_res
+            logger.info(f"Mídia obtida com sucesso ({mime_type}, {len(media_bytes)} bytes) para {clean_phone}")
+        else:
+            logger.warning(f"Não foi possível obter bytes da mídia para {clean_phone}")
 
     if from_me:
         # 1. Anti-Loop: Se foi o próprio bot que enviou a mensagem, ignora o eco
@@ -729,7 +742,7 @@ async def evolution_webhook(
         logger.info(f"Mensagem de {clean_phone} recebida, mas IA está silenciada (atendente humano no controle).")
         return {"status": "ignored", "reason": "AI paused for human intervention", "phone": clean_phone}
 
-    async def run_use_case_aggregated(full_text: str):
+    async def run_use_case_aggregated(full_text: str, m_bytes: Optional[bytes] = None, m_type: Optional[str] = None):
         try:
             await use_case.execute(
                 customer_phone=clean_phone,
@@ -737,6 +750,8 @@ async def evolution_webhook(
                 message_text=full_text,
                 from_me=False,
                 message_id=message_id,
+                media_bytes=m_bytes,
+                mime_type=m_type,
             )
         except Exception as err:
             logger.error(f"Erro ao processar mensagem agregada para {clean_phone}: {err}", exc_info=True)
@@ -744,6 +759,8 @@ async def evolution_webhook(
     await debounce_buffer.add_message(
         phone=clean_phone,
         text_chunk=text,
+        media_bytes=media_bytes,
+        mime_type=mime_type,
         dispatch_callback=run_use_case_aggregated,
     )
 
