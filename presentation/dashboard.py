@@ -128,6 +128,8 @@ def render_dashboard_html() -> str:
     .pill-amber .pill-dot { background: #F59E0B; box-shadow: 0 0 8px #F59E0B; }
     .pill-rose { color: #F43F5E; background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.3); }
     .pill-rose .pill-dot { background: #F43F5E; box-shadow: 0 0 8px #F43F5E; }
+    .pill-cyan { color: #38BDF8; background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.3); }
+    .pill-cyan .pill-dot { background: #38BDF8; box-shadow: 0 0 8px #38BDF8; }
 
     /* Barra de Navegação em Abas (Scroll Suave no Mobile) */
     .nav-bar-wrapper {
@@ -789,8 +791,8 @@ def render_dashboard_html() -> str:
     <a href="#" class="brand">
       <div class="brand-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg></div>
       <div class="brand-text">
-        <h1>Victor Cell <span>Pro</span></h1>
-        <p>Painel de Balcão & Inteligência de Expedição</p>
+        <h1>Victor Cell <span>Balcão</span></h1>
+        <p>Peças para Tablets & Atendimento WhatsApp</p>
       </div>
     </a>
 
@@ -827,25 +829,25 @@ def render_dashboard_html() -> str:
   <div class="nav-bar-wrapper">
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="switchTab('conversations')">
-        💬 Central de Atendimento & Balcão
+        💬 Atendimentos no WhatsApp
         <span class="tab-badge" id="badge-convs-count">0</span>
       </button>
       <button class="nav-tab" onclick="switchTab('orders')">
-        🛵 Expedição & Entregas Expressas
+        📦 Separação & Balcão de Saída
         <span class="tab-badge" id="badge-orders-count">0</span>
       </button>
       <button class="nav-tab" onclick="switchTab('overview')">
-        📈 Indicadores & Vendas
+        📊 Relatórios & Desempenho
       </button>
       <button class="nav-tab" onclick="switchTab('catalog')">
-        🏷️ Catálogo de Peças & Estoque
+        🏷️ Catálogo & Estoque de Bancada
         <span class="tab-badge" id="badge-catalog-count">0</span>
       </button>
       <button class="nav-tab" onclick="switchTab('copilot')">
-        💡 Consultor Executivo de Negócios
+        💡 Copiloto de Vendas & Estoque
       </button>
       <button class="nav-tab" onclick="switchTab('gemini')">
-        ⚙️ Configurações & Conectividade
+        ⚙️ WhatsApp & Conexão
       </button>
     </div>
   </div>
@@ -857,37 +859,45 @@ def render_dashboard_html() -> str:
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-header">
-          <span class="kpi-title">Faturamento Estimado</span>
-          <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">💰</div>
+          <span class="kpi-title">Faturamento em Pedidos</span>
+          <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.25);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
         </div>
-        <div class="kpi-val" id="kpi-revenue">R$ 0,00</div>
-        <div class="kpi-sub"><span class="trend-up">+100%</span> pedidos confirmados</div>
+        <div class="kpi-val" id="kpi-revenue" style="color: #34D399;">R$ 0,00</div>
+        <div class="kpi-sub"><span style="color: #10B981; font-weight: 700;">● Confirmados</span> no balcão e Uber</div>
       </div>
 
       <div class="kpi-card">
         <div class="kpi-header">
-          <span class="kpi-title">Atendimentos Ativos</span>
-          <div class="kpi-icon" style="background: rgba(99, 102, 241, 0.15); color: #818CF8;">💬</div>
+          <span class="kpi-title">Atendimentos no WhatsApp</span>
+          <div class="kpi-icon" style="background: rgba(99, 102, 241, 0.12); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.25);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          </div>
         </div>
-        <div class="kpi-val" id="kpi-active-chats">0</div>
+        <div class="kpi-val" id="kpi-active-chats" style="color: #A5B4FC;">0</div>
         <div class="kpi-sub" id="kpi-ai-status">🟢 Atendimento Automático Ativo</div>
       </div>
 
       <div class="kpi-card">
         <div class="kpi-header">
-          <span class="kpi-title">Despacho Uber Flash</span>
-          <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B;">🛵</div>
+          <span class="kpi-title">Saídas Balcão & Uber</span>
+          <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.25);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+          </div>
         </div>
-        <div class="kpi-val" id="kpi-uber">0%</div>
+        <div class="kpi-val" id="kpi-uber" style="color: #FBBF24;">0%</div>
         <div class="kpi-sub" id="kpi-uber-count">0 pedidos para entrega</div>
       </div>
 
       <div class="kpi-card">
         <div class="kpi-header">
-          <span class="kpi-title">Peças em Catálogo</span>
-          <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.15); color: #06B6D4;">📦</div>
+          <span class="kpi-title">Peças no Catálogo</span>
+          <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.12); color: #06B6D4; border: 1px solid rgba(6, 182, 212, 0.25);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          </div>
         </div>
-        <div class="kpi-val" id="kpi-stock-items">0</div>
+        <div class="kpi-val" id="kpi-stock-items" style="color: #38BDF8;">0</div>
         <div class="kpi-sub">Sincronizado c/ Google Sheets</div>
       </div>
     </div>
@@ -931,17 +941,23 @@ def render_dashboard_html() -> str:
       </div>
     </div>
 
-    <!-- TAB 2: EXPEDIÇÃO & UBER FLASH -->
+    <!-- TAB 2: SEPARAÇÃO DE PEÇAS & BALCÃO DE SAÍDA -->
     <div class="tab-pane" id="tab-orders">
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">📦 Fila de Separação & Despacho Uber Flash</h2>
+            <h2 class="section-title">📦 Fila de Separação de Peças & Balcão de Saída</h2>
             <span class="badge-count" id="orders-counter">0 pedidos</span>
           </div>
           <div class="toolbar-actions">
+            <!-- Filtro de Modalidade (Balcão vs Uber Flash) -->
+            <div class="filter-pill-group" style="display: flex; gap: 4px; margin-right: 6px;">
+              <button class="filter-btn active" data-order-filter="all" onclick="filterOrdersMode('all', this)">Todos</button>
+              <button class="filter-btn" data-order-filter="balcao" onclick="filterOrdersMode('balcao', this)">🏢 Retirada Balcão</button>
+              <button class="filter-btn" data-order-filter="uber" onclick="filterOrdersMode('uber', this)">🛵 Uber Flash</button>
+            </div>
             <a href="/api/reports/orders/csv" class="btn btn-emerald btn-sm" download="Pedidos_VictorCell_PowerBI.csv">
-              📊 Baixar CSV para Power BI
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Exportar CSV
             </a>
             <button class="btn btn-secondary btn-sm" onclick="fetchStats()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
           </div>
@@ -952,10 +968,10 @@ def render_dashboard_html() -> str:
             <thead>
               <tr>
                 <th>ID / Data</th>
-                <th>Cliente</th>
+                <th>Cliente (WhatsApp)</th>
                 <th>Peça a Separar</th>
                 <th>Valor</th>
-                <th>Endereço Uber Flash</th>
+                <th>Modalidade / Destino</th>
                 <th>Status</th>
                 <th>Validade Reserva</th>
               </tr>
@@ -1859,54 +1875,99 @@ def render_dashboard_html() -> str:
       }
     }
 
+    let currentOrderFilter = 'all';
+
+    function filterOrdersMode(mode, btn) {
+      currentOrderFilter = mode;
+      document.querySelectorAll('[data-order-filter]').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderOrdersFiltered();
+    }
+
     function renderOrders(orders) {
+      window.allOrders = orders || [];
+      renderOrdersFiltered();
+    }
+
+    function renderOrdersFiltered() {
+      const orders = window.allOrders || [];
       const tbody = document.getElementById('orders-tbody');
       const mobileDeck = document.getElementById('orders-cards-mobile');
 
-      if (!orders || orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum pedido de separação no momento.</td></tr>';
-        mobileDeck.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum pedido registrado.</div>';
+      let filtered = orders;
+      if (currentOrderFilter === 'balcao') {
+        filtered = orders.filter(o => !o.destination_address || o.destination_address.toLowerCase().includes('balc') || o.destination_address.toLowerCase().includes('retirada'));
+      } else if (currentOrderFilter === 'uber') {
+        filtered = orders.filter(o => o.destination_address && !o.destination_address.toLowerCase().includes('balc') && !o.destination_address.toLowerCase().includes('retirada'));
+      }
+
+      const counter = document.getElementById('orders-counter');
+      if (counter) counter.innerText = `${filtered.length} de ${orders.length} pedidos`;
+
+      if (!filtered || filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);"><div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📦</div>Nenhum pedido encontrado para o filtro selecionado.</td></tr>';
+        mobileDeck.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum pedido encontrado.</div>';
         return;
       }
 
-      tbody.innerHTML = orders.map(o => `
-        <tr>
-          <td>
-            <div style="font-weight: 700; color: #fff;">#${o.id}</div>
-            <div style="font-size: 0.725rem; color: var(--text-dim);">${o.created_at}</div>
-          </td>
-          <td>
-            <div style="font-weight: 600; color: #E2E8F0;">${escapeHtml(o.customer_name)}</div>
-            <div style="font-size: 0.725rem; color: #34D399; font-family: monospace;">${o.customer_phone}</div>
-          </td>
-          <td><span class="part-pill">📦 ${escapeHtml(o.product_sku)}</span></td>
-          <td style="font-weight: 700; color: #34D399;">R$ ${(o.product_price || 0).toFixed(2)}</td>
-          <td style="max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            📍 ${escapeHtml(o.destination_address || 'Retirada no Balcão')}
-          </td>
-          <td>
-            <span class="status-pill status-robot">${o.status}</span>
-          </td>
-          <td style="color: #FBBF24; font-weight: 600;">⏰ Até ${o.expires_at}</td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = filtered.map(o => {
+        const isBalcao = !o.destination_address || o.destination_address.toLowerCase().includes('balc') || o.destination_address.toLowerCase().includes('retirada');
+        const modalPill = isBalcao
+          ? `<span class="pill pill-cyan" style="font-weight: 700;">🏢 Retirada no Balcão</span>`
+          : `<span class="pill pill-amber" style="font-weight: 700;" title="${escapeHtml(o.destination_address)}">🛵 Uber Flash: ${escapeHtml(o.destination_address.length > 25 ? o.destination_address.slice(0, 25) + '...' : o.destination_address)}</span>`;
 
-      mobileDeck.innerHTML = orders.map(o => `
-        <div class="customer-card-mobile">
-          <div class="card-mobile-top">
-            <div>
-              <div style="font-weight: 700; color: #fff;">#${o.id} • R$ ${(o.product_price || 0).toFixed(2)}</div>
-              <div style="font-size: 0.75rem; color: #34D399;">${escapeHtml(o.customer_name)}</div>
+        const waLink = `https://wa.me/${(o.customer_phone || '').replace(/\D/g, '')}`;
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight: 700; color: #fff;">#${o.id}</div>
+              <div style="font-size: 0.725rem; color: var(--text-dim);">${o.created_at}</div>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: #E2E8F0;">${escapeHtml(o.customer_name)}</div>
+              <a href="${waLink}" target="_blank" style="font-size: 0.725rem; color: #34D399; font-family: monospace; text-decoration: none; display: inline-flex; align-items: center; gap: 3px;">
+                ${o.customer_phone} ↗
+              </a>
+            </td>
+            <td><span class="part-pill" style="font-weight: 700;">📦 ${escapeHtml(o.product_sku)}</span></td>
+            <td style="font-weight: 800; color: #34D399; font-size: 0.95rem;">R$ ${(o.product_price || 0).toFixed(2)}</td>
+            <td>${modalPill}</td>
+            <td>
+              <span class="status-pill status-robot" style="font-weight: 600;">${o.status}</span>
+            </td>
+            <td style="color: #FBBF24; font-weight: 600; font-size: 0.8rem;">⏰ Até ${o.expires_at}</td>
+          </tr>
+        `;
+      }).join('');
+
+      mobileDeck.innerHTML = filtered.map(o => {
+        const isBalcao = !o.destination_address || o.destination_address.toLowerCase().includes('balc') || o.destination_address.toLowerCase().includes('retirada');
+        const modalPill = isBalcao
+          ? `<span class="pill pill-cyan" style="font-weight: 700;">🏢 Balcão</span>`
+          : `<span class="pill pill-amber" style="font-weight: 700;">🛵 Uber</span>`;
+        const waLink = `https://wa.me/${(o.customer_phone || '').replace(/\D/g, '')}`;
+
+        return `
+          <div class="customer-card-mobile" style="border-left: 3px solid ${isBalcao ? '#38BDF8' : '#F59E0B'};">
+            <div class="card-mobile-top">
+              <div>
+                <div style="font-weight: 700; color: #fff;">#${o.id} • R$ ${(o.product_price || 0).toFixed(2)}</div>
+                <a href="${waLink}" target="_blank" style="font-size: 0.75rem; color: #34D399; text-decoration: none;">${escapeHtml(o.customer_name)} (${o.customer_phone}) ↗</a>
+              </div>
+              <div style="display: flex; gap: 4px;">
+                ${modalPill}
+                <span class="status-pill status-robot">${o.status}</span>
+              </div>
             </div>
-            <span class="status-pill status-robot">${o.status}</span>
+            <div class="card-mobile-body">
+              <div><strong>Peça:</strong> ${escapeHtml(o.product_sku)}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(o.destination_address || 'Retirada no Balcão')}</div>
+              <div style="font-size: 0.725rem; color: #FBBF24; margin-top: 4px;">⏰ Validade: Até ${o.expires_at} (${o.created_at})</div>
+            </div>
           </div>
-          <div class="card-mobile-body">
-            <div><strong>Peça:</strong> ${escapeHtml(o.product_sku)}</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">📍 ${escapeHtml(o.destination_address || 'Balcão')}</div>
-            <div style="font-size: 0.725rem; color: #FBBF24;">Validade: Até ${o.expires_at} (${o.created_at})</div>
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     function renderTopProducts(products) {

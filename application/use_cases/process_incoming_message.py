@@ -207,6 +207,7 @@ class ProcessIncomingMessageUseCase:
         elif intent == "ORDER_DISPATCH":
             requires_staff_alert = True
             final_sku = target_sku or conversation.active_sku or "TEL-SAM-A15-ORIG"
+            target_sku = final_sku
             final_address = destination_address or conversation.notes or "Retirada no Balcão"
             product = await self.product_repo.get_by_sku(final_sku)
             prod_name = product.name if product else "Peça solicitada pelo cliente"
