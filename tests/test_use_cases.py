@@ -235,3 +235,29 @@ async def test_post_sale_order_tracking_query(use_case, test_sqlite):
     assert res["order_created"] is False
     # A resposta menciona que deu certo ou o pedido/peça
     assert len(res["reply"]) > 10
+
+@pytest.mark.asyncio
+async def test_human_handoff_is_completely_silent(use_case, test_sqlite):
+    """
+    Testa se o transbordo para atendimento humano (reparo de placa, negociação, etc)
+    é 100% silencioso: NÃO responde nada ao cliente (reply == ''), silencia a IA
+    e transfere a conversa para o atendente humano no WhatsApp.
+    """
+    phone = "5585991119999"
+
+    res = await use_case.execute(
+        customer_phone=phone,
+        message_text="Vocês fazem reparo em placa de tablet?",
+        from_me=False,
+    )
+
+    assert res["status"] == "SUCCESS"
+    assert res["intent"] == "HUMAN_HANDOFF"
+    # REGRA CRÍTICA: Não responde nada ao cliente, é só passar!
+    assert res["replied"] is False
+    assert res["reply"] == ""
+
+    # Verifica se a IA foi silenciada para o atendente assumir
+    conv = await test_sqlite.get_or_create(phone)
+    assert conv.is_ai_allowed() is False
+    assert conv.state == ConversationState.HUMAN_ACTIVE

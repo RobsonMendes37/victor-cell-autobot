@@ -53,14 +53,14 @@ REGRA DE CERTEZA 100% E FLUXO DE IMAGENS EM 2 ETAPAS:
    - Se a peça estiver ESGOTADA no catálogo: responda direto: "Tem não" ou se fechado: "Tem não. Abre amanhã 08:30."
    - Se a foto NÃO FOR SUFICIENTE (ex: foto só da frente com tela apagada, reflexo, modelo cortado):
      Peça na hora a tampa traseira ou código: "Foto dele parte trás" ou "Qual a referência dele".
-2. ETAPA 2 (SE NÃO RESOLVER -> TRANSBORDO DIRETO PRO CAIXA/BALCÃO):
-   - Se o cliente já mandou a foto mas continua ilegível, ou não sabe o código, ou a peça não consta no catálogo:
-     NÃO fique em loop e NUNCA invente nada.
-     Transfira IMEDIATAMENTE para a equipe do caixa/balcão assumir o chat no WhatsApp:
+2. ETAPA 2 (SE NÃO RESOLVER OU FOR CASO DE BALCÃO -> TRANSBORDO SILENCIOSO PRO CAIXA/BALCÃO):
+   - Se o cliente perguntar sobre reparo/conserto em placa, desconto/negociação, garantia técnica, ou se a peça não consta no catálogo:
+     NÃO RESPONDA NADA AO CLIENTE! NUNCA diga "vou ver com os meninos no balcão" nem invente mensagens automáticas.
+     É SÓ PASSAR para a equipe humana assumir o atendimento diretamente no WhatsApp.
      intent: "HUMAN_HANDOFF"
-     reply_text: "Vou ver com os meninos no balcão e te passo"
+     reply_text: "" (vazio - sem resposta automática, silêncio total para o atendente humano responder)
      requires_staff_alert: true
-     handoff_reason: "Identificação visual pendente / Conferência física de bancada"
+     handoff_reason: "Dúvida técnica / Reparo de placa / Negociação / Conferência de bancada"
 
 EXEMPLOS REAIS MINERADOS DAS CONVERSAS DO BALCÃO DA VICTOR CELL (FEW-SHOT):
 - Cliente: "Quanto tá o touch do T2040?" (loja aberta)
@@ -85,9 +85,9 @@ Touch 70" (intent: QUOTE)
 - Cliente: [Foto da frente do tablet apagado] "Tem essa tela?"
   Atendente: "Foto dele parte trás" (intent: GENERAL_QUESTION)
 - Cliente: "Vocês consertam placa ou tem placa do A50?"
-  Atendente: "Vou ver com os meninos no balcão e te passo" (intent: HUMAN_HANDOFF, requires_staff_alert: true)
+  Atendente: "" (intent: HUMAN_HANDOFF, reply_text: "", requires_staff_alert: true, handoff_reason: "Reparo de placa")
 - Cliente: "Faz por menos? Tem desconto se levar 3?"
-  Atendente: "Vou ver com o gerente e já te aviso" (intent: HUMAN_HANDOFF, requires_staff_alert: true)
+  Atendente: "" (intent: HUMAN_HANDOFF, reply_text: "", requires_staff_alert: true, handoff_reason: "Negociação de desconto")
 - Cliente: "Separa aí, manda pelo Uber Flash" (com loja aberta)
   Atendente: "Passa o endereço pra calcular o Uber" (intent: ORDER_PENDING_CONFIRMATION)
 - Cliente: "Separa aí, manda pelo Uber Flash" (no domingo ou loja fechada)
@@ -299,7 +299,7 @@ class AIAgentService(AIServiceInterface):
         ):
             return {
                 "intent": "HUMAN_HANDOFF",
-                "reply_text": "Vou ver com os meninos no balcão e te passo",
+                "reply_text": "",  # Silencioso: não responde nada ao cliente, é só passar
                 "target_sku": None,
                 "requires_staff_alert": True,
                 "destination_address": None,

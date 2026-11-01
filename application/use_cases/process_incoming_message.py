@@ -143,6 +143,10 @@ class ProcessIncomingMessageUseCase:
         target_sku = ai_decision.get("target_sku") or conversation.active_sku
         destination_address = ai_decision.get("destination_address")
 
+        # Regra de Ouro: Transbordo para atendimento humano NUNCA responde nada ao cliente. É só passar!
+        if intent == "HUMAN_HANDOFF":
+            reply_text = ""
+
         if ai_decision.get("target_sku"):
             conversation.active_sku = ai_decision["target_sku"]
 
@@ -228,12 +232,13 @@ class ProcessIncomingMessageUseCase:
             conversation.notes = None
 
         elif intent == "HUMAN_HANDOFF":
-            conversation.pause_for_human(duration_hours=2)
+            conversation.pause_for_human(duration_hours=3)
             handoff_alert = (
-                f"⚠️ *ATENDIMENTO HUMANO SOLICITADO*\n"
+                f"⚠️ *ATENDIMENTO HUMANO SOLICITADO (TRANSFERÊNCIA DIRETA)*\n"
                 f"• Cliente: {push_name or 'Cliente'} ({clean_phone})\n"
                 f"• Motivo: {ai_decision.get('handoff_reason', 'Negociação ou Dúvida Técnica')}\n"
-                f'• Última mensagem: "{message_text}"'
+                f'• Mensagem do cliente: "{message_text}"\n'
+                f"👉 *A IA NÃO respondeu ao cliente. Por favor, assuma e responda diretamente no WhatsApp!*"
             )
             await self.messaging_gateway.send_internal_staff_alert(handoff_alert)
 

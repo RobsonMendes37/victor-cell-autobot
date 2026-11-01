@@ -357,7 +357,7 @@ def generate_markdown_report(all_messages, all_turns, client_stats, avg_words, p
     report_lines.append("")
     report_lines.append("1. **Zero 'Eco' de IA:** Não cumprimenta com textão. Responde com o valor da peça de imediato.")
     report_lines.append("2. **Regra de 100% de Certeza:** Se o cliente não passar o modelo exato ou mandar só a foto da frente, a IA replica o balcão: *'Foto dele parte trás'*.")
-    report_lines.append("3. **Transbordo Silencioso:** Dúvida técnica, reparo de placa ou negociação de lote aciona `HUMAN_HANDOFF` com a frase exata minerada: *'Vou ver com os meninos no balcão e te passo'*.")
+    report_lines.append("3. **Transbordo Silencioso (É só passar):** Dúvida técnica, reparo de placa ou negociação aciona `HUMAN_HANDOFF` sem enviar nenhuma mensagem ao cliente. O bot silencia a IA e transfere direto para a equipe humana assumir no WhatsApp.")
     
     with open(ARTIFACT_REPORT, "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines))
