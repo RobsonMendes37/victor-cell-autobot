@@ -912,14 +912,14 @@ def render_dashboard_html() -> str:
         <div style="padding: 1.25rem;">
           <!-- CHIPS DE PERGUNTAS RÁPIDAS -->
           <div class="quick-chips-wrapper">
-            <span class="chips-label">Consultas Executivas:</span>
+            <span class="chips-label">Consultas Rápidas:</span>
             <div class="chips-scroller">
-              <button class="chip-btn" onclick="sendQuickPrompt('Apresente um diagnóstico executivo consolidado com o desempenho de hoje, detalhando faturamento, ticket médio e volume de pedidos em prosa analítica sem tópicos pontilhados.')">Diagnóstico do Dia</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Quais peças do catálogo estão com estoque crítico ou esgotadas? Apresente uma análise das prioridades de reposição imediata.')">Estoque Crítico & Reposição</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Como se comportou o volume e a velocidade das vendas de hoje em comparação com a operação padrão da loja?')">Volume de Vendas</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Qual o status operacional e a taxa de adesão dos pedidos despachados via modal Uber Flash?')">Logística & Uber Flash</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Qual o panorama de produtividade dos atendimentos no WhatsApp, incluindo proporção de clientes com a equipe humana e peças com maior procura?')">Produtividade do Atendimento</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Apresente diretrizes estratégicas e acionáveis fundamentadas em dados para alavancar a receita e otimizar a margem da Victor Cell amanhã.')">Direcionamento Estratégico</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Faça um resumo executivo direto e conciso de hoje: faturamento, pedidos, estoque e a principal ação.')">Resumo do Dia</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Quais peças precisam de reposição urgente? Responda de forma direta e concisa.')">Estoque & Reposição</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Como foi o volume e faturamento de vendas hoje? Seja direto.')">Volume de Vendas</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Qual a situação das entregas via Uber Flash hoje? Seja direto.')">Entregas Uber Flash</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Qual o status rápido dos atendimentos no WhatsApp agora? Quantos estão com humanos?')">Atendimentos no Balcão</button>
+              <button class="chip-btn" onclick="sendQuickPrompt('Qual a principal ação prática para aumentar as vendas amanhã? Seja direto e objetivo.')">Ação para Vender Mais</button>
             </div>
           </div>
 
