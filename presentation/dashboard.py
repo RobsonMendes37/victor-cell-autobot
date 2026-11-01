@@ -612,6 +612,76 @@ def render_dashboard_html() -> str:
       100% { opacity: 1; transform: scale(1.2); }
     }
 
+    /* Master Kill Switch (Disjuntor Geral da IA) */
+    .btn-master-ai {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .btn-master-on {
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #34D399;
+    }
+    .btn-master-on:hover {
+      background: rgba(16, 185, 129, 0.24);
+      border-color: #10B981;
+      transform: translateY(-1px);
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.35);
+    }
+    .btn-master-off {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(185, 28, 28, 0.4));
+      border: 1.5px solid #EF4444;
+      color: #F87171;
+      animation: pulse-emergency 1.6s infinite alternate;
+    }
+    .btn-master-off:hover {
+      background: rgba(239, 68, 68, 0.45);
+      border-color: #F87171;
+      color: #fff;
+      transform: translateY(-1px);
+    }
+    @keyframes pulse-emergency {
+      0% { box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
+      100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.85); }
+    }
+    .master-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .master-dot-on {
+      background: #10B981;
+      box-shadow: 0 0 8px #10B981;
+    }
+    .master-dot-off {
+      background: #EF4444;
+      box-shadow: 0 0 8px #EF4444;
+    }
+    #banner-ai-emergency {
+      display: none;
+      background: linear-gradient(90deg, #991B1B, #DC2626, #991B1B);
+      color: #FFFFFF;
+      padding: 0.65rem 1.25rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-align: center;
+      position: sticky;
+      top: 61px;
+      z-index: 48;
+      box-shadow: 0 4px 18px rgba(220, 38, 38, 0.5);
+      border-bottom: 2px solid #7F1D1D;
+    }
+
+
 </style>
 </head>
 <body>
@@ -620,6 +690,12 @@ def render_dashboard_html() -> str:
   <div id="toast">
     <span id="toast-icon">✅</span>
     <span id="toast-msg">Ação executada com sucesso!</span>
+  </div>
+
+    <!-- BANNER DE EMERGÊNCIA - DISJUNTOR GERAL DESLIGADO -->
+  <div id="banner-ai-emergency">
+    ⚠️ <strong>DISJUNTOR GERAL ACIONADO:</strong> A Inteligência Artificial está <strong>DESLIGADA</strong> para todas as conversas do WhatsApp. O atendimento está 100% manual.
+    <button onclick="toggleMasterAISwitch()" style="margin-left: 12px; background: #FFFFFF; color: #991B1B; border: none; font-weight: 800; font-size: 0.75rem; padding: 4px 12px; border-radius: 6px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.03em;">Reativar IA Agora</button>
   </div>
 
   <!-- HEADER EXECUTIVO -->
@@ -633,6 +709,12 @@ def render_dashboard_html() -> str:
     </a>
 
     <div class="header-pills">
+      <!-- DISJUNTOR GERAL DA IA (MASTER KILL SWITCH) -->
+      <button id="btn-master-ai" class="btn-master-ai btn-master-on" onclick="toggleMasterAISwitch()" title="Disjuntor Geral da IA (Clique para desligar a IA em todas as conversas)">
+        <span class="master-dot master-dot-on" id="master-dot"></span>
+        <span id="label-master-ai">⚡ IA Ativa (Geral)</span>
+      </button>
+
       <div class="pill pill-emerald" id="pill-store">
         <span class="pill-dot"></span>
         <span id="store-status">🟢 Balcão Aberto</span>
@@ -1347,6 +1429,7 @@ def render_dashboard_html() -> str:
 
       if (tabId === 'conversations') fetchConversations();
       if (tabId === 'catalog') fetchCatalog();
+    checkMasterAISwitch();
       if (tabId === 'orders' || tabId === 'overview') fetchStats();
       if (tabId === 'simulator') fetchWhatsAppQR();
     }
@@ -1805,6 +1888,7 @@ def render_dashboard_html() -> str:
         const data = await res.json();
         showToast(data.message || 'Estoque sincronizado com sucesso!', 'success');
         fetchCatalog();
+    checkMasterAISwitch();
         fetchStats();
       } catch (err) {
         showToast('Erro ao sincronizar: ' + err, 'error');
@@ -1917,6 +2001,7 @@ def render_dashboard_html() -> str:
       fetchConversations();
       fetchStats();
       fetchCatalog();
+    checkMasterAISwitch();
       fetchWhatsAppQR();
     }
 
@@ -1924,6 +2009,7 @@ def render_dashboard_html() -> str:
     fetchConversations();
     fetchStats();
     fetchCatalog();
+    checkMasterAISwitch();
     fetchWhatsAppQR();
 
     // Auto-refresh suave a cada 20 segundos

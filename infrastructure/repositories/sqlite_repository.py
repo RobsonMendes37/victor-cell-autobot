@@ -143,6 +143,16 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             await db.execute("""
                 CREATE INDEX IF NOT EXISTS idx_quote_logs_sku ON quote_logs(target_sku, timestamp);
             """)
+                        # 7. Tabela de Configurações Globais do Sistema (Disjuntor Geral da IA)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS system_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+            """)
+            await db.execute("""
+                INSERT OR IGNORE INTO system_settings (key, value) VALUES ('global_ai_enabled', '1');
+            """)
             await db.commit()
 
     # --- Conversas e Histórico Multi-Turn ---
@@ -494,5 +504,28 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 VALUES (?, ?, ?, ?, ?)
                 """,
                 (phone, query, sku, 1 if had_stock else 0, now_str),
+            )
+            await db.commit()
+
+    # --- Disjuntor Geral de Emergência da IA (Master Kill Switch) ---
+
+    async def get_global_ai_status(self) -> bool:
+        """Retorna True se a IA está ligada globalmente, False se o disjuntor de emergência foi acionado."""
+        await self.init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT value FROM system_settings WHERE key = 'global_ai_enabled'")
+            row = await cursor.fetchone()
+            if row:
+                return row[0] == "1"
+            return True
+
+    async def set_global_ai_status(self, enabled: bool) -> None:
+        """Liga ou desliga o disjuntor geral da IA para todas as conversas."""
+        await self.init_db()
+        val = "1" if enabled else "0"
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('global_ai_enabled', ?)",
+                (val,)
             )
             await db.commit()

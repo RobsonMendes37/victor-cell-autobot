@@ -653,6 +653,36 @@ async def pause_conversation_ai(phone: str, request: Request, hours: int = 3):
     return {"status": "success", "message": f"IA pausada por {hours}h para {clean_phone}!"}
 
 
+
+# --- Disjuntor Geral de Emergência da IA (Master Kill Switch) ---
+
+@app.get("/api/system/ai-switch")
+async def get_master_ai_switch(request: Request):
+    """Retorna o estado atual do disjuntor geral da IA."""
+    check_dashboard_auth(request)
+    enabled = await sqlite_repo.get_global_ai_status()
+    return {"global_ai_enabled": enabled}
+
+
+@app.post("/api/system/ai-switch/toggle")
+async def toggle_master_ai_switch(request: Request):
+    """Liga ou desliga a IA para absolutamente todas as conversas do WhatsApp (Botão do Pânico)."""
+    check_dashboard_auth(request)
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    current = await sqlite_repo.get_global_ai_status()
+    new_state = bool(body.get("enabled", not current))
+    await sqlite_repo.set_global_ai_status(new_state)
+    state_str = "LIGADO (ONLINE)" if new_state else "DESLIGADO (EMERGÊNCIA/OFF)"
+    logger.warning(f"🚨 DISJUNTOR GERAL DA IA alterado para: {state_str}")
+    return {
+        "global_ai_enabled": new_state,
+        "message": "IA reativada com sucesso para todas as conversas!" if new_state else "DISJUNTOR ACIONADO: Todas as conversas da IA foram desligadas!"
+    }
+
 @app.post("/webhook")
 @app.post("/webhook/whatsapp")
 async def evolution_webhook(
@@ -750,12 +780,23 @@ async def evolution_webhook(
         conv.customer_name = customer_name
         await sqlite_repo.save(conv)
 
+    # 0. DISJUNTOR GERAL DE EMERGÊNCIA (MASTER KILL SWITCH)
+    is_global_ai_on = await sqlite_repo.get_global_ai_status()
+    if not is_global_ai_on:
+        logger.warning(f"🚨 Mensagem de {clean_phone} recebida, mas DISJUNTOR GERAL DA IA ESTÁ DESLIGADO. Nenhuma resposta automática enviada.")
+        if text:
+            await sqlite_repo.save_message(clean_phone, "user", text)
+        return {"status": "ignored", "reason": "Global AI Master Switch is OFF", "phone": clean_phone}
+
     # Verificar se a conversa está com IA silenciada por atendimento humano
     if not conv.is_ai_allowed():
         logger.info(f"Mensagem de {clean_phone} recebida, mas IA está silenciada (atendente humano no controle).")
         return {"status": "ignored", "reason": "AI paused for human intervention", "phone": clean_phone}
 
     async def run_use_case_aggregated(full_text: str, m_bytes: Optional[bytes] = None, m_type: Optional[str] = None):
+        if not await sqlite_repo.get_global_ai_status():
+            logger.warning(f"Execução agregada para {clean_phone} abortada: DISJUNTOR GERAL DA IA DESLIGADO.")
+            return
         try:
             await use_case.execute(
                 customer_phone=clean_phone,
