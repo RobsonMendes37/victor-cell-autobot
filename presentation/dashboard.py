@@ -25,138 +25,7 @@ def render_dashboard_html() -> str:
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js">
-    // --- JAVASCRIPT DO COPILOTO IA DO GESTOR ---
-    let copilotHistory = [];
-
-    function clearCopilotChat() {
-      copilotHistory = [];
-      const messagesDiv = document.getElementById('copilot-messages');
-      messagesDiv.innerHTML = `
-        <div class="copilot-msg bot">
-          <div class="copilot-avatar">🧠</div>
-          <div class="copilot-bubble">
-            <p><strong>Conversa reiniciada com sucesso.</strong></p>
-            <p>Estou pronto para analisar novos dados de faturamento, pedidos e estoque da Victor Cell. O que gostaria de conferir?</p>
-          </div>
-        </div>
-      `;
-    }
-
-    function sendQuickPrompt(promptText) {
-      const input = document.getElementById('copilot-input');
-      input.value = promptText;
-      sendCopilotMessage();
-    }
-
-    function formatMarkdownText(rawText) {
-      if (!rawText) return '';
-      let formatted = rawText
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.1);padding:2px 5px;border-radius:4px;font-family:monospace;">$1</code>');
-
-      const lines = formatted.split('\n');
-      let htmlOut = '';
-      let inList = false;
-
-      for (let line of lines) {
-        line = line.trim();
-        if (line.startsWith('• ') || line.startsWith('- ') || line.startsWith('* ')) {
-          if (!inList) {
-            htmlOut += '<ul>';
-            inList = true;
-          }
-          htmlOut += `<li>${line.substring(2)}</li>`;
-        } else {
-          if (inList) {
-            htmlOut += '</ul>';
-            inList = false;
-          }
-          if (line) {
-            htmlOut += `<p>${line}</p>`;
-          }
-        }
-      }
-      if (inList) htmlOut += '</ul>';
-      return htmlOut;
-    }
-
-    async function sendCopilotMessage() {
-      const input = document.getElementById('copilot-input');
-      const text = input.value.trim();
-      if (!text) return;
-
-      input.value = '';
-
-      const messagesDiv = document.getElementById('copilot-messages');
-
-      // 1. Mensagem do Gestor
-      const userMsg = document.createElement('div');
-      userMsg.className = 'copilot-msg user';
-      userMsg.innerHTML = `
-        <div class="copilot-user-avatar">👤</div>
-        <div class="copilot-bubble">
-          <p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
-        </div>
-      `;
-      messagesDiv.appendChild(userMsg);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-      // 2. Balão de Carregando (Typing Indicator)
-      const loadingMsg = document.createElement('div');
-      loadingMsg.className = 'copilot-msg bot loading-msg';
-      loadingMsg.innerHTML = `
-        <div class="copilot-avatar">🧠</div>
-        <div class="copilot-bubble">
-          <span class="copilot-loading-dot"></span> Analisando dados da loja com Gemini 3.5 Flash Lite...
-        </div>
-      `;
-      messagesDiv.appendChild(loadingMsg);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-      try {
-        const res = await fetch('/api/copilot/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, history: copilotHistory })
-        });
-        const data = await res.json();
-        loadingMsg.remove();
-
-        const botMsg = document.createElement('div');
-        botMsg.className = 'copilot-msg bot';
-        const formatted = formatMarkdownText(data.reply || 'Sem resposta do assistente.');
-        botMsg.innerHTML = `
-          <div class="copilot-avatar">🧠</div>
-          <div class="copilot-bubble">${formatted}</div>
-        `;
-        messagesDiv.appendChild(botMsg);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-        copilotHistory.push({ role: 'user', content: text });
-        copilotHistory.push({ role: 'model', content: data.reply || '' });
-        if (copilotHistory.length > 8) copilotHistory = copilotHistory.slice(-8);
-
-      } catch (err) {
-        loadingMsg.remove();
-        const errorMsg = document.createElement('div');
-        errorMsg.className = 'copilot-msg bot';
-        errorMsg.innerHTML = `
-          <div class="copilot-avatar">🧠</div>
-          <div class="copilot-bubble" style="border-color: rgba(239, 68, 68, 0.4);">
-            <p style="color: #F87171;">⚠️ Erro ao consultar o Copiloto. Verifique sua chave da API ou tente novamente.</p>
-          </div>
-        `;
-        messagesDiv.appendChild(errorMsg);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-      }
-    }
-
-</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --bg-base: #070A0F;
@@ -187,11 +56,18 @@ def render_dashboard_html() -> str:
 
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+    html {
+      overflow-x: hidden;
+      max-width: 100vw;
+    }
+
     body {
       background-color: var(--bg-base);
       color: var(--text-main);
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
+      max-width: 100vw;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
       background-image:
@@ -580,13 +456,34 @@ def render_dashboard_html() -> str:
       flex-direction: column;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
     }
+    .copilot-chat-container {
+      background: #0B0F19;
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+      max-width: 100%;
+    }
     .copilot-messages {
-      height: 480px;
+      height: clamp(340px, 50vh, 520px);
       overflow-y: auto;
-      padding: 1.5rem;
+      padding: 1.25rem;
       display: flex;
       flex-direction: column;
       gap: 1.25rem;
+      overscroll-behavior-y: contain;
+    }
+    .copilot-input-bar {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: #111827;
+      border-top: 1px solid var(--border-subtle);
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
     }
     .copilot-msg {
       display: flex;
@@ -919,16 +816,55 @@ def render_dashboard_html() -> str:
 
     <!-- TAB 4: ESTOQUE GOOGLE SHEETS -->
     <div class="tab-pane" id="tab-catalog">
+      <!-- GOOGLE SHEETS LIVE BANNER & CONTROLS -->
+      <div class="section-card" style="margin-bottom: 1.25rem; background: linear-gradient(135deg, rgba(14, 20, 34, 0.95), rgba(16, 185, 129, 0.08)); border-color: rgba(16, 185, 129, 0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 0.25rem;">
+          <div style="display: flex; align-items: center; gap: 0.85rem;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
+              📊
+            </div>
+            <div>
+              <h3 style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                Planilha do Google Sheets • Estoque & Preços
+                <span style="font-size: 0.7rem; background: rgba(16, 185, 129, 0.2); color: #34D399; padding: 2px 8px; border-radius: 999px; font-weight: 600;">🟢 Conectada ao Robô</span>
+              </h3>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                Esta planilha é a fonte oficial do estoque. Qualquer peça, valor ou quantidade que você alterar nela é lida pelo robô do WhatsApp em tempo real.
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+            <a href="https://docs.google.com/spreadsheets/d/1N2gigR8MmuiBRSbtO1TDLnS9AFQS3dJYhxYEEUs7kZY/edit" target="_blank" class="btn btn-primary btn-sm" style="text-decoration: none; font-weight: 700; background: #10B981; color: #042F2E;">
+              🔗 Abrir Planilha no Google Sheets ↗
+            </a>
+            <button class="btn btn-secondary btn-sm" onclick="syncGoogleSheets()">
+              ⚡ Sincronizar Agora
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-toggle-sheet-view" onclick="toggleSheetView()">
+              👁️ Visualizar Planilha ao Vivo
+            </button>
+          </div>
+        </div>
+
+        <!-- IFRAME EMBED DA PLANILHA (TOGGLE) -->
+        <div id="sheet-embed-container" style="display: none; margin-top: 1.25rem; border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Visualização oficial das células do Google Sheets (Aba: <strong>Estoque</strong>):</span>
+            <a href="https://docs.google.com/spreadsheets/d/1N2gigR8MmuiBRSbtO1TDLnS9AFQS3dJYhxYEEUs7kZY/edit" target="_blank" style="font-size: 0.75rem; color: #34D399; text-decoration: none;">Editar Células ↗</a>
+          </div>
+          <iframe src="https://docs.google.com/spreadsheets/d/1N2gigR8MmuiBRSbtO1TDLnS9AFQS3dJYhxYEEUs7kZY/preview?widget=true&headers=false" style="width: 100%; height: 480px; border: 1px solid var(--border-subtle); border-radius: 10px; background: #ffffff;"></iframe>
+        </div>
+      </div>
+
+      <!-- TABELA DINÂMICA DE PEÇAS & FILTROS -->
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">📋 Estoque Atualizado • Google Sheets</h2>
-            <span class="badge-count" id="catalog-counter">0 itens</span>
+            <h2 class="section-title">🏷️ Catálogo de Peças Sincronizadas</h2>
+            <span class="badge-count" id="catalog-counter">0 peças</span>
           </div>
           <div class="toolbar-actions">
-            <button class="btn btn-primary btn-sm" onclick="syncGoogleSheets()">
-              ⚡ Forçar Sincronização Google Sheets
-            </button>
+            <input type="text" id="catalog-search" placeholder="🔍 Buscar por nome, SKU ou modelo..." class="search-input" oninput="filterCatalogTable()" style="max-width: 280px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.45rem 0.75rem; color: #fff; font-size: 0.85rem;">
             <button class="btn btn-secondary btn-sm" onclick="fetchCatalog()">🔄 Atualizar</button>
           </div>
         </div>
@@ -1137,6 +1073,172 @@ def render_dashboard_html() -> str:
     let allCatalog = [];
     let chartQuality = null;
     let chartCategory = null;
+
+    // --- JAVASCRIPT DO CONSULTOR EXECUTIVO DE NEGÓCIOS (COPILOTO IA) ---
+    let copilotHistory = [];
+
+    function clearCopilotChat() {
+      copilotHistory = [];
+      const messagesDiv = document.getElementById('copilot-messages');
+      if (messagesDiv) {
+        messagesDiv.innerHTML = `
+          <div class="copilot-msg bot">
+            <div class="copilot-avatar">💡</div>
+            <div class="copilot-bubble">
+              <p><strong>Conversa reiniciada com sucesso.</strong></p>
+              <p>Estou pronto para analisar novos dados de faturamento, pedidos e estoque da Victor Cell. O que gostaria de conferir?</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function sendQuickPrompt(promptText) {
+      const input = document.getElementById('copilot-input');
+      if (input) {
+        input.value = promptText;
+        sendCopilotMessage();
+      }
+    }
+
+    function formatMarkdownText(rawText) {
+      if (!rawText) return '';
+      let formatted = rawText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.1);padding:2px 5px;border-radius:4px;font-family:monospace;">$1</code>');
+
+      const lines = formatted.split('\n');
+      let htmlOut = '';
+      let inList = false;
+
+      for (let line of lines) {
+        line = line.trim();
+        if (line.startsWith('• ') || line.startsWith('- ') || line.startsWith('* ')) {
+          if (!inList) {
+            htmlOut += '<ul>';
+            inList = true;
+          }
+          htmlOut += `<li>${line.substring(2)}</li>`;
+        } else {
+          if (inList) {
+            htmlOut += '</ul>';
+            inList = false;
+          }
+          if (line) {
+            htmlOut += `<p>${line}</p>`;
+          }
+        }
+      }
+      if (inList) htmlOut += '</ul>';
+      return htmlOut;
+    }
+
+    async function sendCopilotMessage() {
+      const input = document.getElementById('copilot-input');
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+
+      const messagesDiv = document.getElementById('copilot-messages');
+      if (!messagesDiv) return;
+
+      // 1. Mensagem do Gestor
+      const userMsg = document.createElement('div');
+      userMsg.className = 'copilot-msg user';
+      userMsg.innerHTML = `
+        <div class="copilot-user-avatar">👤</div>
+        <div class="copilot-bubble">
+          <p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+        </div>
+      `;
+      messagesDiv.appendChild(userMsg);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      // 2. Balão de Carregando (Typing Indicator)
+      const loadingMsg = document.createElement('div');
+      loadingMsg.className = 'copilot-msg bot loading-msg';
+      loadingMsg.innerHTML = `
+        <div class="copilot-avatar">💡</div>
+        <div class="copilot-bubble">
+          <span class="copilot-loading-dot"></span> Analisando dados da loja em tempo real...
+        </div>
+      `;
+      messagesDiv.appendChild(loadingMsg);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      try {
+        const res = await fetch('/api/copilot/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, history: copilotHistory })
+        });
+        const data = await res.json();
+        loadingMsg.remove();
+
+        const botMsg = document.createElement('div');
+        botMsg.className = 'copilot-msg bot';
+        const formatted = formatMarkdownText(data.reply || 'Sem resposta do assistente.');
+        botMsg.innerHTML = `
+          <div class="copilot-avatar">💡</div>
+          <div class="copilot-bubble">${formatted}</div>
+        `;
+        messagesDiv.appendChild(botMsg);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        copilotHistory.push({ role: 'user', content: text });
+        copilotHistory.push({ role: 'model', content: data.reply || '' });
+        if (copilotHistory.length > 8) copilotHistory = copilotHistory.slice(-8);
+
+      } catch (err) {
+        loadingMsg.remove();
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'copilot-msg bot';
+        errorMsg.innerHTML = `
+          <div class="copilot-avatar">💡</div>
+          <div class="copilot-bubble" style="border-color: rgba(239, 68, 68, 0.4);">
+            <p style="color: #F87171;">⚠️ Erro ao consultar o Consultor de Negócios. Verifique sua conexão e tente novamente.</p>
+          </div>
+        `;
+        messagesDiv.appendChild(errorMsg);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+    }
+
+    // --- FUNÇÕES DA ABA GOOGLE SHEETS & CATÁLOGO ---
+    function toggleSheetView() {
+      const container = document.getElementById('sheet-embed-container');
+      const btn = document.getElementById('btn-toggle-sheet-view');
+      if (!container || !btn) return;
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        btn.innerText = '✕ Fechar Visualização da Planilha';
+      } else {
+        container.style.display = 'none';
+        btn.innerText = '👁️ Visualizar Planilha ao Vivo';
+      }
+    }
+
+    function filterCatalogTable() {
+      const searchEl = document.getElementById('catalog-search');
+      const query = (searchEl ? searchEl.value : '').toLowerCase().trim();
+      const rows = document.querySelectorAll('#catalog-tbody tr');
+      rows.forEach(r => {
+        const text = r.innerText.toLowerCase();
+        r.style.display = text.includes(query) ? '' : 'none';
+      });
+      const cards = document.querySelectorAll('#catalog-cards-mobile .customer-card-mobile');
+      cards.forEach(c => {
+        const text = c.innerText.toLowerCase();
+        c.style.display = text.includes(query) ? '' : 'none';
+      });
+    }
+
 
     function showToast(msg, type = 'success') {
       const toast = document.getElementById('toast');
