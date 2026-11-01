@@ -4,6 +4,7 @@ Implements MessagingGatewayInterface.
 Supports multi-recipient staff alerts, sent message tracking, and media decoding.
 """
 
+import asyncio
 import base64
 import logging
 from typing import Any, Dict, Optional, Tuple
