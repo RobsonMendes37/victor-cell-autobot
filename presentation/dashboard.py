@@ -612,73 +612,115 @@ def render_dashboard_html() -> str:
       100% { opacity: 1; transform: scale(1.2); }
     }
 
-    /* Master Kill Switch (Disjuntor Geral da IA) */
-    .btn-master-ai {
+    /* Master Kill Switch (Executive Hardware Toggle Switch - Zero Emojis) */
+    .master-switch-wrapper {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      padding: 0.4rem 0.9rem;
+      gap: 0.6rem;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 3px 12px 3px 5px;
       border-radius: 999px;
-      font-weight: 700;
-      font-size: 0.8rem;
+      border: 1px solid var(--border-subtle);
       cursor: pointer;
+      user-select: none;
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
-    .btn-master-on {
-      background: rgba(16, 185, 129, 0.14);
-      border: 1px solid rgba(16, 185, 129, 0.45);
+    .master-switch-wrapper:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+    .master-switch-on {
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.35);
+    }
+    .master-switch-on:hover {
+      border-color: rgba(16, 185, 129, 0.6);
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.2);
+    }
+    .master-switch-off {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.55);
+      box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);
+    }
+    .master-switch-off:hover {
+      border-color: #EF4444;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.45);
+    }
+    .hardware-track {
+      width: 32px;
+      height: 18px;
+      border-radius: 999px;
+      background: #334155;
+      position: relative;
+      transition: background 0.25s ease;
+      flex-shrink: 0;
+    }
+    .master-switch-on .hardware-track {
+      background: #10B981;
+    }
+    .master-switch-off .hardware-track {
+      background: #475569;
+    }
+    .hardware-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .master-switch-on .hardware-thumb {
+      transform: translateX(14px);
+    }
+    .master-switch-off .hardware-thumb {
+      transform: translateX(0);
+    }
+    .master-switch-label {
+      font-size: 0.775rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .master-switch-on .master-switch-label {
       color: #34D399;
     }
-    .btn-master-on:hover {
-      background: rgba(16, 185, 129, 0.24);
-      border-color: #10B981;
-      transform: translateY(-1px);
-      box-shadow: 0 0 14px rgba(16, 185, 129, 0.35);
-    }
-    .btn-master-off {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(185, 28, 28, 0.4));
-      border: 1.5px solid #EF4444;
+    .master-switch-off .master-switch-label {
       color: #F87171;
-      animation: pulse-emergency 1.6s infinite alternate;
-    }
-    .btn-master-off:hover {
-      background: rgba(239, 68, 68, 0.45);
-      border-color: #F87171;
-      color: #fff;
-      transform: translateY(-1px);
-    }
-    @keyframes pulse-emergency {
-      0% { box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
-      100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.85); }
-    }
-    .master-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .master-dot-on {
-      background: #10B981;
-      box-shadow: 0 0 8px #10B981;
-    }
-    .master-dot-off {
-      background: #EF4444;
-      box-shadow: 0 0 8px #EF4444;
     }
     #banner-ai-emergency {
       display: none;
-      background: linear-gradient(90deg, #991B1B, #DC2626, #991B1B);
+      background: rgba(127, 29, 29, 0.95);
+      backdrop-filter: blur(12px);
       color: #FFFFFF;
-      padding: 0.65rem 1.25rem;
-      font-size: 0.85rem;
-      font-weight: 700;
+      padding: 0.6rem 1.25rem;
+      font-size: 0.825rem;
+      font-weight: 600;
       text-align: center;
       position: sticky;
-      top: 61px;
+      top: 59px;
       z-index: 48;
-      box-shadow: 0 4px 18px rgba(220, 38, 38, 0.5);
-      border-bottom: 2px solid #7F1D1D;
+      border-bottom: 1px solid rgba(239, 68, 68, 0.4);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+    .btn-emergency-resume {
+      margin-left: 14px;
+      background: #FFFFFF;
+      color: #991B1B;
+      border: none;
+      font-weight: 700;
+      font-size: 0.725rem;
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-emergency-resume:hover {
+      opacity: 0.9;
     }
 
 
@@ -692,16 +734,19 @@ def render_dashboard_html() -> str:
     <span id="toast-msg">Ação executada com sucesso!</span>
   </div>
 
-    <!-- BANNER DE EMERGÊNCIA - DISJUNTOR GERAL DESLIGADO -->
+    <!-- BANNER DE EMERGÊNCIA - ATENDIMENTO MANUAL ATIVO (ZERO EMOJIS) -->
   <div id="banner-ai-emergency">
-    ⚠️ <strong>DISJUNTOR GERAL ACIONADO:</strong> A Inteligência Artificial está <strong>DESLIGADA</strong> para todas as conversas do WhatsApp. O atendimento está 100% manual.
-    <button onclick="toggleMasterAISwitch()" style="margin-left: 12px; background: #FFFFFF; color: #991B1B; border: none; font-weight: 800; font-size: 0.75rem; padding: 4px 12px; border-radius: 6px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.03em;">Reativar IA Agora</button>
+    <div style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span><strong>Atendimento Automático Pausado:</strong> As respostas da IA estão desativadas para todas as conversas do WhatsApp (Modo Manual).</span>
+      <button class="btn-emergency-resume" onclick="toggleMasterAISwitch()">Reativar Atendimento</button>
+    </div>
   </div>
 
   <!-- HEADER EXECUTIVO -->
   <header>
     <a href="#" class="brand">
-      <div class="brand-icon">📱</div>
+      <div class="brand-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg></div>
       <div class="brand-text">
         <h1>Victor Cell <span>Pro</span></h1>
         <p>Painel de Balcão & Inteligência de Expedição</p>
@@ -709,25 +754,27 @@ def render_dashboard_html() -> str:
     </a>
 
     <div class="header-pills">
-      <!-- DISJUNTOR GERAL DA IA (MASTER KILL SWITCH) -->
-      <button id="btn-master-ai" class="btn-master-ai btn-master-on" onclick="toggleMasterAISwitch()" title="Disjuntor Geral da IA (Clique para desligar a IA em todas as conversas)">
-        <span class="master-dot master-dot-on" id="master-dot"></span>
-        <span id="label-master-ai">⚡ IA Ativa (Geral)</span>
-      </button>
+      <!-- DISJUNTOR GERAL DA IA (HARDWARE TOGGLE SWITCH - ZERO EMOJIS) -->
+      <div id="btn-master-ai" class="master-switch-wrapper master-switch-on" onclick="toggleMasterAISwitch()" title="Alternar entre Atendimento Automático IA ou 100% Manual">
+        <div class="hardware-track">
+          <div class="hardware-thumb"></div>
+        </div>
+        <span class="master-switch-label" id="label-master-ai">IA Automática Ativa</span>
+      </div>
 
       <div class="pill pill-emerald" id="pill-store">
         <span class="pill-dot"></span>
-        <span id="store-status">🟢 Balcão Aberto</span>
+        <span id="store-status">Balcão Aberto</span>
       </div>
       <div class="pill pill-emerald" id="pill-wa">
         <span class="pill-dot"></span>
         <span id="wa-status">WhatsApp Conectado</span>
       </div>
       <button class="btn btn-secondary btn-sm" onclick="refreshAll()" title="Recarregar dados">
-        🔄 Atualizar
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar
       </button>
       <a href="/logout" class="btn btn-secondary btn-sm" style="color: #EF4444; border-color: rgba(239, 68, 68, 0.3); text-decoration: none;" title="Sair do painel">
-        🚪 Sair
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg> Sair
       </a>
     </div>
   </header>
@@ -811,7 +858,7 @@ def render_dashboard_html() -> str:
           </div>
           <div class="toolbar-actions">
             <input type="text" class="search-input" id="search-convs" placeholder="Buscar por nome, telefone ou peça..." oninput="filterConversations()">
-            <button class="btn btn-secondary btn-sm" onclick="fetchConversations()">🔄 Atualizar</button>
+            <button class="btn btn-secondary btn-sm" onclick="fetchConversations()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
           </div>
         </div>
 
@@ -852,7 +899,7 @@ def render_dashboard_html() -> str:
             <a href="/api/reports/orders/csv" class="btn btn-emerald btn-sm" download="Pedidos_VictorCell_PowerBI.csv">
               📊 Baixar CSV para Power BI
             </a>
-            <button class="btn btn-secondary btn-sm" onclick="fetchStats()">🔄 Atualizar</button>
+            <button class="btn btn-secondary btn-sm" onclick="fetchStats()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
           </div>
         </div>
 
@@ -1005,7 +1052,7 @@ def render_dashboard_html() -> str:
             </div>
             <div class="toolbar-actions" style="gap: 0.5rem;">
               <input type="text" id="catalog-search" placeholder="🔍 Buscar por nome, modelo (ex: P615, A15), SKU..." class="search-input" oninput="filterCatalogTable()" style="min-width: 260px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.45rem 0.75rem; color: #fff; font-size: 0.85rem;">
-              <button class="btn btn-secondary btn-sm" onclick="fetchCatalog()">🔄 Atualizar</button>
+              <button class="btn btn-secondary btn-sm" onclick="fetchCatalog()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
             </div>
           </div>
 
@@ -1994,6 +2041,73 @@ def render_dashboard_html() -> str:
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+    }
+
+
+    // --- DISJUNTOR GERAL DA IA (HARDWARE TOGGLE SWITCH - ZERO EMOJIS) ---
+    let isMasterAIActive = true;
+
+    async function checkMasterAISwitch() {
+      try {
+        const res = await fetch("/api/system/ai-switch");
+        const data = await res.json();
+        isMasterAIActive = Boolean(data.global_ai_enabled);
+        updateMasterAIUI(isMasterAIActive);
+      } catch (err) {
+        console.error("Erro ao verificar status do disjuntor da IA:", err);
+      }
+    }
+
+    function updateMasterAIUI(isActive) {
+      const btn = document.getElementById("btn-master-ai");
+      const label = document.getElementById("label-master-ai");
+      const banner = document.getElementById("banner-ai-emergency");
+
+      if (!btn) return;
+
+      if (isActive) {
+        btn.className = "master-switch-wrapper master-switch-on";
+        btn.title = "Atendimento Automático Ativo. Clique para pausar a IA e assumir no manual.";
+        if (label) label.textContent = "IA Automática Ativa";
+        if (banner) banner.style.display = "none";
+      } else {
+        btn.className = "master-switch-wrapper master-switch-off";
+        btn.title = "Atendimento Automático Pausado. Clique para reativar as respostas da IA.";
+        if (label) label.textContent = "Atendimento Pausado (Manual)";
+        if (banner) banner.style.display = "block";
+      }
+    }
+
+    async function toggleMasterAISwitch() {
+      if (isMasterAIActive) {
+        const confirmed = confirm(
+          "Pausar Atendimento Automático da IA?\n\n" +
+          "• Nenhuma resposta automática será enviada no WhatsApp.\n" +
+          "• Todas as mensagens recebidas aguardarão resposta manual da equipe.\n\n" +
+          "Deseja pausar a IA agora?"
+        );
+        if (!confirmed) return;
+      }
+
+      try {
+        showToast("Atualizando estado da IA...", "success");
+        const res = await fetch("/api/system/ai-switch/toggle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: !isMasterAIActive })
+        });
+        const data = await res.json();
+        isMasterAIActive = Boolean(data.global_ai_enabled);
+        updateMasterAIUI(isMasterAIActive);
+
+        if (isMasterAIActive) {
+          showToast("Atendimento da IA reativado com sucesso.", "success");
+        } else {
+          showToast("Atendimento automático pausado. Modo 100% manual ativo.", "error");
+        }
+      } catch (err) {
+        showToast("Erro ao atualizar estado da IA: " + err, "error");
+      }
     }
 
     function refreshAll() {
