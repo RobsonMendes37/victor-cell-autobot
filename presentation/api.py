@@ -1024,3 +1024,153 @@ async def get_chats_summary(request: Request):
             data = json.load(f)
         return {"status": "success", "total_models": len(data), "data": data}
     return {"status": "not_found", "message": "Execute scripts/pipeline_chat_learner.py"}
+
+
+@app.get("/api/reports/analytics/filter")
+async def get_filtered_analytics(
+    request: Request,
+    period: str = "all",
+    category: str = "all",
+    search: str = ""
+):
+    """
+    Filtra e analisa a demanda de produtos, pedidos fechados e ruptura de estoque:
+    - period: 'today' (por dia), '7d' (últimos 7 dias), '30d' (últimos 30 dias), 'all' (histórico completo)
+    - category: 'all', 'tela', 'touch', 'bateria', 'conector'
+    - search: texto para filtrar por modelo de aparelho ou cliente
+    """
+    check_dashboard_auth(request)
+    from datetime import datetime
+    from collections import defaultdict
+    import json
+    import os
+
+    dialogues_path = "data/golden_dialogues_mined.json"
+    if not os.path.exists(dialogues_path):
+        return {"status": "error", "message": "Dados de mineração não encontrados"}
+
+    with open(dialogues_path, "r", encoding="utf-8") as f:
+        turns = json.load(f)
+
+    now = datetime(2026, 11, 1) # Data operacional de referência
+    filtered = []
+    daily_stats = defaultdict(lambda: {"total": 0, "closed": 0, "lost": 0})
+    product_stats = defaultdict(lambda: {"count": 0, "closed": 0, "lost": 0, "prices": []})
+
+    model_patterns = [
+        "M8", "T295", "M7", "T800", "T2040", "TAB S6", "IPAD 9", "VISION TAB 7",
+        "TAB A7", "T810", "TAB A9", "TAB A8", "X115", "M10", "T510", "T500", "TL10",
+        "PTB7", "A15", "A50", "T355", "IPAD 5", "IPAD 6"
+    ]
+
+    for t in turns:
+        c = t.get("customer_query", "")
+        s = t.get("store_reply", "")
+        c_lower = c.lower()
+        s_lower = s.lower()
+        ts = t.get("timestamp")
+
+        d = None
+        if ts:
+            try:
+                d = datetime.strptime(ts.split()[0], "%d/%m/%Y")
+                diff_days = (now - d).days
+                if period == "today" and diff_days > 1:
+                    continue
+                elif period == "7d" and diff_days > 7:
+                    continue
+                elif period == "30d" and diff_days > 30:
+                    continue
+            except Exception:
+                pass
+
+        piece_type = "Geral"
+        if "touch" in c_lower:
+            piece_type = "Touch"
+        elif any(w in c_lower for w in ["tela", "display", "frontal", "modulo", "módulo"]):
+            piece_type = "Tela / Display"
+        elif "bateria" in c_lower:
+            piece_type = "Bateria"
+        elif any(w in c_lower for w in ["conector", "dock", "carga"]):
+            piece_type = "Conector de Carga"
+
+        if category != "all" and category.lower() not in piece_type.lower():
+            continue
+
+        if search:
+            q = search.lower().strip()
+            if q not in c_lower and q not in s_lower and q not in t.get("source", "").lower():
+                continue
+
+        outcome = "in_negotiation"
+        if any(w in s_lower for w in ["tem não", "tenho não", "não", "nada", "sem estoque"]):
+            outcome = "lost_stock"
+        elif any(w in c_lower for w in ["vou querer", "pode separar", "separa", "manda o uber", "manda o pix", "pode mandar", "chave pix"]) or any(w in s_lower for w in ["pix", "separado", "separando"]):
+            outcome = "closed"
+
+        filtered.append(t)
+
+        day_key = d.strftime("%d/%m") if d else "Recente"
+        daily_stats[day_key]["total"] += 1
+        if outcome == "closed":
+            daily_stats[day_key]["closed"] += 1
+        elif outcome == "lost_stock":
+            daily_stats[day_key]["lost"] += 1
+
+        detected_model = "Outro"
+        for m in model_patterns:
+            if m.lower() in c_lower or m.lower() in s_lower:
+                detected_model = m
+                break
+
+        prices = [int(p) for p in re.findall(r"(?:R\$\s*|de\s*)?(\d{2,3})", s) if 15 <= int(p) <= 800]
+
+        product_stats[detected_model]["count"] += 1
+        if outcome == "closed":
+            product_stats[detected_model]["closed"] += 1
+        elif outcome == "lost_stock":
+            product_stats[detected_model]["lost"] += 1
+        if prices:
+            product_stats[detected_model]["prices"].extend(prices)
+
+    total_closed = sum(1 for t in filtered if any(w in t.get("customer_query", "").lower() for w in ["vou querer", "separa", "manda o uber", "pix"]) or any(w in t.get("store_reply", "").lower() for w in ["pix", "separado"]))
+    total_lost = sum(1 for t in filtered if any(w in t.get("store_reply", "").lower() for w in ["tem não", "tenho não", "não", "nada"]))
+    total_negotiation = len(filtered) - total_closed - total_lost
+    conv_rate = (total_closed / (total_closed + total_lost) * 100) if (total_closed + total_lost) > 0 else 0.0
+
+    top_prods = []
+    for mod, data in sorted(product_stats.items(), key=lambda x: x[1]["count"], reverse=True):
+        if mod == "Outro" and len(product_stats) > 1:
+            continue
+        avg_price = f"R$ {sum(data['prices'])/len(data['prices']):.0f}" if data["prices"] else "Sob Consulta"
+        top_prods.append({
+            "model": mod,
+            "count": data["count"],
+            "closed": data["closed"],
+            "lost": data["lost"],
+            "avg_price": avg_price
+        })
+
+    # Timeline sorted chronologically (last 14 days)
+    sorted_days = sorted(
+        [k for k in daily_stats.keys() if k != "Recente"],
+        key=lambda x: datetime.strptime(x + "/2026", "%d/%m/%Y")
+    )
+    timeline_sorted = [
+        {"date": k, "total": daily_stats[k]["total"], "closed": daily_stats[k]["closed"], "lost": daily_stats[k]["lost"]}
+        for k in sorted_days[-14:]
+    ]
+
+    return {
+        "status": "success",
+        "period": period,
+        "category": category,
+        "search": search,
+        "total_records": len(filtered),
+        "closed_orders": total_closed,
+        "lost_stock": total_lost,
+        "in_negotiation": total_negotiation,
+        "conversion_rate": round(conv_rate, 1),
+        "top_products": top_prods[:10],
+        "timeline": timeline_sorted
+    }

@@ -317,6 +317,45 @@ def render_dashboard_html() -> str:
     .status-waiting { background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.35); }
 
     /* Insights Grid */
+    .filter-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94A3B8;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.78rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+    .filter-btn:hover {
+      background: rgba(99, 102, 241, 0.15);
+      color: #fff;
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+    .filter-btn.active {
+      background: #6366F1;
+      color: #fff;
+      border-color: #6366F1;
+      font-weight: 600;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+    }
+    .quick-chip-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #CBD5E1;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.72rem;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .quick-chip-btn:hover {
+      background: rgba(99, 102, 241, 0.2);
+      color: #fff;
+      border-color: #6366F1;
+    }
+
     .charts-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
       gap: 1.25rem; margin-bottom: 1.25rem;
@@ -936,8 +975,51 @@ def render_dashboard_html() -> str:
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366F1;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
               Inteligência de Vendas no WhatsApp (37 Assistências / 3.752 Mensagens)
             </h2>
-            <span style="font-size: 0.82rem; color: var(--text-muted);">Métricas reais de conversão, demanda reprimida (ruptura) e taxa de recompra</span>
+            <span style="font-size: 0.82rem; color: var(--text-muted);">Filtre por produto, período (dia/histórico) e analise saídas e rupturas</span>
           </div>
+        </div>
+
+        <!-- BARRA DE FILTROS INTERATIVOS -->
+        <div style="background: rgba(14, 20, 34, 0.6); padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
+          <!-- Filtro de Período -->
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span style="font-size: 0.75rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">Período:</span>
+            <div class="filter-pill-group" style="display: flex; gap: 4px;">
+              <button class="filter-btn" data-period="today" onclick="setAnalyticsPeriod('today', this)">Hoje</button>
+              <button class="filter-btn" data-period="7d" onclick="setAnalyticsPeriod('7d', this)">7 Dias</button>
+              <button class="filter-btn" data-period="30d" onclick="setAnalyticsPeriod('30d', this)">30 Dias</button>
+              <button class="filter-btn active" data-period="all" onclick="setAnalyticsPeriod('all', this)">Histórico Completo</button>
+            </div>
+          </div>
+
+          <!-- Filtro de Categoria -->
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span style="font-size: 0.75rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">Peça:</span>
+            <div class="filter-pill-group" style="display: flex; gap: 4px;">
+              <button class="filter-btn active" data-cat="all" onclick="setAnalyticsCategory('all', this)">Todas</button>
+              <button class="filter-btn" data-cat="tela" onclick="setAnalyticsCategory('tela', this)">Telas</button>
+              <button class="filter-btn" data-cat="touch" onclick="setAnalyticsCategory('touch', this)">Touch</button>
+              <button class="filter-btn" data-cat="bateria" onclick="setAnalyticsCategory('bateria', this)">Baterias</button>
+            </div>
+          </div>
+
+          <!-- Busca por Modelo -->
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; min-width: 200px; max-width: 320px;">
+            <input type="text" id="analytics-search-input" placeholder="Filtrar por modelo (ex: M8, T295, A15)..." oninput="debounceAnalyticsSearch()" style="width: 100%; padding: 0.42rem 0.75rem; font-size: 0.82rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; color: #fff;">
+          </div>
+        </div>
+
+        <!-- ATALHOS RÁPIDOS (CHIPS DE MODELOS POPULARES) -->
+        <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+          <span style="font-size: 0.72rem; color: #64748B; font-weight: 600;">Modelos Populares:</span>
+          <button class="quick-chip-btn" onclick="quickFilterModel('M8')">Multilaser M8</button>
+          <button class="quick-chip-btn" onclick="quickFilterModel('T295')">Samsung Tab A 8.0 (T295)</button>
+          <button class="quick-chip-btn" onclick="quickFilterModel('T2040')">Positivo T2040</button>
+          <button class="quick-chip-btn" onclick="quickFilterModel('IPAD 9')">iPad 9ª Geração</button>
+          <button class="quick-chip-btn" onclick="quickFilterModel('TAB S6')">Tab S6 Lite</button>
+          <button class="quick-chip-btn" onclick="quickFilterModel('VISION TAB 7')">Positivo Vision Tab 7</button>
+          <button class="quick-chip-btn" onclick="quickFilterModel('A15')">Samsung A15</button>
+          <button class="quick-chip-btn" onclick="quickFilterModel('')" style="color: #F87171; border-color: rgba(239, 68, 68, 0.3);">Limpar Filtro</button>
         </div>
 
         <!-- 4 KPIS DO FUNIL DE WHATSAPP -->
@@ -964,12 +1046,30 @@ def render_dashboard_html() -> str:
           </div>
         </div>
 
-        <!-- GRÁFICOS DO FUNIL E RECORRÊNCIA -->
+        <!-- GRÁFICOS 1 & 2: PRODUTOS MAIS SAÍDOS E LINHA DO TEMPO POR DIA -->
+        <div class="charts-grid" style="margin-bottom: 1.25rem;">
+          <div class="chart-card">
+            <h3 style="display: flex; align-items: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #38BDF8;"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
+              Produtos que Mais Saíram no Período Selecionado
+            </h3>
+            <canvas id="chartTopProductsPeriod" height="200"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3 style="display: flex; align-items: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #F59E0B;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              Evolução das Saídas por Dia (Linha do Tempo)
+            </h3>
+            <canvas id="chartDailyTimeline" height="200"></canvas>
+          </div>
+        </div>
+
+        <!-- GRÁFICOS 3 & 4: FUNIL E RECORRÊNCIA -->
         <div class="charts-grid" style="margin-bottom: 1.25rem;">
           <div class="chart-card">
             <h3 style="display: flex; align-items: center; gap: 6px;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #10B981;"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
-              Desfecho das Cotações no WhatsApp
+              Desfecho das Cotações (Pedidos que Saíram vs Perdidos)
             </h3>
             <canvas id="chartChatFunnel" height="200"></canvas>
           </div>
@@ -1745,6 +1845,7 @@ def render_dashboard_html() -> str:
         // Charts
         renderCharts(data.quality_breakdown || {}, data.category_breakdown || {});
         renderChatFunnelCharts(data.chat_funnel_stats);
+        fetchFilteredAnalytics();
       } catch (err) {
         console.error('Erro ao buscar stats:', err);
       }
