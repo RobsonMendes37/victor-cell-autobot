@@ -165,10 +165,12 @@ class AIAgentService(AIServiceInterface):
             if media_bytes and mime_type and mime_type.startswith("audio/"):
                 # Áudio requer decodificador acústico nativo (Flash Multimodal de Voz)
                 models_to_try = [
-                    "gemini-3.6-flash",
+                    "gemini-2.5-flash",
+                    "gemini-3.5-flash",
+                    "gemini-flash-latest",
                     "gemini-3-flash-preview",
                     "gemini-3.8-flash",
-                    "gemini-flash-latest",
+                    "gemini-3.6-flash",
                 ]
             elif media_bytes and mime_type and mime_type.startswith("image/"):
                 # Fotos de peças/etiquetas: modelos ultra-rápidos com visão computacional (500 req/dia)
