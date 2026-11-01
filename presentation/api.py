@@ -909,3 +909,15 @@ async def copilot_chat_endpoint(payload: CopilotChatRequest, request: Request):
     )
     return {"reply": reply, "status": "success"}
 
+
+
+@app.get("/api/pipeline/chats-summary")
+async def get_chats_summary(request: Request):
+    """Retorna o resumo estatístico minerado das 37 conversas de WhatsApp."""
+    check_dashboard_auth(request)
+    catalog_path = "data/mined_catalog_intelligence.json"
+    if os.path.exists(catalog_path):
+        with open(catalog_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {"status": "success", "total_models": len(data), "data": data}
+    return {"status": "not_found", "message": "Execute scripts/pipeline_chat_learner.py"}
