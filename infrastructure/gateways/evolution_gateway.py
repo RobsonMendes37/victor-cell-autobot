@@ -106,20 +106,31 @@ class EvolutionGateway(MessagingGatewayInterface):
         # 2. Alerta sonoro de alta prioridade no celular da equipe via ntfy.sh (100% gratuito)
         if settings.NTFY_ENABLED and settings.NTFY_TOPIC:
             try:
-                ntfy_url = f"{settings.NTFY_SERVER.rstrip('/')}/{settings.NTFY_TOPIC}"
-                headers = {
-                    "Title": title or "🚨 ALERTA BALCÃO VICTOR CELL",
-                    "Priority": priority,
-                    "Tags": tags or "rotating_light,phone,package",
-                }
                 clean_cust_phone = "".join(filter(str.isdigit, customer_phone)) if customer_phone else ""
-                if clean_cust_phone:
-                    wa_link = f"https://wa.me/{clean_cust_phone}"
-                    headers["Click"] = wa_link
-                    headers["Actions"] = f"view, Abrir Conversa no WhatsApp, {wa_link}"
+                wa_link = f"https://wa.me/{clean_cust_phone}" if clean_cust_phone else None
+                
+                # Mapeia tags para lista
+                tag_list = [t.strip() for t in (tags or "rotating_light,phone,package").split(",") if t.strip()]
+                
+                payload = {
+                    "topic": settings.NTFY_TOPIC,
+                    "title": title or "🚨 ALERTA BALCÃO VICTOR CELL",
+                    "message": alert_text,
+                    "priority": 5 if priority == "urgent" else 4,
+                    "tags": tag_list,
+                }
+                if wa_link:
+                    payload["click"] = wa_link
+                    payload["actions"] = [
+                        {
+                            "action": "view",
+                            "label": "Abrir Conversa no WhatsApp",
+                            "url": wa_link,
+                        }
+                    ]
 
                 async with httpx.AsyncClient(timeout=6.0) as client:
-                    res = await client.post(ntfy_url, content=alert_text.encode("utf-8"), headers=headers)
+                    res = await client.post(settings.NTFY_SERVER.rstrip("/"), json=payload)
                     if res.status_code in [200, 201]:
                         logger.info(f"Notificação sonora ntfy enviada com sucesso pro canal '{settings.NTFY_TOPIC}'")
                     else:
