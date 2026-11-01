@@ -70,3 +70,28 @@ def test_order_expiration():
     # Simula 3 horas no passado
     order.expires_at = datetime.now(timezone.utc) - timedelta(minutes=10)
     assert order.is_expired is True
+
+def test_store_schedule_sunday():
+    import pytz
+    from infrastructure.config import settings
+
+    tz = pytz.timezone("America/Fortaleza")
+    # 2026-11-01 is Sunday 14:00
+    sunday_dt = datetime(2026, 11, 1, 14, 0, tzinfo=tz)
+    status = settings.get_store_schedule_status(sunday_dt)
+    assert status["is_open"] is False
+    assert status["is_sunday"] is True
+    assert "Fechado hoje (domingo)" in status["short_notice"]
+    assert "abre amanhã" in status["short_notice"]
+
+def test_store_schedule_weekday_open():
+    import pytz
+    from infrastructure.config import settings
+
+    tz = pytz.timezone("America/Fortaleza")
+    # 2026-11-02 is Monday 10:00
+    monday_open = datetime(2026, 11, 2, 10, 0, tzinfo=tz)
+    status = settings.get_store_schedule_status(monday_open)
+    assert status["is_open"] is True
+    assert status["is_sunday"] is False
+    assert "Loja aberta agora" in status["short_notice"]

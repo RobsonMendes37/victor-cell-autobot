@@ -453,6 +453,7 @@ async def get_report_stats(request: Request):
         "uber_percentage": uber_pct,
         "total_products": len(products),
         "is_store_open": settings.is_store_open(),
+        "store_schedule": settings.get_store_schedule_status(),
         "top_products": top_products,
         "frequent_intents": frequent_intents,
         "quality_breakdown": quality_counts,

@@ -126,6 +126,8 @@ def render_dashboard_html() -> str:
     .pill-emerald .pill-dot { background: #10B981; box-shadow: 0 0 8px #10B981; }
     .pill-amber { color: #FBBF24; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); }
     .pill-amber .pill-dot { background: #F59E0B; box-shadow: 0 0 8px #F59E0B; }
+    .pill-rose { color: #F43F5E; background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.3); }
+    .pill-rose .pill-dot { background: #F43F5E; box-shadow: 0 0 8px #F43F5E; }
 
     /* Barra de Navegação em Abas (Scroll Suave no Mobile) */
     .nav-bar-wrapper {
@@ -1828,7 +1830,10 @@ def render_dashboard_html() -> str:
 
         // Store status pill
         const storeStatus = document.getElementById('store-status');
-        if (data.is_store_open) {
+        if (data.store_schedule) {
+          storeStatus.innerText = data.store_schedule.badge_text;
+          document.getElementById('pill-store').className = data.store_schedule.is_open ? 'pill pill-emerald' : (data.store_schedule.is_sunday ? 'pill pill-rose' : 'pill pill-amber');
+        } else if (data.is_store_open) {
           storeStatus.innerText = '🟢 Balcão Aberto';
           document.getElementById('pill-store').className = 'pill pill-emerald';
         } else {

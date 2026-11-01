@@ -5,7 +5,7 @@ multi-recipient staff notification settings, and Google Sheets API Key.
 """
 
 from datetime import datetime, time
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import pytz
 from pydantic import ConfigDict
@@ -67,27 +67,92 @@ class Settings(BaseSettings):
         tz = pytz.timezone(self.STORE_TIMEZONE)
         return datetime.now(tz)
 
-    def is_store_open(self, now_dt: Optional[datetime] = None) -> bool:
-        """Verifica se a loja física está em horário de atendimento."""
+    def get_store_schedule_status(self, now_dt: Optional[datetime] = None) -> Dict[str, Any]:
+        """
+        Retorna o diagnóstico completo de horário de funcionamento no fuso de Fortaleza.
+        Inclui status de abertura, descrição amigável de reabertura e texto conciso para o atendente/balcão.
+        """
         tz = pytz.timezone(self.STORE_TIMEZONE)
         local_now = now_dt.astimezone(tz) if now_dt else datetime.now(tz)
-
-        weekday = local_now.weekday()  # 0=Segunda, 5=Sábado, 6=Domingo
-        if weekday == 6:  # Domingo fechado
-            return False
-
+        weekday = local_now.weekday()  # 0=Segunda, 4=Sexta, 5=Sábado, 6=Domingo
         current_time = local_now.time()
 
         open_h, open_m = map(int, self.STORE_OPENING_TIME.split(":"))
         open_time = time(open_h, open_m)
 
-        if weekday == 5:  # Sábado até 13h
+        if weekday == 5:
             close_h, close_m = map(int, self.STORE_SAT_CLOSING_TIME.split(":"))
-        else:  # Seg-Sex até 18h
+        else:
             close_h, close_m = map(int, self.STORE_CLOSING_TIME.split(":"))
         close_time = time(close_h, close_m)
 
-        return open_time <= current_time <= close_time
+        weekday_names = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]
+        day_name = weekday_names[weekday]
+
+        # Domingo
+        if weekday == 6:
+            return {
+                "is_open": False,
+                "is_sunday": True,
+                "day_name": day_name,
+                "current_time": local_now.strftime("%H:%M"),
+                "reopen_desc": f"abre amanhã (segunda) às {self.STORE_OPENING_TIME}",
+                "short_notice": f"Fechado hoje (domingo), abre amanhã {self.STORE_OPENING_TIME}",
+                "badge_text": f"🔴 Fechado Hoje (Domingo) • Reabre Segunda {self.STORE_OPENING_TIME}",
+            }
+
+        # Antes da abertura matinal
+        if current_time < open_time:
+            return {
+                "is_open": False,
+                "is_sunday": False,
+                "day_name": day_name,
+                "current_time": local_now.strftime("%H:%M"),
+                "reopen_desc": f"abre hoje às {self.STORE_OPENING_TIME}",
+                "short_notice": f"Fechado agora, abre hoje {self.STORE_OPENING_TIME}",
+                "badge_text": f"🔴 Fechado • Reabre Hoje {self.STORE_OPENING_TIME}",
+            }
+
+        # Após o fechamento
+        if current_time > close_time:
+            if weekday == 5:  # Sábado após 13h
+                reopen = f"abre segunda às {self.STORE_OPENING_TIME}"
+                short = f"Fechado agora, abre segunda {self.STORE_OPENING_TIME}"
+                badge = f"🔴 Fechado • Reabre Segunda {self.STORE_OPENING_TIME}"
+            elif weekday == 4:  # Sexta após 18h
+                reopen = f"abre amanhã (sábado) às {self.STORE_OPENING_TIME}"
+                short = f"Fechado agora, abre amanhã (sábado) {self.STORE_OPENING_TIME}"
+                badge = f"🔴 Fechado • Reabre Sábado {self.STORE_OPENING_TIME}"
+            else:  # Seg-Qui após 18h
+                reopen = f"abre amanhã às {self.STORE_OPENING_TIME}"
+                short = f"Fechado agora, abre amanhã {self.STORE_OPENING_TIME}"
+                badge = f"🔴 Fechado • Reabre Amanhã {self.STORE_OPENING_TIME}"
+
+            return {
+                "is_open": False,
+                "is_sunday": False,
+                "day_name": day_name,
+                "current_time": local_now.strftime("%H:%M"),
+                "reopen_desc": reopen,
+                "short_notice": short,
+                "badge_text": badge,
+            }
+
+        # Aberto
+        sat_text = f"até {self.STORE_SAT_CLOSING_TIME}" if weekday == 5 else f"até {self.STORE_CLOSING_TIME}"
+        return {
+            "is_open": True,
+            "is_sunday": False,
+            "day_name": day_name,
+            "current_time": local_now.strftime("%H:%M"),
+            "reopen_desc": f"aberto agora ({sat_text})",
+            "short_notice": "Loja aberta agora",
+            "badge_text": f"🟢 Loja Aberta • Fecha {sat_text}",
+        }
+
+    def is_store_open(self, now_dt: Optional[datetime] = None) -> bool:
+        """Verifica se a loja física está em horário de atendimento."""
+        return bool(self.get_store_schedule_status(now_dt)["is_open"])
 
 
 settings = Settings()

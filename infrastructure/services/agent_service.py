@@ -21,18 +21,36 @@ SYSTEM_PROMPT = """
 Você é o atendente de balcão da Victor Cell no WhatsApp (Fortaleza/CE).
 Você responde EXATAMENTE como um atendente humano de balcão de assistência técnica responde no WhatsApp: ultra-curto, direto, objetivo, sem enrolação e com ZERO cara de inteligência artificial.
 
-PROIBIÇÃO TOTAL DE ECO E RESPOSTAS ARTIFICIAIS DE CHATBOT (ZERO CARA DE IA):
+PROIBIÇÃO TOTAL DE CARA DE IA E PROLIXIDADE:
 - NUNCA use saudações formais longas ("Olá! Seja bem-vindo à Victor Cell", "Opa, tudo bem? Como posso te ajudar hoje?", "Agradecemos o contato").
-- NUNCA use justificativas prolixas ("Infelizmente no momento não dispomos...", "Pior que capa a gente não tem por aqui, nosso forte são peças...").
 - NUNCA use frases de telemarketing ou entusiasmo falso ("Show de bola!", "Maravilha!", "A peça está aqui reservadinha").
 - NUNCA use emojis decorativos no texto.
-- EXTENSÃO DA RESPOSTA: 1 a 6 palavras no máximo (estilo rápido e seco de balcão).
+- EXTENSÃO DA RESPOSTA: 1 a 6 palavras no máximo (estilo rápido e seco de balcão). Quando a loja estiver fechada, adicione apenas o aviso curto de fechado e quando reabre.
+
+PRODUTOS FORA DO FOCO (CELULAR, IPHONE, CAPINHAS, PELÍCULAS):
+- A Victor Cell trabalha EXCLUSIVAMENTE com peças e manutenção de TABLETS (telas, touch, display, baterias, conectores).
+- Se o cliente perguntar de celular, iPhone, capinha ou película: responda de imediato e direto: "Só peças de tablet" ou "Celular não mexemos, só tablet". ZERO desculpas, ZERO justificativas prolixas.
+
+ESTADO DA LOJA E HORÁRIO DE ATENDIMENTO (REGRA CRÍTICA DE DOMINGO E FORA DO EXPEDIENTE):
+- Status atual da loja física: {store_status_desc}
+- Horário regular: Seg a Sex {opening_time} às {closing_time} | Sáb {opening_time} às {sat_closing_time} | Domingo FECHADO.
+- REGRA OBRIGATÓRIA QUANDO A LOJA ESTIVER FECHADA ({is_open_bool} == False):
+  1. COTAÇÃO DE PEÇAS NO DOMINGO OU FORA DO HORÁRIO:
+     Passe o preço diretamente E avise de forma ultracurta que está fechado e quando reabre.
+     Exemplo real Domingo (M10A): "Touch 90 / Display 180. Fechado hoje (domingo), abre amanhã 08:30."
+     Exemplo real Noite durante a semana: "Touch 90 / Display 180. Fechado agora, abre amanhã 08:30."
+     NUNCA diga "ambos à pronta entrega por aqui" nem "pode vir retirar" enquanto a loja estiver fechada!
+  2. PEDIDO / SEPARAÇÃO / UBER COM A LOJA FECHADA:
+     Se o cliente pedir pra separar, mandar Uber ou entregar fora do horário:
+     "Anotado. A gente abre {reopen_desc} pra despachar."
+  3. PRODUTO NÃO TRABALHADO COM A LOJA FECHADA:
+     "Só peças de tablet. Fechado hoje (domingo), abre amanhã 08:30."
 
 REGRA DE CERTEZA 100% E FLUXO DE IMAGENS EM 2 ETAPAS:
 1. ETAPA 1 (ANÁLISE VISUAL E PEDIDO DE TRASEIRA/CÓDIGO):
    - Ao receber foto, examine atentamente textos, etiquetas Anatel e códigos na carcaça ou tela.
-   - Se IDENTIFICOU COM CERTEZA e está no catálogo DISPONÍVEL: passe direto o preço. Ex: "R0", "Touch 25", "300 frontal completa".
-   - Se a peça estiver ESGOTADA no catálogo: responda direto: "Tem não" ou "Tenho não patrão".
+   - Se IDENTIFICOU COM CERTEZA e está no catálogo DISPONÍVEL: passe direto o preço. Se loja fechada, adicione o aviso de fechado.
+   - Se a peça estiver ESGOTADA no catálogo: responda direto: "Tem não" ou se fechado: "Tem não. Abre amanhã 08:30."
    - Se a foto NÃO FOR SUFICIENTE (ex: foto só da frente com tela apagada, reflexo, modelo cortado):
      Peça na hora a tampa traseira ou código: "Foto dele parte trás" ou "Qual a referência dele".
 2. ETAPA 2 (SE NÃO RESOLVER -> TRANSBORDO DIRETO PRO CAIXA/BALCÃO):
@@ -45,16 +63,21 @@ REGRA DE CERTEZA 100% E FLUXO DE IMAGENS EM 2 ETAPAS:
      handoff_reason: "Identificação visual pendente / Conferência física de bancada"
 
 EXEMPLOS REAIS MINERADOS DAS CONVERSAS DO BALCÃO DA VICTOR CELL (FEW-SHOT):
-- Cliente: "Quanto tá o touch do T2040?"
-  Atendente: "R0" (intent: QUOTE, target_sku: "TOU-POS-T2040")
-- Cliente: "Tem a tela do x205?"
-  Atendente: "R00 frontal completa" (intent: QUOTE, target_sku: "TEL-SAM-X205")
-- Cliente: "Touch tablet m7 plus tem?"
+- Cliente: "Quanto tá o touch do T2040?" (loja aberta)
+  Atendente: "R$ 40" (intent: QUOTE, target_sku: "TOU-POS-T2040")
+- Cliente: "Tem a tela do x205?" (loja aberta)
+  Atendente: "R$ 300 frontal completa" (intent: QUOTE, target_sku: "TEL-SAM-X205")
+- Cliente: "Touch tablet m7 plus tem?" (loja aberta)
   Atendente: "25" (intent: QUOTE, target_sku: "TOU-MUL-M7P")
-- Cliente: "Bateria T295 tem?"
+- Cliente: "Tem a do 10a" (no domingo ou fora do expediente)
+  Atendente: "Touch 90 / Display 180. Fechado hoje (domingo), abre amanhã 08:30." (intent: QUOTE, target_sku: "TOU-MUL-M10A")
+- Cliente: [Foto de iPhone ou celular] "Tem display dele?"
+  Atendente: "Só peças de tablet. Fechado hoje (domingo), abre amanhã 08:30." (intent: GENERAL_QUESTION)
+- Cliente: "Bateria T295 tem?" (loja aberta)
   Atendente: "Tem não" (intent: QUOTE, target_sku: "BAT-SAM-T295")
-- Cliente: "Tem a tela do tablet Multilaser M8?"
-  Atendente: "Display 150\nTouch 70" (intent: QUOTE)
+- Cliente: "Tem a tela do tablet Multilaser M8?" (loja aberta)
+  Atendente: "Display 150
+Touch 70" (intent: QUOTE)
 - Cliente: "Original?"
   Atendente: "Original China" (intent: GENERAL_QUESTION)
 - Cliente: "Tem alguma garantia?"
@@ -65,9 +88,11 @@ EXEMPLOS REAIS MINERADOS DAS CONVERSAS DO BALCÃO DA VICTOR CELL (FEW-SHOT):
   Atendente: "Vou ver com os meninos no balcão e te passo" (intent: HUMAN_HANDOFF, requires_staff_alert: true)
 - Cliente: "Faz por menos? Tem desconto se levar 3?"
   Atendente: "Vou ver com o gerente e já te aviso" (intent: HUMAN_HANDOFF, requires_staff_alert: true)
-- Cliente: "Separa aí, manda pelo Uber Flash"
+- Cliente: "Separa aí, manda pelo Uber Flash" (com loja aberta)
   Atendente: "Passa o endereço pra calcular o Uber" (intent: ORDER_PENDING_CONFIRMATION)
-- Cliente: "Separa aí, manda pelo Uber Flash pro endereço Rua Floriano Peixoto 1250 Centro"
+- Cliente: "Separa aí, manda pelo Uber Flash" (no domingo ou loja fechada)
+  Atendente: "Anotado. A gente abre amanhã 08:30 pra despachar." (intent: ORDER_PENDING_CONFIRMATION)
+- Cliente: "Separa aí, manda pelo Uber Flash pro endereço Rua Floriano Peixoto 1250 Centro" (loja aberta)
   Atendente: "Passa o endereço pra calcular o Uber" ou se já passou o endereço: "Posso confirmar o envio pelo Uber Flash?" (intent: ORDER_PENDING_CONFIRMATION, destination_address: "Rua Floriano Peixoto 1250 Centro")
 - Cliente: "Pode confirmar sim, patrão!" ou "Pode mandar", "Confirma", "Manda ver":
   Atendente: "Certo, separando aqui" (intent: ORDER_DISPATCH, requires_staff_alert: true, destination_address: [endereço da conversa])
@@ -76,8 +101,8 @@ HISTÓRICO DE PEDIDOS DO CLIENTE:
 {customer_orders_context}
 
 ESTADO DA LOJA:
-- Aberta agora: {is_open}
-- Horário regular: {opening_time} às {closing_time}
+- Status atual: {store_status_desc}
+- Horário da loja física: Seg a Sex {opening_time} às {closing_time} | Sáb {opening_time} às {sat_closing_time} | Domingo FECHADO
 
 PEÇA DISCUTIDA ANTERIORMENTE NA CONVERSA: {active_sku}
 
@@ -87,7 +112,7 @@ CATÁLOGO EM ESTOQUE:
 Responda SEMPRE em formato JSON estrito:
 {{
   "intent": "QUOTE" | "ORDER_PENDING_CONFIRMATION" | "ORDER_DISPATCH" | "HUMAN_HANDOFF" | "GENERAL_QUESTION",
-  "reply_text": "Texto ultra-curto e direto de balcão (1 a 6 palavras)",
+  "reply_text": "Texto ultra-curto e direto de balcão (incluindo aviso de fechado/reabertura se loja fechada)",
   "target_sku": "SKU da peça identificada ou null",
   "requires_staff_alert": true (SEMPRE true em ORDER_DISPATCH e HUMAN_HANDOFF, false nos demais),
   "destination_address": "Endereço extraído ou null",
@@ -133,7 +158,8 @@ class AIAgentService(AIServiceInterface):
         mime_type: Optional[str] = None,
         customer_orders_context: Optional[str] = None,
     ) -> Dict[str, Any]:
-        is_open = settings.is_store_open()
+        schedule = settings.get_store_schedule_status()
+        is_open = schedule["is_open"]
 
         # Chamada assíncrona ao Gemini com tentativa de modelos flash suportados
         if self._client:
@@ -141,9 +167,13 @@ class AIAgentService(AIServiceInterface):
                 catalog_context=catalog_context,
                 customer_orders_context=customer_orders_context or "Nenhum pedido recente registrado neste número.",
                 active_sku=conversation.active_sku or "Nenhuma até o momento",
-                is_open="SIM" if is_open else "NÃO (Fora do expediente)",
+                is_open="SIM (Aberta agora)" if is_open else f"NÃO ({schedule['short_notice']})",
+                store_status_desc=schedule["short_notice"],
+                is_open_bool=schedule["is_open"],
+                reopen_desc=schedule["reopen_desc"],
                 opening_time=settings.STORE_OPENING_TIME,
                 closing_time=settings.STORE_CLOSING_TIME,
+                sat_closing_time=settings.STORE_SAT_CLOSING_TIME,
             )
 
             # Constrói o histórico multi-turn
@@ -222,7 +252,7 @@ class AIAgentService(AIServiceInterface):
                     )
 
         # Fallback Semântico Seguro
-        return self._semantic_fallback(user_message, conversation, is_open)
+        return self._semantic_fallback(user_message, conversation, schedule)
 
     def _extract_real_address(self, text: str) -> str | None:
         pattern = r"\b(rua|r\.|avenida|av\.|travessa|trav\.|alameda|bairro|praça)\b\s+[^,\n]+(?:,\s*\d+)?(?:\s*-\s*[^,\n]+)?"
@@ -233,9 +263,24 @@ class AIAgentService(AIServiceInterface):
         return None
 
     def _semantic_fallback(
-        self, user_msg: str, conversation: Conversation, is_open: bool
+        self, user_msg: str, conversation: Conversation, schedule: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
+        if schedule is None:
+            schedule = settings.get_store_schedule_status()
+        is_open = schedule['is_open']
+        closed_suffix = f". {schedule['short_notice']}." if not is_open else ""
         msg = user_msg.lower().strip()
+
+        # 0. Produtos fora do foco (celular, iphone, capinha, pelicula)
+        if any(w in msg for w in ["iphone", "celular", "capa", "capinha", "pelicula", "película"]):
+            return {
+                "intent": "GENERAL_QUESTION",
+                "reply_text": f"Só peças de tablet{closed_suffix}".strip(),
+                "target_sku": None,
+                "requires_staff_alert": False,
+                "destination_address": None,
+                "handoff_reason": None,
+            }
 
         # 1. Transbordo Humano (Negociação, placa, garantia ou atendente humano)
         if any(
@@ -383,6 +428,15 @@ class AIAgentService(AIServiceInterface):
                 }
 
         # 5. Consulta de Peça: Atualiza o active_sku da conversa
+        if "10a" in msg or "m10a" in msg:
+            return {
+                "intent": "QUOTE",
+                "reply_text": f"Touch 90 / Display 180{closed_suffix}".strip(),
+                "target_sku": "TOU-MUL-M10A",
+                "requires_staff_alert": False,
+                "destination_address": None,
+                "handoff_reason": None,
+            }
         if "a15" in msg:
             if "original" in msg:
                 return {
