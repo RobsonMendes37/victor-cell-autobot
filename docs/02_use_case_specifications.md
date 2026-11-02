@@ -377,6 +377,54 @@ Componente de software hospedado em nuvem executando o pipeline de ingestão de 
 
 ---
 
+---
+
+### UC-11: Auditoria em Tempo Real e Inspeção Técnica de Sistema
+
+#### Metadados do Caso de Uso
+- **Identificador:** UC-11
+- **Ator Primário:** Administrador do Sistema / Gestor da Operação
+- **Atores Secundários:** Motor de Auditoria (`AuditLogEntry`), API REST
+- **Gatilho:** O administrador acessa a aba "Auditoria & Logs" no painel executivo para auditar decisões da IA, transbordos ou gargalos de latência.
+- **Pré-condições:** Usuário autenticado com sessão administrativa válida.
+- **Pós-condições de Sucesso:**
+  1. O sistema renderiza a trilha cronológica imutável com filtros por nível (`INFO`, `WARN`, `ERROR`), componente (`AI_ENGINE`, `ROUTER`, `NOTIFIER`, `REPO`, `ADMIN`, `ERP_SYNC`) e busca textual em tempo real.
+
+#### Fluxo Principal de Sucesso
+1. O Administrador abre a aba "Auditoria & Logs" no dashboard.
+2. O frontend executa requisição HTTP `GET /api/audit/logs?limit=100`.
+3. O endpoint valida o cookie HMAC, consulta o repositório ativo (`SqliteRepository` ou `PostgresRepository`) e retorna a lista ordenada de eventos.
+4. A tabela desktop exibe colunas com Timestamp, Nível (badge colorido), Componente (tag monoespaçada), Ação, Ator, Latência (ms) e Detalhes JSON.
+5. Em celulares, o sistema exibe cards touch otimizados com dados de auditoria colapsáveis.
+6. O Administrador pode clicar nos botões de filtro rápido (`INFO`, `WARN`, `ERROR`) ou digitar termos para filtragem instantânea sem recarregar a página.
+7. O caso de uso é concluído.
+
+---
+
+### UC-12: Parametrização Comercial Whitelabel e Perfil da Loja
+
+#### Metadados do Caso de Uso
+- **Identificador:** UC-12
+- **Ator Primário:** Gestor Comercial / Administrador do Tenant
+- **Atores Secundários:** Repositório de Perfil de Loja (`StoreProfile`), Motor Cognitivo (`AIAgentService`)
+- **Gatilho:** O gestor acessa a aba "Perfil da Loja" para ajustar o nome da empresa, cidade, nicho, palavras fora de escopo ou mensagens de recusa.
+- **Pré-condições:** Usuário autenticado no dashboard.
+- **Pós-condições de Sucesso:**
+  1. O perfil da loja é persistido no banco de dados e passa a orientar imediatamente o prompt e o fallback semântico da IA.
+  2. Um log de auditoria `STORE_PROFILE_UPDATED` é registrado automaticamente.
+
+#### Fluxo Principal de Sucesso
+1. O Gestor abre a aba "Perfil da Loja" no painel.
+2. O sistema recupera a configuração ativa via `GET /api/system/profile` e preenche o formulário.
+3. O Gestor altera as configurações (ex: nome da empresa para "Alpha Peças", palavras fora de escopo e mensagens de recusa).
+4. O Gestor clica em "Salvar Diretrizes Comerciais".
+5. O frontend envia `POST /api/system/profile` com payload JSON validado via Pydantic.
+6. O repositório salva o perfil no banco com timestamp UTC atualizado.
+7. O sistema emite log de auditoria com nível `INFO`, componente `ADMIN` e ator `dashboard_admin`.
+8. O frontend exibe toast de confirmação e atualiza os dados na tela.
+9. As próximas mensagens recebidas no WhatsApp utilizam imediatamente a nova identidade e regras de escopo.
+10. O caso de uso é concluído.
+
 ## 4. Matriz de Análise de Modos de Falha e Efeitos (FMEA)
 
 | Modo de Falha | Efeito Potencial | Causa Raiz | Mecanismo de Prevenção / Contingência | Severidade |

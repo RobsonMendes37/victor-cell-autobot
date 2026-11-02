@@ -1,214 +1,129 @@
-# 📱 Guia Visual de Cenários de Uso e Testes
-### Victor Cell — Assistente Inteligente de Vendas e Despacho via WhatsApp
+# Guia Visual de Cenários de Uso, Operação e Testes Automatizados
 
-> **Objetivo deste documento:** Apresentar de forma visual, simples e não técnica como o sistema atende os clientes no dia a dia, como ele reage em cada situação e o que acontece nos bastidores da loja física.
+**Sistema:** PecasBot Enterprise — Assistente Autônomo de Atendimento, Cotação e Despacho via WhatsApp  
+**Versão:** 2.2.0  
+**Data:** 02 de Novembro de 2026  
 
 ---
 
-## 🧭 Mapa Rápido dos Cenários
+## 1. Visão Geral dos Cenários de Operação
 
-| # | Cenário | O que o Cliente faz | O que o Bot faz | O que acontece na Loja |
+| # | Cenário Operacional | Entrada do Cliente | Comportamento do Bot | Ação nos Bastidores da Loja |
 | :-: | :--- | :--- | :--- | :--- |
-| **1** | **Cotação de Peça** | Pergunta o preço de uma tela | Informa valores (Original vs Paralela) e garantias | Guarda a peça na memória |
-| **2** | **"Separa por favor"** | Pede pra separar sem passar endereço | Confirma a peça e pede o endereço completo | Não cria pedido incompleto |
-| **3** | **Pedido de Uber Flash** | Envia o endereço completo de entrega | Confirma o pedido e avisa sobre o Pix/Uber | Toca alerta no WhatsApp do caixa |
-| **4** | **Dúvida de Frete** | Pergunta só quanto custa o Uber | Explica como funciona o cálculo | Não cria pedido indevido |
-| **5** | **Foto de Peça / Etiqueta** | Manda foto de etiqueta ou peça quebrada | Identifica o modelo exato pela imagem | Busca a peça certa no estoque |
-| **6** | **Mensagem de Áudio** | Manda áudio gravado na bancada | Ouve o áudio e responde em texto cordial | Atendimento sem fricção |
-| **7** | **Dono Assume a Conversa** | Dono digita no chat pelo celular | O bot se cala automaticamente por 3h | O humano assume o controle |
-| **8** | **Fora do Expediente** | Manda mensagem domingo ou à noite | Tira dúvidas e agenda para a manhã seguinte | Não promete entrega com loja fechada |
-| **9** | **Painel Power BI** | Dono abre o dashboard no computador | Exibe gráficos de faturamento e peças | Dados atualizados automaticamente |
+| **1** | **Cotação de Peça de Tablet** | "Quanto tá a tela do Tab A8?" | Resposta ultra-curta (1-6 palavras): `"Tela R$ 140 / Conector R$ 25"` | Registra SKU ativa na sessão |
+| **2** | **Rejeição Fora de Escopo** | "Amigo, tem tela de iPhone 11?" | Rejeição direta e polida: `"Só peças de tablet"` | Zero enrolação, foco 100% em tablets |
+| **3** | **Pedido Pendente (Endereço)** | "Separa pro Uber, Rua Barão do Rio Branco 1102" | Pergunta de confirmação: `"Confirma o envio pro endereço informado?"` | Pré-anota endereço no estado `WAITING_CONFIRMATION` |
+| **4** | **Confirmação Explícita de Envio** | "Sim, pode mandar!" | Confirmação e aviso: `"Separando a tela. Aguarde o Uber."` | Cria Pedido, baixa estoque e dispara alerta no celular da equipe |
+| **5** | **Retirada no Balcão Físico** | "Vou passar aí no balcão pra buscar" | Confirmação de separação de balcão | Dispara alerta para separar na bancada de saída |
+| **6** | **Transbordo Silencioso (Handoff)** | "Faz por 100 no Pix agora?" ou foto duvidosa | **Totalmente Silencioso:** Bot NÃO responde nada ao cliente | Alerta urgente via ntfy no celular da equipe para assumir |
+| **7** | **Intervenção Manual do Dono** | Dono digita no WhatsApp pelo celular | Bot detecta e pausa IA por 3 horas | Controle 100% humano sem conflitos |
+| **8** | **Fora do Expediente / Domingo** | Mensagem enviada domingo às 14h | Resposta com aviso de loja fechada e reabertura segunda 08:30 | Não promete entrega com loja fechada |
+| **9** | **Painel Executivo & Auditoria** | Gestor abre `/dashboard` no PC ou celular | Painel moderno com gráficos, KPIs e trilha de auditoria | Zero emojis, ícones SVG e logs em tempo real |
+| **10** | **Perfil Comercial Whitelabel** | Gestor altera nome ou nicho da loja | Aplica diretrizes em tempo real via `POST /api/system/profile` | Grava evento na auditoria |
 
 ---
 
-## 🔍 Detalhamento Visual dos Cenários
+## 2. Detalhamento dos Cenários de Bancada
 
 ### Cenário 1: Cotação Simples de Peça
 O técnico está na bancada com o aparelho do cliente e quer saber se a loja tem a peça e qual o valor.
 
 ```text
-[TÉCNICO] ➔ "Opa, bom dia! Tem tela do Galaxy A15?"
+[TÉCNICO] ➔ "Quanto tá a frontal do Tab A8?"
    │
    ▼
-[BOT VICTOR CELL] ➔ "Opa, bom dia meu patrão! Temos o A15 sim! Temos duas opções na bancada:
-                     1. Original Nacional (com aro): R$ 190,00 (90 dias de garantia)
-                     2. Paralela China Incell (sem aro): R$ 95,00
-                     Qual das duas você prefere que a gente separe pro seu serviço?"
+[BOT PECASBOT] ➔ "Tela R$ 140 / Conector R$ 25"
    │
    ▼
-[BASTIDORES] ➔ O sistema registra que o cliente está interessado na tela do A15.
-               Se ele disser "separa essa" em seguida, o bot já sabe exatamente qual é!
+[BASTIDORES] ➔ O sistema registra o SKU "TEL-SAM-A8" na conversa e grava log de cotação.
 ```
 
 ---
 
-### Cenário 2: Cliente pede para separar sem passar o endereço
-O cliente decide comprar, mas manda apenas uma mensagem rápida. O bot não se confunde e pede os dados de entrega.
+### Cenário 2: Pergunta sobre Smartphone / iPhone (Fora de Escopo)
+O cliente pergunta sobre uma peça que a loja não comercializa.
 
 ```text
-[TÉCNICO] ➔ "Separa uma original por favor!"
+[CLIENTE] ➔ "Vocês trocam tela de iPhone 13?"
    │
    ▼
-[BOT VICTOR CELL] ➔ "Show de bola, meu amigo! Já deixo separada aqui no balcão.
-                     Você vem retirar aqui na loja ou quer que a gente chame o Uber Flash?
-                     Se for pra mandar por Uber, me passa o endereço completo com número e bairro!"
+[BOT PECASBOT] ➔ "Só peças de tablet"
    │
    ▼
-[BASTIDORES] ➔ O bot entende que "por favor" é cortesia, não endereço.
-               Nenhum alerta falso é disparado até os dados estarem completos.
+[BASTIDORES] ➔ Resposta instantânea, zero desculpas prolixas, protegendo a equipe de conversas inúteis.
 ```
 
 ---
 
-### Cenário 3: Confirmação de Entrega via Uber Flash (Alerta no Caixa)
-O cliente envia o endereço de entrega para despacho imediato.
+### Cenário 3: Confirmação de Pedido em Duas Fases (Two-Phase Commit)
+Evita que corridas de Uber Flash sejam solicitadas por engano quando o cliente apenas informa um endereço de forma hipotética.
 
 ```text
-[TÉCNICO] ➔ "Manda por Uber Flash pra Rua Floriano Peixoto, 1250 - Centro"
+[CLIENTE] ➔ "Separa a tela pro Uber, Rua Barão do Rio Branco 1102"
    │
    ▼
-[BOT VICTOR CELL] ➔ "Fechado, patrão! Já anotei aqui: Rua Floriano Peixoto, 1250 - Centro.
-                     Os meninos do caixa já vão cotar a corrida no app do Uber Flash
-                     e em instantes te mandam o valor do frete e a chave Pix, beleza?"
+[BOT PECASBOT] ➔ "Confirma o envio pro endereço informado?"
    │
-   ├────────────────────────────────────────────────────────────────────────┐
-   ▼                                                                        ▼
-[ESTOQUE DO SISTEMA]                                          [WHATSAPP DO CAIXA / BALCÃO]
-Baixa automática de 1 unidade                                 Alerta urgente toca no celular dos rapazes:
-da Tela A15 Original no estoque                               "🚨 NOVO DESPACHO VIA UBER FLASH!
-                                                               • Cliente: Marcos Celulares (85 99123-4567)
-                                                               • Peça: Tela A15 Original (R$ 190,00)
-                                                               • Endereço: Rua Floriano Peixoto, 1250
-                                                               • Validade da Reserva: 2 Horas
-                                                               👉 Ação: Cotar Uber no app e mandar o Pix!"
+   ▼
+[CLIENTE] ➔ "Sim, pode mandar o Uber!"
+   │
+   ▼
+[BOT PECASBOT] ➔ "Separando a tela. Aguarde o Uber."
+   │
+   ▼
+[BASTIDORES] ➔ Pedido #ORD-xxx gravado no banco relacional.
+               Estoque decrementado em 1 unidade.
+               Alerta sonoro de alta prioridade emitido no celular da equipe via ntfy.sh.
 ```
 
 ---
 
-### Cenário 4: Pergunta sobre Frete sem Intenção de Compra
-O cliente quer apenas ter uma noção do valor de entrega antes de fechar serviço com o cliente dele.
+### Cenário 4: Transbordo Silencioso para Atendimento Humano
+Quando o cliente pede desconto, negocia valores ou envia foto que gera incerteza técnica.
 
 ```text
-[CLIENTE] ➔ "Quanto custa mais ou menos o Uber até a Messejana?"
+[CLIENTE] ➔ "Amigo, faz por 110 à vista no Pix que eu busco agora?"
    │
    ▼
-[BOT VICTOR CELL] ➔ "Opa meu amigo! O valor do Uber Flash a gente calcula na hora exata de mandar,
-                     direto pelo app, porque a taxa varia de acordo com o trânsito e o horário.
-                     Quando você for fechar a peça, é só mandar o endereço completo que os
-                     meninos do caixa calculam a rota certinho pra você, sem acréscimo nenhum!"
+[BOT PECASBOT] ➔ (Silêncio Absoluto - Nenhuma mensagem é enviada ao cliente)
    │
    ▼
-[BASTIDORES] ➔ Nenhuma peça é reservada e nenhum alerta é enviado ao caixa.
+[CELULAR DA EQUIPE] ➔ Notificação sonora imediata:
+                       "⚠️ ATENDIMENTO HUMANO REQUISITADO"
+                       "Cliente: Carlos (85 99999-1234) - Motivo: Negociação de Preço"
+                       "A IA não respondeu. Assuma diretamente no WhatsApp!"
 ```
 
 ---
 
-### Cenário 5: Cliente envia Foto da Peça ou da Etiqueta (Multimodal)
-O técnico não sabe o código do modelo do tablet ou está na dúvida se a carcaça/conector é compatível.
+## 3. Matriz da Suíte de Testes Automatizados (89 Testes / 100% Aprovados)
 
-```text
-[TÉCNICO] ➔ [Envia foto da tampa traseira do tablet mostrando o código 'SM-X200']
-   │
-   ▼
-[INTELIGÊNCIA GEMINI VISION] ➔ Analisa a foto, dá zoom na inscrição e lê: "Samsung Tab A8 SM-X200"
-   │
-   ▼
-[BOT VICTOR CELL] ➔ "Opa, vi aqui na foto! É o Samsung Tab A8 (modelo SM-X200).
-                     A gente tem a tela frontal 1ª linha por R$ 140,00 e o conector
-                     de carga por R$ 25,00. Qual dessas peças você tá precisando?"
-```
+O sistema possui uma suíte completa de testes automatizados garantindo que nenhuma regressão ocorra:
 
----
-
-### Cenário 6: Cliente envia Mensagem de Áudio
-O técnico está com as mãos ocupadas soldando na bancada e grava um áudio no WhatsApp.
-
-```text
-[TÉCNICO] ➔ 🎙️ [Áudio de 6 segundos: "Fala parceiro, tem conector do Tab A8 pronta entrega?"]
-   │
-   ▼
-[INTELIGÊNCIA GEMINI AUDIO] ➔ Escuta o áudio, filtra o barulho de fundo e entende a dúvida técnica.
-   │
-   ▼
-[BOT VICTOR CELL] ➔ "Opa meu patrão! Temos sim a pronta entrega! O conector do Tab A8 tá saindo a R$ 25,00.
-                     Vai precisar de quantas unidades pra bancada hoje?"
-```
+| Arquivo de Teste | Quantidade | Escopo Validado |
+| :--- | :---: | :--- |
+| `tests/test_domain.py` | 6 | Entidades puras, regras de garantia, estados de conversa e horários comerciais. |
+| `tests/test_domain_extended.py` | 5 | Casos de borda de agendamento de domingo e expiração de reservas. |
+| `tests/test_agent_service_deep.py` | 8 | Extração de endereços reais, fallbacks semânticos, cotação e handoff. |
+| `tests/test_evolution_gateway.py` | 5 | Envio de mensagens, gravação de mensagens enviadas, alertas ntfy e áudio/imagem base64. |
+| `tests/test_sqlite_repository_deep.py` | 8 | Persistência de sessões, ciclo de vida de pedidos, disjuntor global e anti-loop. |
+| `tests/test_inventory_adapters_deep.py` | 8 | Circuit breaker do Bling ERP, webhook de saldo, rate limiting e resiliência de cache. |
+| `tests/test_inventory_pluggable.py` | 4 | Resolução de factory de inventário e proxy de leitura transparente. |
+| `tests/test_google_sheets_repository_deep.py` | 2 | Parser de linhas de planilha e integração Google Sheets API. |
+| `tests/test_debounce_buffer_deep.py` | 1 | Agregação assíncrona de rajadas de mensagens no WhatsApp em janela de 3 segundos. |
+| `tests/test_api_endpoints.py` | 27 | Autenticação HMAC, sessões, relatórios de conversão, filtros de analytics e webhooks. |
+| `tests/test_use_cases.py` | 7 | Orquestração ponta a ponta do `ProcessIncomingMessageUseCase`, pós-venda e handoff. |
+| `tests/test_audit_and_enterprise_features.py` | 8 | Multi-tenancy (`StoreProfile`), Trilha de Auditoria, Notificador Multi-Canal e Postgres. |
+| **Total** | **89** | **100% de Aprovação em 49.40s** |
 
 ---
 
-### Cenário 7: O Dono da Loja Intervém no Chat (Silenciamento Automático)
-O cliente pede um desconto especial e o dono decide negociar pessoalmente pelo celular.
-
-```text
-[CLIENTE] ➔ "Se eu levar 3 telas dessa, você consegue fazer por R$ 160 cada?"
-   │
-   ▼
-[DONO DA LOJA DIGITA NO CELULAR] ➔ "Opa meu amigo, sou o Victor! Deixa comigo que fecho as 3 por R$ 170 pra você!"
-   │
-   ▼
-[BOT VICTOR CELL DETECTA] ➔ "O dono começou a falar no WhatsApp. Silenciando IA por 3 horas nesta conversa."
-   │
-   ▼
-[CLIENTE RESPONDE] ➔ "Fechado Victor, pode mandar!"
-   │
-   ▼
-[BOT PERMANECE EM SILÊNCIO] ➔ A IA não se intromete e deixa o dono concluir a venda.
-   │
-   ▼
-[DONO DIGITA #bot] ➔ O dono envia o comando secreto e a IA volta a atender no piloto automático.
-```
-
----
-
-### Cenário 8: Mensagem Fora do Horário Comercial (Domingo ou Noite)
-Um cliente manda mensagem no sábado à noite ou domingo com a loja física fechada.
-
-```text
-[CLIENTE (Domingo 21h)] ➔ "Tem bateria do A15 original? Separa uma aí!"
-   │
-   ▼
-[BOT VICTOR CELL] ➔ "Show de bola, meu patrão! Temos a bateria original do A15 sim (R$ 110,00).
-                     Como nossa expedição física já encerrou o expediente por hoje, já deixei
-                     o seu pedido na fila prioritária de amanhã!
-                     Às 08:30 em ponto os meninos do caixa cotam o Uber Flash e te mandam
-                     o Pix para despachar logo na primeira hora, combinado?"
-```
-
----
-
-### Cenário 9: Painel de Controle e Gestão (Power BI)
-Tudo o que acontece nas conversas vira inteligência de vendas para o proprietário da loja.
-
-```text
-              [CONVERSAS DO WHATSAPP]
-                        │
-                        ▼ (Registrado automaticamente)
-        ┌───────────────────────────────────────────┐
-        │ 📁 data/Logs_Expedicao_PowerBI.csv        │
-        │ 📁 data/Estoque_Catalogo.csv              │
-        └─────────────────────┬─────────────────────┘
-                              │
-                              ▼ Conecta direto
-                  ┌───────────────────────┐
-                  │   📊 PAINEL POWER BI   │
-                  └───────────────────────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        ▼                     ▼                     ▼
-[Peças Mais Vendidas]   [Faturamento Diário]   [Bairros c/ mais Uber]
-Telas A15 lideram       R$ 1.850,00 em pedidos Centro e Messejana
-com 42% das saídas      fechados via bot       concentram 68% dos envios
-```
-
----
-
-## 💡 Como Testar Tudo Isso na Prática?
-
-Você pode testar todos esses cenários com apenas 1 comando no terminal da máquina:
+## 4. Como Executar a Suíte de Qualidade
 
 ```bash
-cd /home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api
-.venv/bin/python test_bot.py
-```
+# Executa o Quality Gate completo (Ruff Lint + Mypy Typecheck + Pytest 89 testes + Hot Backup)
+./scripts/quality_gate.sh
 
-O script executará cada um desses 8 passos com mensagens reais e mostrará os alertas gerados para o balcão e os arquivos prontos para o Power BI!
+# Ou via Makefile
+make check
+```

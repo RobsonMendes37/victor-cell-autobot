@@ -206,6 +206,15 @@ Para assegurar o padrão de atendimento do balcão real e evitar degradação da
 
 ---
 
+- **FR-16: Perfil Comercial Dinâmico & Configuração Whitelabel (`StoreProfile`):**
+  - O sistema deve permitir que o lojista customize dinamicamente o nome da empresa, polo regional, nicho comercial, palavras-chave fora de escopo, mensagem padrão de recusa polida e modalidades de entrega aceitas através do painel administrativo e da rota `POST /api/system/profile`, sem necessidade de reiniciar o serviço.
+- **FR-17: Trilha de Auditoria e Observabilidade Técnica (`AuditLogEntry`):**
+  - O sistema deve persistir um registro imutável de todas as decisões cognitivas tomadas pela IA, eventos de transbordo humano, disparos de notificações para a equipe e alterações cadastrais, gravando timestamp ISO 8601, nível (`INFO`, `WARN`, `ERROR`), componente (`AI_ENGINE`, `ROUTER`, `NOTIFIER`, `REPO`, `ADMIN`, `ERP_SYNC`), ator, latência em milissegundos e payload JSON estruturado.
+- **FR-18: Suporte Pluggable a Banco Relacional Enterprise (PostgreSQL & SQLite):**
+  - O sistema deve implementar uma fábrica conectável de persistência (`create_database_repository`) capaz de operar de forma transparente em nós locais leves (SQLite com `aiosqlite`) e em ambientes corporativos de grande porte multi-cliente (PostgreSQL com `asyncpg` e pool assíncrono de conexões).
+- **FR-19: Despacho Multi-Canal Modular para Equipe (`StaffNotificationDispatcher`):**
+  - O sistema deve implementar arquitetura pluggable de mensageria para a equipe interna, despachando alertas sonoros em múltiplos canais simultâneos (notificação push no celular via ntfy.sh, ligação telefônica automatizada de voz e webhooks corporativos).
+
 ## 6. Requisitos Não-Funcionais (Non-Functional Requirements)
 
 | Identificador | Categoria | Especificação Técnica | Métrica / Critério de Aceite |
