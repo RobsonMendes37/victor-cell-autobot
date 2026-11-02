@@ -20,6 +20,10 @@
 | **8** | **Fora do Expediente / Domingo** | Mensagem enviada domingo às 14h | Resposta com aviso de loja fechada e reabertura segunda 08:30 | Não promete entrega com loja fechada |
 | **9** | **Painel Executivo & Auditoria** | Gestor abre `/dashboard` no PC ou celular | Painel moderno com gráficos, KPIs e trilha de auditoria | Zero emojis, ícones SVG e logs em tempo real |
 | **10** | **Perfil Comercial Whitelabel** | Gestor altera nome ou nicho da loja | Aplica diretrizes em tempo real via `POST /api/system/profile` | Grava evento na auditoria |
+| **11** | **Mudança de Preço no ERP** | Preço muda no Bling ou cliente contesta | Registra `PRICE_CHANGED` e transborda silenciosamente se houver contestação | Atendente negocia valor sem bate-boca de robô |
+| **12** | **Guarda Anti-Overbooking** | 2 clientes compram a última unidade | Bloqueia a 2ª compra com aviso "acabou de esgotar" | Zero furos de estoque, log `OVERBOOKING_BLOCKED` |
+| **13** | **Reabertura Inteligente** | Cliente cota nova peça após 30m ou loja fecha | IA reativa automaticamente (`AI_ACTIVE`) | Cliente não fica no vácuo se o humano demorar |
+| **14** | **Cache Rápido de FAQ** | "Qual o endereço da loja física?" | Responde em <0.05ms com 0 tokens (Pix bloqueado para humano) | Resposta ultra-rápida sem gastar cota de IA |
 
 ---
 
@@ -121,7 +125,7 @@ O sistema possui uma suíte completa de testes automatizados garantindo que nenh
 | `tests/test_erp_auto_ingestion.py` | 2 | Auto-ingestão de novos produtos via Webhook do ERP Bling v3 e Memory Adapter. |
 | `tests/test_atomic_reservation_and_anti_overbooking.py` | 2 | Guarda de Reserva Atômica e proteção contra overbooking simultâneo no balcão. |
 | `tests/test_intelligent_ai_reopen.py` | 3 | Reabertura inteligente da IA em loja fechada e pós-tolerância de 30m com nova cotação. |
-| `tests/test_fast_faq_cache.py` | 4 | Respostas em <0.05ms com zero tokens para endereço, Pix e horário sem interceptar cotações. |
+| `tests/test_fast_faq_cache.py` | 4 | Respostas em <0.05ms com zero tokens para endereço e horário, com bloqueio de Pix para garantir transbordo ao caixa humano. |
 | `tests/test_overbooking_audit_metric.py` | 1 | Telemetria e auditoria de pedidos bloqueados por falta de estoque. |
 | **Total** | **118** | **100% de Aprovação em 44.09s** |
 

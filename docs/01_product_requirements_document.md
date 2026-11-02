@@ -215,6 +215,33 @@ Para assegurar o padrão de atendimento do balcão real e evitar degradação da
 - **FR-19: Despacho Multi-Canal Modular para Equipe (`StaffNotificationDispatcher`):**
   - O sistema deve implementar arquitetura pluggable de mensageria para a equipe interna, despachando alertas sonoros em múltiplos canais simultâneos (notificação push no celular via ntfy.sh, ligação telefônica automatizada de voz e webhooks corporativos).
 
+
+#### [FR-20] Governança de Alteração de Preços e Sincronização Dinâmica (PRICE_CHANGED)
+- **Prioridade:** P0
+- **Descrição:** O sistema deve sincronizar em tempo real alterações de preços recebidas via Webhook do ERP Bling v3 ou atualizações de inventário, registrando auditoria imutável (`PRICE_CHANGED`). As cotações devem refletir o preço oficial do milissegundo. No momento do fechamento da reserva, o valor deve ser validado diretamente contra a base de dados oficial. Caso o cliente conteste o valor cotado anteriormente ou solicite descontos, o sistema deve acionar transbordo silencioso imediato (`HUMAN_HANDOFF`) para negociação humana, proibindo debates algorítmicos.
+
+#### [FR-21] Governança Estrita do Fluxo Pix (Transbordo Humano Silencioso)
+- **Prioridade:** P0
+- **Descrição:** O agente autônomo é terminantemente proibido de enviar chave Pix, dados bancários ou confirmação de pagamento de forma automática. Qualquer menção ou solicitação de Pix pelo cliente (*"passa o pix"*, *"manda a chave"*, *"chave pra pagar"*) deve acionar transbordo silencioso imediato (`HUMAN_HANDOFF`), delegando a cobrança e o envio dos dados estritamente ao operador do caixa humano da loja física.
+
+#### [FR-22] Reabertura Inteligente de Sessões da IA Pós-Intervenção Humana
+- **Prioridade:** P1
+- **Descrição:** O sistema deve manter o robô pausado enquanto o atendente humano estiver operando o chat, mas deve reativar suavemente a IA (`AI_ACTIVE`) sob dois gatilhos determinísticos:
+  1. *Loja Fechada:* Se o horário comercial estiver encerrado ou for domingo, a IA assume para passar preços e aviso de reabertura.
+  2. *Janela de Tolerância de 30 Minutos:* Se passaram mais de 30 minutos desde a última mensagem do operador humano e o cliente enviar uma nova cotação de peça (*"quanto"*, *"valor"*, *"tela"*, *"touch"*, *"display"*).
+
+#### [FR-23] Cache Rápido de FAQ Determinístico com Latência < 0.05ms
+- **Prioridade:** P1
+- **Descrição:** Dúvidas institucionais de alta repetição sobre endereço da loja física e horários de funcionamento devem ser interceptadas em memória RAM local pelo `FastFaqCacheService` sem acionar o Google Gemini, consumindo zero tokens e respondendo em menos de 0.05ms. Consultas contendo termos de peças ou solicitações de Pix são expressamente ignoradas pelo cache para seguir ao pipeline adequado.
+
+#### [FR-24] Auto-Ingestão de Novos Produtos em Tempo Real via Webhook ERP
+- **Prioridade:** P1
+- **Descrição:** Quando uma nova peça for cadastrada no Bling ERP e disparar o evento `estoque.alterado`, o `BlingV3InventoryAdapter` deve injetar dinamicamente o novo SKU no catálogo em memória sem necessidade de reinicialização do servidor.
+
+#### [FR-25] Guarda Atômica Anti-Overbooking de Estoque
+- **Prioridade:** P0
+- **Descrição:** A dedução de estoque (`decrement_stock`) deve ser executada de forma atômica antes da criação e persistência do pedido. Caso o saldo seja insuficiente, a criação do pedido é cancelada, o evento de auditoria `OVERBOOKING_BLOCKED` é persistido, a métrica Prometheus é incrementada e o cliente recebe mensagem imediata informando esgotamento da peça.
+
 ## 6. Requisitos Não-Funcionais (Non-Functional Requirements)
 
 | Identificador | Categoria | Especificação Técnica | Métrica / Critério de Aceite |
@@ -227,6 +254,12 @@ Para assegurar o padrão de atendimento do balcão real e evitar degradação da
 | **NFR-06** | **Privacidade** | Mascaramento de dados confidenciais e credenciais em logs e telas. | Chave Gemini exibida apenas com 6 primeiros e 4 últimos dígitos (`AIzaSy...789x`). |
 | **NFR-07** | **Eficiência** | Consumo de recursos de computação na nuvem (Oracle Cloud Always Free). | Uso de memória RAM $\le 800\text{ MB}$ para o container Python do backend. |
 | **NFR-08** | **Compatibilidade** | Conformidade de código e testes com versões modernas do interpretador. | Python 3.13+, tipagem estática com MyPy/Pydantic v2 e conformidade PEP 8. |
+| **NFR-09** | **Resiliência** | Circuit Breaker para Provedor de IA (Google Gemini). | Estados CLOSED, OPEN, HALF-OPEN; fast-fallback e contenção de erros HTTP 429. |
+| **NFR-10** | **Tolerância** | Normalização Canônica e Busca Fuzzy de Peças (Levenshtein). | Tolerância a erros de digitação (similaridade $\ge 0.85$) e codinomes (T220, NB304). |
+| **NFR-11** | **Segurança** | Rate Limiting por Janela Deslizante (Anti-DoS). | Máximo de 25 req/min por celular e 30 req/min por IP com resposta HTTP 429. |
+| **NFR-12** | **Observabilidade** | Exportador OpenMetrics / Prometheus. | Endpoint `GET /metrics` com latência P95, contadores atômicos e erros. |
+| **NFR-13** | **Notificações** | Ações Push NTFY com Deep Link no WhatsApp. | Link de 1 toque (`wa.me/{phone}`) para abertura instantânea do chat do cliente. |
+
 
 ---
 

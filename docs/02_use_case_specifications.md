@@ -222,7 +222,7 @@ Componente de software hospedado em nuvem executando o pipeline de ingestão de 
    - O sistema valida que a conversa estava em `WAITING_CONFIRMATION` e reconhece a afirmação.
    - O sistema classifica o evento como `ORDER_DISPATCH`.
    - Um novo pedido é persistido no SQLite com status `PENDING_SEPARATION`, gerando o identificador `ped_[timestamp]_[id]`.
-   - O sistema gera a resposta final ao cliente: `"Certo, separando aqui pra mandar pelo Uber Flash pro endereço: Rua Floriano Peixoto 1250 Centro. Já te passo o Pix."`.
+   - O sistema gera a resposta final ao cliente: `"Certo, separando aqui pra mandar pelo Uber Flash pro endereço: Rua Floriano Peixoto 1250 Centro. A equipe do caixa já entra em contato pra confirmar o frete e o pagamento."`.
 6. O sistema emite notificação de despacho prioritária via ntfy para o aplicativo dos funcionários:
    - *Conteúdo:* `"Separar Peça: [SKU] | Destino: Rua Floriano Peixoto 1250 Centro | Cliente: [Telefone] | Chamar Uber Flash!"`.
 7. O operador humano do balcão assume o chat para informar o valor exato da corrida do Uber e enviar a chave Pix.

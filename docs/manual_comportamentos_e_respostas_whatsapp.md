@@ -126,12 +126,40 @@ graph TD
 * **Etapa 1 (`ORDER_PENDING_CONFIRMATION`):** O cliente passa o endereço. O bot responde:  
   `Anotado: [Endereço]. Posso confirmar o envio pelo Uber Flash?`
 * **Etapa 2 (`ORDER_DISPATCH`):** O cliente confirma (*"Pode", "Sim", "Confirma"*):
-  - Bot responde: `Certo, separando aqui pra mandar pelo Uber Flash pro endereço: [Endereço]. Já te passo o Pix.`
+  - Bot responde: `Certo, separando aqui pra mandar pelo Uber Flash pro endereço: [Endereço]. A equipe do caixa já entra em contato pra confirmar o frete e o pagamento.`
   - Baixa 1 unidade do estoque imediatamente no banco de dados.
   - Alerta a equipe com validade da reserva de 2 horas (fuso de Fortaleza).
   - Se for domingo/fechado: `Anotado. A gente abre amanhã 08:30 pra despachar.`
 
 ---
+
+
+---
+
+### 2.7 Governança Estrita do Pix (100% Atendimento Humano)
+* **Regra Inegociável:** O robô **NUNCA** envia chave Pix, dados bancários ou pede comprovantes automaticamente. Perguntas sobre Pix no WhatsApp significam que o cliente está pronto para pagar ou quer negociar.
+* **Comportamento:** O robô silencia imediatamente (`reply_text: ""`) e aciona **Transbordo Silencioso (`HUMAN_HANDOFF`)**.
+* **Ação nos Bastidores:** Dispara notificação urgente no celular do caixa para que o atendente humano envie a chave Pix correta, calcule o frete exato do Uber e confira o comprovante.
+
+| Mensagem do Cliente | Resposta do Bot | Ação nos Bastidores |
+| :--- | :--- | :--- |
+| *"Qual a chave pix?"* | *(Silêncio total - zero texto)* | Alerta no caixa: "Cliente pediu chave Pix" |
+| *"Manda o pix pra eu pagar"* | *(Silêncio total - zero texto)* | Alerta no caixa: "Cliente solicitou dados de pagamento" |
+| *"Tem desconto no Pix?"* | *(Silêncio total - zero texto)* | Alerta no balcão: "Cliente pediu desconto no Pix" |
+
+---
+
+### 2.8 Mudança de Preço e Contestação Comercial
+* **Cenário:** O preço do produto foi reajustado no Bling ERP após a cotação inicial, ou o cliente tenta barganhar o valor dizendo que foi cotado mais barato antes.
+* **Proibição de Debate Algorítmico:** O robô **NÃO** deve tentar justificar aumentos, não inventa que "o sistema subiu o preço" e não concede descontos por conta própria.
+* **Comportamento:** Silêncio total do robô + Transbordo Silencioso (`HUMAN_HANDOFF`).
+* **Ação nos Bastidores:** O atendente humano do balcão assume o WhatsApp para avaliar a fidelidade da assistência técnica parceira e negociar diretamente.
+
+| Mensagem do Cliente | Resposta do Bot | Ação nos Bastidores |
+| :--- | :--- | :--- |
+| *"Ué, mas você não falou que era 180?"* | *(Silêncio total - zero texto)* | Alerta urgente: "Cliente contestou valor cotado anteriormente" |
+| *"Faz por 160 que levo agora"* | *(Silêncio total - zero texto)* | Alerta urgente: "Proposta de preço abaixo da tabela" |
+| *"No outro WhatsApp me falaram outro preço"* | *(Silêncio total - zero texto)* | Alerta urgente: "Divergência de preço apontada pelo cliente" |
 
 ## 3. Comportamento por Horário de Atendimento
 

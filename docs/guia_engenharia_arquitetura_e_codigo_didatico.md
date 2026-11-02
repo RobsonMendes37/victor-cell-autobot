@@ -1,16 +1,34 @@
 # Guia Definitivo de Engenharia, Arquitetura e Código Didático
+
 ## Do Zero ao Mestre: Compreendendo Cada Linha, Sintaxe e Conexão do PecasBot
 
-**Autor:** Antigravity Engineering & Architecture  
-**Público-Alvo:** Desenvolvedores de qualquer stack (mesmo sem experiência prévia em Python) e Gestores Técnicos  
-**Versão da Plataforma:** 2.2.0  
-**Data:** 02 de Novembro de 2026  
+**Autor:** Antigravity Engineering & Architecture
+**Público-Alvo:** Desenvolvedores de qualquer stack (mesmo sem experiência prévia em Python) e Gestores Técnicos
+**Versão da Plataforma:** 2.2.0
+**Data:** 02 de Novembro de 2026
+
+---
+
+### 📑 Índice Geral do Guia
+
+* [1. Introdução Didática: O que é o PecasBot?](#1-introdução-didática-o-que-é-o-pecasbot)
+* [2. Fundamentos da Linguagem Python Moderna (3.13) & Convenções de Sintaxe](#2-fundamentos-da-linguagem-python-moderna-313--convenções-de-sintaxe)
+* [3. Arquitetura Limpa (Clean Architecture) do PecasBot](#3-arquitetura-limpa-clean-architecture-do-pecasbot)
+* [4. Anatomia Completa do Código: Arquivo por Arquivo](#4-anatomia-completa-do-código-arquivo-por-arquivo)
+* [5. Como o Sistema Aprendeu? (In-Context Learning vs Fine-Tuning)](#5-como-o-sistema-aprendeu-in-context-learning-vs-fine-tuning)
+* [6. A Esteira de Qualidade de Big Tech (Quality Gate)](#6-a-esteira-de-qualidade-de-big-tech-quality-gate)
+* [7. Glossário de Termos Técnicos do Projeto](#7-glossário-de-termos-técnicos-do-projeto)
+* [8. Resiliência Extrema, Segurança de Borda & Inteligência Algorítmica (Deep Dive)](#8-resiliência-extrema-segurança-de-borda--inteligência-algorítmica-deep-dive)
+* [9. Engenharia de Notificações, Auto-Ingestion de ERP & Atomicidade Transacional](#9-engenharia-de-notificações-auto-ingestion-de-erp--atomicidade-transacional)
+* [10. Reabertura Inteligente de Sessões, Cache Rápido de FAQ e Gestão de Ruptura de Estoque](#10-reabertura-inteligente-de-sessões-cache-rápido-de-faq-e-gestão-de-ruptura-de-estoque)
+* [11. Governança de Mudança de Preços, Sincronização Dinâmica com ERP e Tratamento de Divergências](#11-governança-de-mudança-de-preços-sincronização-dinâmica-com-erp-e-tratamento-de-divergências)
 
 ---
 
 ## 1. Introdução Didática: O que é o PecasBot?
 
 Imagine uma assistência técnica física especializada em peças de tablets em uma cidade movimentada. Todo dia, dezenas de técnicos de bancada chamam no WhatsApp perguntando:
+
 * *"Quanto tá a tela do Tab A8?"*
 * *"Vocês trocam tela de iPhone?"*
 * *"Separa pra mim que eu vou mandar o Uber Flash pegar aí!"*
@@ -18,6 +36,7 @@ Imagine uma assistência técnica física especializada em peças de tablets em 
 Se o atendente do balcão demorar 5 minutos para responder ou responder de forma prolixa com textos quilométricos de robô (*"Olá! Seja bem-vindo à nossa empresa, como posso ajudá-lo hoje?"*), o cliente desiste e compra no concorrente da rua de trás. No comércio de peças, a resposta precisa ser **ultra-curta, direta, instantânea (menos de 2 segundos) e sem enrolação** (ex: *"Tela R$ 140 / Conector R$ 25"*).
 
 O **PecasBot** é um robô de software de inteligência artificial de alta performance que:
+
 1. Recebe a mensagem do cliente pelo WhatsApp via Webhook.
 2. Identifica se a loja está aberta ou fechada com base no fuso horário local (Fortaleza/CE).
 3. Consulta o catálogo de peças com latência de milissegundos.
@@ -32,6 +51,7 @@ O **PecasBot** é um robô de software de inteligência artificial de alta perfo
 Se você vem do Java, C#, TypeScript ou PHP, o Python pode parecer simples demais à primeira vista por não usar chaves `{}` nem ponto e vírgula `;`. No entanto, em sistemas corporativos de alta escala, utilizamos convenções de engenharia muito específicas.
 
 ### 2.1. Indentação como Bloco de Código
+
 Em Python, o código é agrupado pela **indentação** (obrigatoriamente 4 espaços). Se duas linhas estão no mesmo nível de recuo, pertencem ao mesmo bloco.
 
 ```python
@@ -46,6 +66,7 @@ registrar_log()
 ---
 
 ### 2.2. Tipagem Estática Opcional (Type Hinting)
+
 Por padrão, Python é dinamicamente tipado. No entanto, no PecasBot utilizamos **Type Hints** em 100% do código para garantir segurança em tempo de desenvolvimento e permitir que o compilador de tipos `mypy` encontre erros antes de o código ir para produção:
 
 ```python
@@ -57,6 +78,7 @@ def calcular_frete(peso_kg: float, distancia_km: float) -> float:
 ```
 
 #### Tipos Especiais Utilizados:
+
 * `Optional[str]`: Significa que a variável pode ser uma string (`"Rua 1"`) ou pode ser vazia (`None`).
 * `List[Product]`: Uma lista contendo exclusivamente instâncias da entidade `Product`.
 * `Dict[str, Any]`: Um dicionário (chave-valor, similar a um Objeto/JSON) onde as chaves são textos e os valores podem ser qualquer tipo.
@@ -109,11 +131,13 @@ class OrderStatus(Enum):
 ### 2.5. Programação Assíncrona (`async` e `await`)
 
 O PecasBot processa centenas de mensagens ao mesmo tempo. Se usássemos programação síncrona tradicional:
+
 1. Chega a mensagem do Cliente A.
 2. O servidor trava esperando o Gemini responder (leva 1.2 segundos).
 3. Enquanto isso, o Cliente B manda mensagem e fica na fila esperando.
 
 Com programação assíncrona (`asyncio`):
+
 * O garçom (servidor) anota o pedido do Cliente A e envia para a cozinha (Gemini).
 * Enquanto a cozinha prepara o prato, o garçom atende o Cliente B e o Cliente C.
 * Quando o prato do Cliente A fica pronto (`await`), o garçom entrega a resposta.
@@ -191,6 +215,7 @@ Vamos inspecionar a função, sintaxe e detalhes de cada arquivo vital do reposi
 Este é o arquivo mais importante do sistema. Ele define a verdade sobre o negócio sem depender de bibliotecas externas (nem banco, nem web).
 
 #### 1. `StoreProfile` (Configuração Comercial Whitelabel)
+
 * **Objetivo:** Permite que o software atenda a Victor Cell hoje, e amanhã seja vendido para uma distribuidora de autopeças ou assistência de notebooks apenas mudando atributos.
 * **Atributos:**
   * `store_name`: Nome da loja (ex: `"Victor Cell"`).
@@ -203,9 +228,11 @@ Este é o arquivo mais importante do sistema. Ele define a verdade sobre o negó
       t = text.lower()
       return any(k.lower() in t for k in self.out_of_scope_keywords)
   ```
+
   *Explicação sintática:* O comando `any(...)` percorre cada palavra proibida `k` e retorna `True` se qualquer uma delas estiver presente no texto do cliente.
 
 #### 2. `Conversation` (Sessão de Conversa no WhatsApp)
+
 * **Objetivo:** Representa a conversa com um número de telefone específico ao longo do tempo.
 * **Atributos:**
   * `customer_phone`: Número limpo (somente dígitos, ex: `"5585991823412"`).
@@ -216,6 +243,7 @@ Este é o arquivo mais importante do sistema. Ele define a verdade sobre o negó
   Define o estado para `HUMAN_ACTIVE` e calcula o horário limite de silêncio do bot.
 
 #### 3. `AuditLogEntry` (Observabilidade e Auditoria)
+
 * **Objetivo:** Gravar uma trilha imutável de cada decisão tomada no sistema.
 * **Atributos:**
   * `id`: Identificador único UUIDv4 gerado automaticamente.
@@ -253,15 +281,16 @@ Para permitir que o sistema funcione tanto no notebook do lojista (SQLite) quant
 
 #### Diferenças Sintáticas e Técnicas Cruciais:
 
-| Aspecto | SQLite (`SqliteRepository`) | PostgreSQL (`PostgresRepository`) |
-| :--- | :--- | :--- |
-| **Driver Python** | `aiosqlite` (baseado em arquivos C embebidos) | `asyncpg` (driver assíncrono nativo em binário puro) |
-| **Placeholders SQL** | Utiliza pontos de interrogação `?` (`WHERE id = ?`) | Utiliza parâmetros numerados `$1, $2` (`WHERE id = $1`) |
-| **Pooling de Conexões** | Conecta e desconecta por requisição com locks em arquivo | Mantém um **Pool** permanente de 5 a 30 conexões abertas |
-| **Tipos de Dados** | Texto, Inteiro, Real e Blob genérico | `TIMESTAMPTZ`, `JSONB`, `NUMERIC(10,2)`, `BOOLEAN` |
-| **JSON Indexado** | Armazena como texto plano | Armazena como binário indexável (`JSONB`) para buscas ultra-rápidas |
+| Aspecto                        | SQLite (`SqliteRepository`)                              | PostgreSQL (`PostgresRepository`)                                      |
+| :----------------------------- | :--------------------------------------------------------- | :----------------------------------------------------------------------- |
+| **Driver Python**        | `aiosqlite` (baseado em arquivos C embebidos)            | `asyncpg` (driver assíncrono nativo em binário puro)                 |
+| **Placeholders SQL**     | Utiliza pontos de interrogação `?` (`WHERE id = ?`)  | Utiliza parâmetros numerados `$1, $2` (`WHERE id = $1`)             |
+| **Pooling de Conexões** | Conecta e desconecta por requisição com locks em arquivo | Mantém um **Pool** permanente de 5 a 30 conexões abertas         |
+| **Tipos de Dados**       | Texto, Inteiro, Real e Blob genérico                      | `TIMESTAMPTZ`, `JSONB`, `NUMERIC(10,2)`, `BOOLEAN`               |
+| **JSON Indexado**        | Armazena como texto plano                                  | Armazena como binário indexável (`JSONB`) para buscas ultra-rápidas |
 
 #### O Padrão Factory: `infrastructure/repositories/database_factory.py`
+
 Como o sistema decide qual banco usar? Sem if/else espalhado pelo código! O método fábrica inspeciona a variável de ambiente:
 
 ```python
@@ -294,12 +323,14 @@ flowchart TD
 ### 4.5. Camada de Apresentação: FastAPI e Painel Web (`presentation/`)
 
 #### 1. `presentation/api.py` (A API REST)
+
 * Utiliza o framework **FastAPI**, o mais moderno e veloz ecossistema assíncrono do Python.
 * **Segurança e Sessões:** A autenticação do dashboard não depende de bancos externos complexos; utiliza tokens criptografados assinados digitalmente com algoritmo **HMAC-SHA256**. O cookie é configurado com `HttpOnly` e expiração de 30 dias.
 * **Proteção contra Força Bruta:** Possui um dicionário em memória que bloqueia o IP após 5 tentativas consecutivas de senha incorreta por 300 segundos.
 * **Lifespan Manager:** Gerenciador moderno de ciclo de vida que inicializa tabelas e pools no startup e fecha conexões no encerramento gracioso.
 
 #### 2. `presentation/dashboard.py` (Painel Executivo Sem Emojis)
+
 * **Filosofia de Design:** Em vez de usar frameworks pesados (React/Next.js) que exigem compilação com Node.js/npm, o dashboard é gerado diretamente pelo backend em Vanilla HTML5, CSS3 moderno e JavaScript puro.
 * **Zero Emojis:** Todos os ícones são **SVGs inline** integrados ao código, garantindo renderização ultra-nítida em telas Retina/OLED e um visual de software corporativo de ponta (estilo Vercel e Stripe).
 * **Dual-Mode Responsivo:**
@@ -315,6 +346,7 @@ Uma das dúvidas mais comuns de desenvolvedores é: *"Vocês treinaram um modelo
 A resposta é **NÃO**. Treinar ou fazer Fine-Tuning de um modelo de linguagem (LLM) custa milhares de dólares, exige GPUs potentes e torna o robô "rígido" e propenso a desatualização quando o preço das peças muda.
 
 Em vez disso, utilizamos **In-Context Learning (ICL) com Few-Shot Grounding**:
+
 1. Mineramos **37 conversas reais** de vendas do WhatsApp da Victor Cell.
 2. Extraímos os padrões exatos de como o dono da loja responde aos clientes.
 3. Em cada mensagem recebida, o sistema monta um prompt dinâmico injetando:
@@ -365,7 +397,6 @@ make seed        # Popula dados de homologação e pedidos realistas
 * **Whitelabel:** Capacidade do software de ter sua marca, cores, nome e regras comerciais customizadas para ser revendido para outros estabelecimentos.
 * **Circuit Breaker:** Padrão de resiliência que "desarma o disjuntor" quando um serviço externo (como Bling ERP) começa a falhar repetidamente, passando a usar o cache local para a loja não parar.
 
-
 ---
 
 ## 8. Resiliência Extrema, Segurança de Borda & Inteligência Algorítmica (Deep Dive)
@@ -400,31 +431,42 @@ No balcão físico e no WhatsApp, clientes e técnicos raramente digitam nomes d
 Para resolver isso sem introduzir dependências externas gigantescas, implementamos o **CatalogSearchService**:
 
 #### 1. Distância de Levenshtein em Python Puro
+
 Mede o número mínimo de inserções, deleções ou substituições de um caractere para transformar uma palavra em outra:
+
 ```python
 def levenshtein_distance(s1: str, s2: str) -> int:
     ...
 ```
+
 A similaridade normalizada é calculada por:
-$$	ext{similaridade} = 1.0 - \left( rac{	ext{distância}}{\max(	ext{len}(s_1), 	ext{len}(s_2))} 
-ight)$$
+
+$$
+ext{similaridade} = 1.0 - \left( rac{	ext{distância}}{\max(	ext{len}(s_1), 	ext{len}(s_2))} 
+ight)
+$$
+
 Se a similaridade for superior a 0.85, "*sansung*" é reconhecido como "*samsung*" com tolerância matemática.
 
 #### 2. Dicionário Canônico de Codinomes de Fábrica
+
 Mapeia automaticamente referências de carcaça para o produto correto no catálogo:
+
 * `t220`, `t225`, `sm-t220`, `smt225` $
-ightarrow$ **Samsung Galaxy Tab A7 Lite**
+  ightarrow$ **Samsung Galaxy Tab A7 Lite**
 * `t290`, `t295`, `sm-t290` $
-ightarrow$ **Samsung Galaxy Tab A 8.0 (2019)**
+  ightarrow$ **Samsung Galaxy Tab A 8.0 (2019)**
 * `x200`, `x205` $
-ightarrow$ **Samsung Galaxy Tab A8 10.5**
+  ightarrow$ **Samsung Galaxy Tab A8 10.5**
 * `nb304`, `nb305` $
-ightarrow$ **Multilaser M10A 3G/4G**
+  ightarrow$ **Multilaser M10A 3G/4G**
 * `nb301`, `nb302` $
-ightarrow$ **Multilaser M7s**
+  ightarrow$ **Multilaser M7s**
 
 #### 3. Matriz de Discriminação de Peças
+
 Diferencia e aplica penalidades na pontuação:
+
 * Se o cliente pediu "*touch*", mas o item for apenas "*display*", o score sofre penalidade de $-0.25$.
 * Se o cliente pediu qualidade "*original nacional*", peças paralelas sofrem penalidade de $-0.10$.
 
@@ -435,6 +477,7 @@ Diferencia e aplica penalidades na pontuação:
 Ataques de negação de serviço (DoS) ou robôs maliciosos poderiam disparar milhares de mensagens no WhatsApp para derrubar o servidor ou esgotar a cota da Google Cloud.
 
 O **SlidingWindowRateLimiter** registra os carimbos de data/hora (*timestamps*) de cada mensagem por chave (`clean_phone` ou IP):
+
 * Em vez de zerar no minuto fechado (o que permitiria rajadas na virada do minuto), a **Janela Deslizante** valida os últimos 60 segundos contínuos.
 * Se um mesmo número enviar mais de 25 mensagens por minuto, as requisições subsequentes recebem código HTTP `429 Too Many Requests` com cabeçalho `Retry-After`.
 
@@ -447,6 +490,7 @@ Para que a operação possa ser monitorada em tempo real via ferramentas corpora
 `GET /metrics`
 
 As métricas exportadas seguem o padrão aberto **OpenMetrics / Prometheus v0.0.4**:
+
 * `pecasbot_uptime_seconds`: Segundos de atividade ininterrupta do serviço.
 * `pecasbot_messages_received_total`: Total de mensagens recebidas.
 * `pecasbot_messages_processed_total`: Mensagens processadas na esteira.
@@ -470,7 +514,6 @@ PRAGMA busy_timeout = 5000;      -- Espera até 5 segundos para liberar travas d
 PRAGMA foreign_keys = ON;        -- Garante integridade referencial nas tabelas
 PRAGMA cache_size = -64000;      -- Aloca 64 MB de memória RAM dedicada para cache de páginas
 ```
-
 
 ---
 
@@ -500,6 +543,7 @@ if clean_phone:
 Nas assistências técnicas de alta rotatividade, novas peças chegam semanalmente e são cadastradas no sistema de gestão (Bling ERP). Em sistemas tradicionais, a inteligência artificial precisaria ser reiniciada ou uma sincronização demorada deveria ser agendada para ler o novo catálogo.
 
 Com a **Auto-Ingestão em Tempo Real**:
+
 1. No momento em que a nota de entrada ou o cadastro é salvo no Bling, um evento `estoque.alterado` é enviado para o endpoint `POST /webhook/erp/stock`.
 2. O [BlingV3InventoryAdapter](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/infrastructure/inventory/bling_v3_adapter.py) inspeciona o catálogo local em memória.
 3. Se o SKU já existir, ele apenas atualiza o saldo físico e o preço.
@@ -538,7 +582,6 @@ sequenceDiagram
 
 A dedução atômica no estoque ocorre **antes** da persistência do pedido. Se a peça esgotar no milissegundo anterior, nenhum registro falso de pedido é gravado e o cliente é notificado com honestidade e rapidez ("*Essa peça acabou de esgotar aqui no estoque.*").
 
-
 ---
 
 ## 10. Reabertura Inteligente de Sessões, Cache Rápido de FAQ e Gestão de Ruptura de Estoque
@@ -546,10 +589,12 @@ A dedução atômica no estoque ocorre **antes** da persistência do pedido. Se 
 ### 10.1 Reabertura Inteligente de Sessões Pós-Atendimento Humano (`domain/entities.py`)
 
 No atendimento via WhatsApp, quando o atendente físico ou o dono da loja assume uma conversa, o sistema tradicional silencia o robô por 3 horas (`HUMAN_ACTIVE`). Entretanto, dois problemas operacionais comuns ocorrem:
+
 1. **Loja Fecha:** O atendente atendeu às 16h50 e foi embora às 17h. Às 21h, um cliente manda mensagem querendo cotação, mas o robô continuaria silenciado porque as 3 horas não expiraram.
 2. **Nova Cotação após Resolução:** O atendente tirou uma dúvida rápida às 10h. Às 10h40 (40 minutos depois), o cliente pergunta o preço de outra peça ("*quanto tá a tela do a8?*"), mas o atendente já está ocupado na bancada.
 
 O método [Conversation.is_ai_allowed](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/domain/entities.py#L115-L165) resolve isso com **Reabertura Inteligente**:
+
 * **Gatilho 1 (Loja Fechada):** Se a loja física estiver fechada (`is_store_open == False`), a IA assume automaticamente para passar preços e aviso de reabertura, mesmo que pausada anteriormente por um humano.
 * **Gatilho 2 (Janela de Tolerância de 30 Minutos):** Se passaram mais de 30 minutos desde a última mensagem do operador humano e a mensagem do cliente for uma **nova cotação de peça** (*"quanto"*, *"valor"*, *"tela"*, *"touch"*, *"display"*), o robô auto-reativa suavemente a sessão para `AI_ACTIVE` e atende o cliente sem deixá-lo no vácuo.
 
@@ -560,10 +605,11 @@ O método [Conversation.is_ai_allowed](file:///home/robson/Projetos_Desenvolvime
 Dúvidas institucionais de alta repetição (*"qual o endereço da loja?"*, *"que horas abre?"*, *"onde fica a loja?"*) não precisam ser processadas por um modelo de linguagem generativo na nuvem.
 
 > [!IMPORTANT]
-> **Diretriz de Segurança Financeira (Fluxo Pix):**  
+> **Diretriz de Segurança Financeira (Fluxo Pix):**
 > Dúvidas sobre **chave Pix, pagamento ou comprovantes** foram expressamente excluídas de qualquer auto-resposta. Quando o cliente solicita a chave Pix (*"passa o pix"*, *"manda a chave"*, *"dados pra pagamento"*), o robô NÃO envia dados bancários automaticamente. Ele aciona imediatamente o **transbordo silencioso** (`HUMAN_HANDOFF`), permitindo que o atendente humano confira o valor exato, frete e disponibilidade antes de enviar os dados do caixa.
 
 O [FastFaqCacheService](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/application/use_cases/fast_faq_cache.py) intercepta essas perguntas antes da chamada ao Gemini:
+
 * **Tempo de Resposta:** Menos de **0,05 milissegundos** (em memória RAM local).
 * **Consumo de Tokens:** **Zero tokens** consumidos, economizando a cota gratuita ou paga da API.
 * **Proteção de Cotação:** Se a mensagem contiver termos de peças (*"qual o pix da tela do a7?"*), o cache **NÃO** intercepta a mensagem, permitindo que a cotação siga para o pipeline de vendas.
@@ -577,3 +623,98 @@ Quando dois clientes tentam comprar a última unidade de uma peça simultaneamen
 1. **Trilha de Auditoria Técnica:** É gerado um evento `OVERBOOKING_BLOCKED` gravado com integridade no banco de dados com nível `WARN`.
 2. **Telemetria Prometheus:** O contador `pecasbot_overbooking_blocked_total` é incrementado em tempo real.
 3. **Card SVG no Dashboard:** O painel executivo em `/dashboard` exibe o KPI com ícone SVG de escudo protetor, permitindo ao gestor identificar quais peças estão gerando ruptura e demandam reposição urgente com os fornecedores.
+
+
+---
+
+## 11. Governança de Mudança de Preços, Sincronização Dinâmica com ERP e Tratamento de Divergências
+
+### 11.1 O Desafio Operacional da Mudança de Preço no Comércio de Balcão
+No comércio de peças de reposição (especialmente displays, telas e conectores para tablets e celulares), os preços oscilam frequentemente devido a variações cambiais de importação, novos lotes de fornecedores e reajustes cadastrados no Bling ERP.
+
+No fluxo de atendimento via WhatsApp, surgem três situações críticas de concorrência temporal:
+1. **O preço foi alterado no ERP enquanto o bot estava rodando:** A IA não pode cotar com base em um preço defasado que dê prejuízo financeiro à loja.
+2. **O cliente recebeu uma cotação e demorou para confirmar:** O cliente cotou uma tela às 09h00 por R$ 180. Às 14h00, o fornecedor aumentou o custo e a peça passou para R$ 200 no sistema. Às 16h00, o cliente responde *"pode separar aquela que você cotou"*.
+3. **O cliente percebe a diferença e contesta comercialmente:** O cliente questiona *"Ué, mas você não disse que era 180?"* ou *"Faz pelo preço de antes que eu levo agora"*.
+
+---
+
+### 11.2 Sincronização Dinâmica e Auditoria em Tempo Real (`PRICE_CHANGED`)
+
+Quando um preço é atualizado no ERP ou via painel administrativo, o evento é processado pelo Webhook do inventário (`POST /webhook/erp/stock`):
+
+1. **Atualização Atômica de Catálogo:**
+   O [BlingV3InventoryAdapter](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/infrastructure/inventory/bling_v3_adapter.py) ou `MemoryInventoryAdapter` compara o preço anterior registrado com o novo preço enviado pelo payload.
+   ```python
+   if old_product and old_product.price != new_price:
+       audit_logger.log(AuditLogEntry(
+           action="PRICE_CHANGED",
+           level="INFO",
+           component="INVENTORY",
+           details={
+               "sku": sku,
+               "old_price": old_product.price,
+               "new_price": new_price,
+               "delta": new_price - old_product.price
+           }
+       ))
+   ```
+2. **Atualização do Cache Local de Memória:** O produto em cache tem seu valor atualizado instantaneamente, garantindo que as cotações do milissegundo seguinte já reflitam a nova tabela oficial de vendas.
+
+---
+
+### 11.3 Regra de Ouro: Cotação no Milissegundo vs. Preço Vigente no Fechamento
+
+Para evitar qualquer discrepância entre a mensagem enviada pelo robô e a cobrança gerada na bancada física:
+
+* **No Momento da Cotação (`QUOTE`):** O robô consulta o catálogo em tempo real e entrega o preço exatamente vigente no segundo da consulta.
+* **No Momento do Fechamento (`ORDER` / Separação):** Quando o cliente envia os dados de entrega ou pede a separação, o caso de uso [ProcessIncomingMessageUseCase](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/application/use_cases/process_incoming_message.py) **NÃO** confia em preços gravados no histórico da conversa do cliente. Ele faz uma nova consulta atômica ao `ProductRepository.get_by_sku(final_sku)` para obter o valor oficial atualizado do banco de dados antes de registrar a reserva e enviar a notificação para a equipe do caixa.
+
+---
+
+### 11.4 Tratamento de Divergência e Contestação: A Doutrina do Silêncio e Transbordo Humano
+
+Se o preço foi reajustado enquanto o cliente negociava e ele contestar o valor, a regra de inteligência artificial é categórica:
+
+> [!CAUTION]
+> **Proibição de Discussão Algorítmica:**
+> O bot é terminantemente proibido de tentar justificar o aumento com explicações prolixas como *"o sistema reajustou"*, *"o lote acabou"*, ou de prometer descontos por conta própria. Robôs tentando justificar aumentos causam atrito severo com técnicos de assistência que compram com frequência.
+
+#### Fluxo de Transbordo por Divergência Comercial:
+1. **Detecção Semântica de Contestação ou Pedido de Desconto:**
+   O classificador de intenções reconhece termos de atrito de valor (*"era 180"*, *"disse outro valor"*, *"faz menos"*, *"dá desconto"*, *"abaixa o preço"*).
+2. **Ativação Imediata de `HUMAN_HANDOFF`:**
+   O bot permanece **completamente silencioso** para o cliente (zero mensagens automatizadas invasivas).
+3. **Disparo de Sirene NTFY no Celular da Equipe:**
+   A equipe física do balcão e o gerente recebem notificação instantânea com deep link de 1 clique no WhatsApp:
+   * **Título:** `⚠️ Transbordo Comercial: Divergência / Pedido de Desconto`
+   * **Mensagem:** `Cliente no WhatsApp contestou preço da peça [SKU] ou solicitou condição especial. Histórico: Cotado R$ [X] | Tabela Atual R$ [Y]. Toque para assumir o chat.`
+   * **Ação:** O atendente humano do balcão assume o WhatsApp e tem autonomia total para avaliar a fidelidade da assistência parceira e decidir se mantém o valor antigo ou explica amigavelmente a troca de lote.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cliente as Técnico (WhatsApp)
+    participant Bot as PecasBot Pipeline
+    participant ERP as Bling ERP / Catálogo
+    participant NTFY as Alerta NTFY (Equipe do Balcão)
+    participant Humano as Atendente do Caixa
+
+    Note over Cliente,Bot: Às 09:00: Cotação inicial
+    Cliente->>Bot: "Quanto tá a tela do A15?"
+    Bot->>ERP: get_by_sku("TEL-SAM-A15")
+    ERP-->>Bot: R$ 190,00
+    Bot-->>Cliente: "190 original"
+
+    Note over ERP: Às 14:00: Fornecedor reajusta lote no ERP para R$ 200,00
+    ERP->>Bot: Webhook POST /webhook/erp/stock (TEL-SAM-A15 -> R$ 200,00)
+    Note over Bot: Registra evento PRICE_CHANGED no banco
+
+    Note over Cliente,Bot: Às 16:00: Cliente volta contestando ou querendo fechar
+    Cliente->>Bot: "Ué, mas você não falou que era 190? Faz por 190 que busco agora."
+    Bot->>Bot: Detecta Contestação de Preço / Negociação -> HUMAN_HANDOFF
+    Bot->>NTFY: Push Urgente: Divergência de Preço (190 vs 200) com link wa.me
+    Note over Bot: Robô permanece 100% silencioso no WhatsApp
+    NTFY->>Humano: Notificação no celular: "Técnico contestou preço da tela A15"
+    Humano->>Cliente: Atendente humano assume o chat e negocia diretamente
+```
