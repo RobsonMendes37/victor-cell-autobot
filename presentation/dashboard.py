@@ -2835,6 +2835,201 @@ def render_dashboard_html() -> str:
       }
     }
 
+    // ==========================================
+    // ERP NATIVO & ENTRADA COGNITIVA DE ESTOQUE
+    // ==========================================
+    let currentErpProposal = null;
+
+    function demoVoiceStockEntry() {
+      const input = document.getElementById('erp-voice-input');
+      if (input) {
+        input.value = 'Entraram 10 telas do Tab A8 a 110 do fornecedor Peças Brasil e 5 conectores do T295 a 15, NF 4580';
+      }
+    }
+
+    async function loadErpSummary() {
+      try {
+        const res = await fetch('/api/erp/stock/summary');
+        const data = await res.json();
+        if (data.status === 'success' && data.metrics) {
+          const m = data.metrics;
+          if (document.getElementById('erp-total-skus')) document.getElementById('erp-total-skus').textContent = m.total_skus || 0;
+          if (document.getElementById('erp-total-units')) document.getElementById('erp-total-units').textContent = m.total_units || 0;
+          if (document.getElementById('erp-total-cost')) document.getElementById('erp-total-cost').textContent = 'R$ ' + (m.total_cost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+          if (document.getElementById('erp-total-retail')) document.getElementById('erp-total-retail').textContent = 'R$ ' + (m.total_retail || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        }
+      } catch (err) {
+        console.error('Erro ao carregar resumo de estoque do ERP:', err);
+      }
+    }
+
+    async function loadErpMovements() {
+      try {
+        const res = await fetch('/api/erp/stock/movements?limit=30');
+        const data = await res.json();
+        const tbody = document.getElementById('erp-movements-tbody');
+        if (!tbody) return;
+
+        if (data.status === 'success' && data.movements && data.movements.length > 0) {
+          tbody.innerHTML = data.movements.map(m => {
+            const dateStr = new Date(m.created_at).toLocaleString('pt-BR');
+            const typeBadge = m.movement_type.includes('ENTRADA')
+              ? '<span style="background: rgba(16,185,129,0.15); color: #34D399; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + m.movement_type + '</span>'
+              : '<span style="background: rgba(239,68,68,0.15); color: #F87171; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + m.movement_type + '</span>';
+            const costFormatted = m.unit_cost ? 'R$ ' + Number(m.unit_cost).toFixed(2) : '-';
+            return '<tr>' +
+              '<td style="font-size: 0.8rem; color: var(--text-muted);">' + dateStr + '</td>' +
+              '<td>' + typeBadge + '</td>' +
+              '<td style="font-family: monospace; font-weight: 600;">' + m.sku + '</td>' +
+              '<td style="font-weight: 700;">' + m.quantity + '</td>' +
+              '<td>' + costFormatted + '</td>' +
+              '<td style="font-size: 0.8rem;">' + (m.invoice_number || '-') + '</td>' +
+              '<td style="font-size: 0.8rem;">' + (m.operator || 'Sistema') + '</td>' +
+              '<td style="font-size: 0.8rem; color: var(--text-muted);">' + (m.notes || '-') + '</td>' +
+            '</tr>';
+          }).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">Nenhuma movimentação registrada no ERP até o momento.</td></tr>';
+        }
+      } catch (err) {
+        console.error('Erro ao carregar movimentações do ERP:', err);
+      }
+    }
+
+    async function submitVoiceStockEntry() {
+      const input = document.getElementById('erp-voice-input');
+      const text = input ? input.value.trim() : '';
+      if (!text) {
+        showToast('Digite ou fale o texto de entrada de estoque.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btn-process-voice');
+      if (btn) btn.disabled = true;
+      showToast('Processando entrada com inteligência artificial...', 'success');
+
+      try {
+        const res = await fetch('/api/erp/stock/voice-entry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spoken_text: text })
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.proposal) {
+          currentErpProposal = data.proposal;
+          renderErpProposal(data.proposal);
+          showToast('Proposta extraída! Confira os itens abaixo antes de efetivar.', 'success');
+        } else {
+          showToast('Erro ao interpretar áudio/texto: ' + (data.detail || data.message || 'Falha'), 'error');
+        }
+      } catch (err) {
+        showToast('Erro na requisição: ' + err, 'error');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function submitOcrStockEntry() {
+      const fileInput = document.getElementById('erp-photo-input');
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        showToast('Selecione uma imagem de etiqueta ou comprovante.', 'error');
+        return;
+      }
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      const btn = document.getElementById('btn-process-ocr');
+      if (btn) btn.disabled = true;
+      showToast('Lendo imagem com OCR e IA multimodal...', 'success');
+
+      reader.onload = async () => {
+        try {
+          const b64 = reader.result.split(',')[1];
+          const res = await fetch('/api/erp/stock/ocr-entry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_base64: b64 })
+          });
+          const data = await res.json();
+          if (data.status === 'success' && data.proposal) {
+            currentErpProposal = data.proposal;
+            renderErpProposal(data.proposal);
+            showToast('Dados da etiqueta extraídos com sucesso!', 'success');
+          } else {
+            showToast('Falha no OCR: ' + (data.detail || 'Não foi possível ler a etiqueta'), 'error');
+          }
+        } catch (err) {
+          showToast('Erro ao processar imagem: ' + err, 'error');
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderErpProposal(proposal) {
+      const card = document.getElementById('erp-proposal-card');
+      const details = document.getElementById('erp-proposal-details');
+      const tbody = document.getElementById('erp-proposal-tbody');
+      if (!card || !tbody) return;
+
+      if (details) {
+        details.innerHTML = '<strong>Fornecedor:</strong> ' + (proposal.supplier_name || 'Não identificado') + ' | <strong>NF / Lote:</strong> ' + (proposal.invoice_number || 'S/N') + ' | <strong>Total de Itens:</strong> ' + proposal.total_items + ' un | <strong>Custo Total:</strong> R$ ' + (proposal.total_cost || 0).toFixed(2);
+      }
+
+      if (proposal.items && proposal.items.length > 0) {
+        tbody.innerHTML = proposal.items.map(item => '<tr>' +
+          '<td style="font-family: monospace; font-weight: 600;">' + item.sku + '</td>' +
+          '<td>' + (item.model_name || item.name) + '</td>' +
+          '<td><span style="font-size:0.75rem; background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px;">' + (item.category || 'Peça') + '</span></td>' +
+          '<td style="font-weight: 700; color: #34D399;">+' + item.quantity_to_add + '</td>' +
+          '<td>' + (item.current_stock ?? '-') + '</td>' +
+          '<td style="font-weight: 700;">' + (item.projected_stock ?? '-') + '</td>' +
+          '<td>R$ ' + (item.unit_cost || 0).toFixed(2) + '</td>' +
+          '<td style="color: #60A5FA;">R$ ' + (item.suggested_retail_price || 0).toFixed(2) + '</td>' +
+        '</tr>').join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhum item detectado.</td></tr>';
+      }
+
+      card.style.display = 'block';
+    }
+
+    async function confirmCurrentStockEntry() {
+      if (!currentErpProposal) {
+        showToast('Nenhuma proposta de entrada ativa para confirmar.', 'error');
+        return;
+      }
+      const btn = document.getElementById('btn-confirm-stock');
+      if (btn) btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/erp/stock/confirm-entry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentErpProposal)
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast('Entrada de estoque confirmada e registrada com sucesso!', 'success');
+          const card = document.getElementById('erp-proposal-card');
+          if (card) card.style.display = 'none';
+          currentErpProposal = null;
+          const input = document.getElementById('erp-voice-input');
+          if (input) input.value = '';
+          loadErpSummary();
+          loadErpMovements();
+          fetchCatalog();
+          fetchAuditLogs();
+        } else {
+          showToast('Erro ao confirmar entrada: ' + (data.message || data.detail || 'Falha'), 'error');
+        }
+      } catch (err) {
+        showToast('Erro de conexão ao confirmar entrada: ' + err, 'error');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
     function refreshAll() {
       showToast('Atualizando dados...', 'success');
       fetchConversations();
