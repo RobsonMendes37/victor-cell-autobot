@@ -1,18 +1,3 @@
-"""
-Executive Web Dashboard & Intelligence Hub for Victor Cell.
-100% Free, Open-Source & Self-Hosted.
-Includes:
-- Responsive Mobile-First & Tablet-Optimized Design (Big Tech & Power BI styling)
-- Real-time Human vs. AI Control Center with Customer Names, Formatted Phones & Active Parts
-- Uber Flash Expedition Queue & Orders Management with 1-click Power BI CSV Export
-- Live Google Sheets Catalog viewer & Instant Sync
-- Best-Selling Parts Ranking & FAQ Intelligence
-- Interactive Chart.js Visualizations (Quality distribution & Category breakdown)
-- WhatsApp Live Pairing (QR Code & Status)
-- Live Customer Message Simulator with instant bot responses
-- Gemini AI Quota Manager, Key Tester & Rate Limit Inspector
-"""
-
 from typing import Optional
 
 
@@ -22,786 +7,775 @@ def render_dashboard_html() -> str:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Victor Cell • Painel Executivo & Balcão Inteligente</title>
+  <title>Victor Cell • ERP & Balcão Inteligente (VTEX Enterprise Console)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg-base: #070A0F;
-      --bg-surface: #0E1422;
-      --bg-surface-elevated: #141C30;
-      --bg-card: rgba(14, 20, 34, 0.88);
-      --bg-glass: rgba(20, 28, 48, 0.65);
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-focus: rgba(99, 102, 241, 0.45);
+      --bg-canvas: #090D14;
+      --bg-sidebar: #0D121D;
+      --bg-surface: #121826;
+      --bg-surface-elevated: #172033;
+      --bg-surface-hover: #1C273E;
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-medium: rgba(255, 255, 255, 0.12);
+      --vtex-pink: #F71963;
+      --vtex-pink-hover: #E00E54;
+      --vtex-pink-glow: rgba(247, 25, 99, 0.25);
+      --vtex-pink-bg: rgba(247, 25, 99, 0.09);
       --primary: #6366F1;
       --primary-hover: #4F46E5;
-      --primary-glow: rgba(99, 102, 241, 0.28);
+      --primary-glow: rgba(99, 102, 241, 0.22);
       --emerald: #10B981;
-      --emerald-glow: rgba(16, 185, 129, 0.25);
+      --emerald-glow: rgba(16, 185, 129, 0.2);
       --amber: #F59E0B;
-      --amber-glow: rgba(245, 158, 11, 0.25);
-      --cyan: #06B6D4;
-      --cyan-glow: rgba(6, 182, 212, 0.25);
-      --rose: #F43F5E;
-      --purple: #8B5CF6;
+      --amber-glow: rgba(245, 158, 11, 0.2);
+      --rose: #EF4444;
       --text-main: #F8FAFC;
       --text-muted: #94A3B8;
       --text-dim: #64748B;
-      --radius-sm: 8px;
-      --radius-md: 14px;
-      --radius-lg: 20px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
-    html {
+    html, body {
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      font-size: 13.5px;
+      line-height: 1.5;
       overflow-x: hidden;
-      max-width: 100vw;
     }
 
-    body {
-      background-color: var(--bg-base);
-      color: var(--text-main);
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-canvas); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); }
+
+    /* LAYOUT PRINCIPAL (VTEX ADMIN 2-COLUMN) */
+    .app-layout {
+      display: flex;
       min-height: 100vh;
-      max-width: 100vw;
-      overflow-x: hidden;
+      width: 100vw;
+      background: var(--bg-canvas);
+    }
+
+    /* SIDEBAR LATERAL RETRÁTIL */
+    .app-sidebar {
+      width: 270px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-subtle);
       display: flex;
       flex-direction: column;
-      background-image:
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.14) 0px, transparent 50%),
-        radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.10) 0px, transparent 45%),
-        radial-gradient(at 50% 100%, rgba(6, 182, 212, 0.08) 0px, transparent 50%);
-      background-attachment: fixed;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg-base); }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 999px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
-
-    /* Header Executivo */
-    header {
-      padding: 0.85rem 1.5rem;
-      background: rgba(11, 15, 26, 0.92);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border-subtle);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-shrink: 0;
       position: sticky;
       top: 0;
-      z-index: 50;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 100;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sidebar-brand {
+      padding: 1.25rem 1.25rem 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--vtex-pink), #BD0043);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px var(--vtex-pink-glow);
+      flex-shrink: 0;
+    }
+
+    .brand-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .brand-name {
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--text-main);
+    }
+
+    .brand-badge-vtex {
+      font-size: 0.65rem;
+      font-weight: 800;
+      background: var(--vtex-pink-bg);
+      color: #FF5A8D;
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(247, 25, 99, 0.3);
+      letter-spacing: 0.05em;
+    }
+
+    .brand-sub {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-weight: 500;
+      margin-top: 1px;
+    }
+
+    .sidebar-close-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .sidebar-nav {
+      padding: 0.85rem 0.65rem 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .nav-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.85rem 0.6rem 0.35rem;
+    }
+
+    .sidebar-nav .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: left;
+      width: 100%;
+      position: relative;
+    }
+
+    .sidebar-nav .nav-tab:hover {
+      background: var(--bg-surface);
+      color: var(--text-main);
+    }
+
+    .sidebar-nav .nav-tab.active {
+      background: var(--vtex-pink-bg);
+      color: #FFF;
+      font-weight: 600;
+      box-shadow: inset 3px 0 0 var(--vtex-pink);
+    }
+
+    .sidebar-nav .nav-tab.active svg {
+      color: var(--vtex-pink);
+    }
+
+    .sidebar-nav .nav-tab svg {
+      flex-shrink: 0;
+      color: var(--text-dim);
+      transition: color 0.15s;
+    }
+
+    .sidebar-nav .nav-tab:hover svg {
+      color: var(--text-main);
+    }
+
+    .sidebar-nav .tab-badge {
+      margin-left: auto;
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--text-dim);
+    }
+
+    .sidebar-nav .nav-tab.active .tab-badge {
+      background: rgba(247, 25, 99, 0.2);
+      color: #FF5A8D;
+    }
+
+    .sidebar-footer {
+      padding: 0.9rem 1.1rem;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--text-muted);
+    }
+
+    .user-meta .user-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .user-meta .user-role {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+    }
+
+    .sidebar-logout {
+      color: var(--text-dim);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      padding: 6px;
+      border-radius: 6px;
+    }
+
+    .sidebar-logout:hover {
+      color: #EF4444;
+      background: rgba(239, 68, 68, 0.12);
+    }
+
+    /* BACKDROP OVERLAY */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 90;
+    }
+
+    /* CONTENT VIEWPORT */
+    .content-viewport {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background: var(--bg-canvas);
+    }
+
+    /* TOP HEADER EXECUTIVO */
+    .top-header {
+      height: 58px;
+      background: rgba(14, 19, 31, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 40;
       gap: 1rem;
     }
 
-    .brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: inherit; }
-    .brand-icon {
-      width: 42px; height: 42px; border-radius: 12px;
-      background: linear-gradient(135deg, var(--primary), #4338CA);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.35rem; box-shadow: 0 0 16px var(--primary-glow);
-      flex-shrink: 0;
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
     }
-    .brand-text h1 { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.5rem; }
-    .brand-text h1 span { color: var(--emerald); }
-    .brand-text p { font-size: 0.725rem; color: var(--text-muted); font-weight: 500; }
 
-    .header-pills { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-    .pill {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      padding: 0.35rem 0.75rem; border-radius: 999px;
-      font-size: 0.75rem; font-weight: 600;
-      background: rgba(255, 255, 255, 0.04);
+    .sidebar-toggle {
+      display: none;
+      background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      white-space: nowrap;
-    }
-    .pill-dot { width: 7px; height: 7px; border-radius: 50%; }
-    .pill-emerald { color: #34D399; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); }
-    .pill-emerald .pill-dot { background: #10B981; box-shadow: 0 0 8px #10B981; }
-    .pill-amber { color: #FBBF24; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); }
-    .pill-amber .pill-dot { background: #F59E0B; box-shadow: 0 0 8px #F59E0B; }
-    .pill-rose { color: #F43F5E; background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.3); }
-    .pill-rose .pill-dot { background: #F43F5E; box-shadow: 0 0 8px #F43F5E; }
-    .pill-cyan { color: #38BDF8; background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.3); }
-    .pill-cyan .pill-dot { background: #38BDF8; box-shadow: 0 0 8px #38BDF8; }
-
-    /* Barra de Navegação em Abas (Scroll Suave no Mobile) */
-    .nav-bar-wrapper {
-      background: rgba(14, 20, 34, 0.85);
-      border-bottom: 1px solid var(--border-subtle);
-      position: sticky;
-      top: 61px;
-      z-index: 40;
-      backdrop-filter: blur(16px);
-      padding: 0.4rem 1.25rem;
-    }
-    .nav-tabs {
-      display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none;
-      -webkit-overflow-scrolling: touch; padding-bottom: 2px;
-      max-width: 1400px; margin: 0 auto;
-    }
-    .nav-tabs::-webkit-scrollbar { display: none; }
-    .nav-tab {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      padding: 0.55rem 1rem; border-radius: 10px;
-      background: transparent; border: 1px solid transparent;
-      color: var(--text-muted); font-size: 0.825rem; font-weight: 600;
-      cursor: pointer; white-space: nowrap; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      flex-shrink: 0;
-    }
-    .nav-tab:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
-    .nav-tab.active {
-      background: rgba(99, 102, 241, 0.18);
-      color: #fff;
-      border-color: rgba(99, 102, 241, 0.4);
-      box-shadow: 0 0 14px var(--primary-glow);
-    }
-    .tab-badge {
-      padding: 0.15rem 0.45rem; border-radius: 6px; font-size: 0.7rem; font-weight: 700;
-      background: rgba(255, 255, 255, 0.12); color: #E2E8F0;
-    }
-    .nav-tab.active .tab-badge { background: var(--primary); color: #fff; }
-
-    .nav-tab svg {
-      flex-shrink: 0;
-      color: currentColor;
-    }
-    .pill-btn {
-      padding: 0.35rem 0.8rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600;
-      background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle);
-      color: var(--text-muted); cursor: pointer; transition: all 0.2s ease;
-    }
-    .pill-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
-    .pill-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-    .pill-btn.pill-info.active { background: #0EA5E9; border-color: #0EA5E9; }
-    .pill-btn.pill-warn.active { background: #F59E0B; border-color: #F59E0B; }
-    .pill-btn.pill-error.active { background: #EF4444; border-color: #EF4444; }
-
-    .audit-badge {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
-    }
-    .badge-info { background: rgba(14, 165, 233, 0.15); color: #38BDF8; border: 1px solid rgba(14, 165, 233, 0.3); }
-    .badge-warn { background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .badge-error { background: rgba(239, 68, 68, 0.15); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-    .badge-comp { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); border: 1px solid var(--border-subtle); }
-
-    .audit-table th, .audit-table td {
-      padding: 0.75rem 0.85rem;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-    .audit-table tbody tr:hover {
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    /* Container Principal */
-    main {
-      flex: 1; padding: 1.25rem; max-width: 1400px; width: 100%; margin: 0 auto;
-    }
-
-    .tab-pane { display: none; }
-    .tab-pane.active { display: block; animation: fadeIn 0.25s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Grid de KPIs */
-    .kpi-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 1rem; margin-bottom: 1.25rem;
-    }
-    .kpi-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 1.15rem;
-      display: flex; flex-direction: column; justify-content: space-between;
-      position: relative; overflow: hidden;
-      backdrop-filter: blur(12px);
-      transition: transform 0.2s, border-color 0.2s;
-    }
-    .kpi-card:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.15); }
-    .kpi-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: var(--primary); opacity: 0; transition: opacity 0.2s;
-    }
-    .kpi-card:hover::before { opacity: 1; }
-    .kpi-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-    .kpi-title { font-size: 0.775rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .kpi-icon {
-      width: 34px; height: 34px; border-radius: 9px;
-      display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-    }
-    .kpi-val { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; color: #fff; margin-bottom: 0.2rem; }
-    .kpi-sub { font-size: 0.75rem; color: var(--text-dim); display: flex; align-items: center; gap: 0.35rem; }
-    .trend-up { color: #34D399; font-weight: 600; }
-
-    /* Seção / Card Padrão */
-    .section-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      overflow: hidden; margin-bottom: 1.25rem;
-      backdrop-filter: blur(14px);
-    }
-    .section-toolbar {
-      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-subtle);
-      display: flex; justify-content: space-between; align-items: center;
-      gap: 1rem; flex-wrap: wrap; background: rgba(0, 0, 0, 0.15);
-    }
-    .section-title-group { display: flex; align-items: center; gap: 0.6rem; }
-    .section-title { font-size: 1rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 0.45rem; }
-    .badge-count {
-      padding: 0.15rem 0.55rem; border-radius: 999px;
-      font-size: 0.725rem; font-weight: 700; background: rgba(255, 255, 255, 0.08); color: var(--text-muted);
-    }
-    .toolbar-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-
-    /* Inputs e Botões */
-    .search-input {
-      background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-subtle);
-      padding: 0.45rem 0.85rem; border-radius: 8px; color: #fff; font-size: 0.8rem;
-      outline: none; transition: all 0.2s; min-width: 180px;
-    }
-    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); background: rgba(0, 0, 0, 0.2); }
-
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
-      padding: 0.45rem 0.9rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
-      border: 1px solid transparent; cursor: pointer; transition: all 0.18s;
-      white-space: nowrap; user-select: none;
-    }
-    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 8px var(--primary-glow); }
-    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
-    .btn-emerald { background: var(--emerald); color: #000; font-weight: 700; box-shadow: 0 2px 8px var(--emerald-glow); }
-    .btn-emerald:hover { background: #059669; color: #fff; }
-    .btn-amber { background: rgba(245, 158, 11, 0.18); color: #FBBF24; border-color: rgba(245, 158, 11, 0.35); }
-    .btn-amber:hover { background: rgba(245, 158, 11, 0.3); }
-    .btn-secondary { background: rgba(255, 255, 255, 0.06); color: #E2E8F0; border-color: var(--border-subtle); }
-    .btn-secondary:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
-    .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.75rem; border-radius: 6px; }
-
-    /* Dual-Mode: Tabela para Desktop/Tablet e Cards Touch para Mobile */
-    .table-container { width: 100%; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; text-align: left; }
-    thead th {
-      padding: 0.85rem 1rem; font-size: 0.725rem; font-weight: 700;
-      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;
-      border-bottom: 1px solid var(--border-subtle); background: rgba(0, 0, 0, 0.25);
-      white-space: nowrap;
-    }
-    tbody tr {
-      border-bottom: 1px solid var(--border-subtle); transition: background-color 0.15s;
-    }
-    tbody tr:hover { background-color: rgba(255, 255, 255, 0.03); }
-    tbody td {
-      padding: 0.9rem 1rem; font-size: 0.825rem; color: #CBD5E1; vertical-align: middle;
-    }
-
-    /* Card Deck no Mobile */
-    .mobile-card-deck { display: none; flex-direction: column; gap: 0.75rem; padding: 0.85rem; }
-    .customer-card-mobile {
-      background: rgba(255, 255, 255, 0.025);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 0.9rem;
-      display: flex; flex-direction: column; gap: 0.65rem;
-    }
-    .card-mobile-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
-    .card-mobile-body { display: flex; flex-direction: column; gap: 0.35rem; }
-    .card-mobile-actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
-    .card-mobile-actions .btn { flex: 1; padding: 0.55rem; font-size: 0.8rem; }
-
-    /* Célula de Cliente Rica */
-    .user-profile { display: flex; align-items: center; gap: 0.75rem; }
-    .user-avatar {
-      width: 38px; height: 38px; border-radius: 10px;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.3));
-      border: 1px solid rgba(99, 102, 241, 0.4);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 0.85rem; color: #A5B4FC;
-      flex-shrink: 0;
-    }
-    .user-info { display: flex; flex-direction: column; }
-    .user-name { font-weight: 700; color: #fff; font-size: 0.875rem; display: flex; align-items: center; gap: 0.35rem; }
-    .user-phone {
-      font-size: 0.75rem; color: #34D399; font-family: 'JetBrains Mono', monospace;
-      text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 600;
-    }
-    .user-phone:hover { text-decoration: underline; color: #6EE7B7; }
-
-    /* Pills e Tags de Peças e Status */
-    .part-pill {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      padding: 0.25rem 0.6rem; border-radius: 6px;
-      font-size: 0.75rem; font-weight: 600;
-      background: rgba(99, 102, 241, 0.12); color: #C7D2FE;
-      border: 1px solid rgba(99, 102, 241, 0.25);
-      max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .status-pill {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      padding: 0.25rem 0.65rem; border-radius: 999px;
-      font-size: 0.75rem; font-weight: 700; white-space: nowrap;
-    }
-    .status-robot { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.35); }
-    .status-human { background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.35); }
-    .status-waiting { background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.35); }
-
-    /* Insights Grid */
-    .filter-btn {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #94A3B8;
-      padding: 0.35rem 0.75rem;
-      font-size: 0.78rem;
-      border-radius: 6px;
+      color: var(--text-muted);
       cursor: pointer;
-      transition: all 0.2s ease;
+      padding: 6px;
+      border-radius: 6px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.85rem;
+    }
+
+    .bc-root {
+      color: var(--text-dim);
       font-weight: 500;
     }
-    .filter-btn:hover {
-      background: rgba(99, 102, 241, 0.15);
-      color: #fff;
-      border-color: rgba(99, 102, 241, 0.4);
+
+    .bc-sep {
+      color: var(--border-medium);
+      font-size: 0.8rem;
     }
-    .filter-btn.active {
-      background: #6366F1;
-      color: #fff;
-      border-color: #6366F1;
+
+    .bc-active {
+      color: var(--text-main);
       font-weight: 600;
-      box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
-    }
-    .quick-chip-btn {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: #CBD5E1;
-      padding: 0.25rem 0.6rem;
-      font-size: 0.72rem;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .quick-chip-btn:hover {
-      background: rgba(99, 102, 241, 0.2);
-      color: #fff;
-      border-color: #6366F1;
     }
 
-    .charts-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-      gap: 1.25rem; margin-bottom: 1.25rem;
-    }
-    .chart-card {
-      background: var(--bg-card); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md); padding: 1.25rem; backdrop-filter: blur(12px);
-    }
-    .chart-card h3 { font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
-
-    /* Simulador de Chat */
-    .simulator-wrapper {
-      display: grid; grid-template-columns: 1fr 340px; gap: 1.25rem;
-    }
-    .chat-box {
-      background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md); height: 440px; display: flex; flex-direction: column;
-    }
-    .chat-messages {
-      flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;
-    }
-    .chat-msg {
-      max-width: 80%; padding: 0.65rem 0.95rem; border-radius: 12px;
-      font-size: 0.85rem; line-height: 1.45; position: relative; word-break: break-word;
-    }
-    .chat-msg.user {
-      align-self: flex-end; background: #005C4B; color: #E9EDEF; border-bottom-right-radius: 2px;
-    }
-    .chat-msg.bot {
-      align-self: flex-start; background: #202C33; color: #E9EDEF; border-bottom-left-radius: 2px;
-    }
-    .chat-input-bar {
-      padding: 0.75rem; border-top: 1px solid var(--border-subtle);
-      display: flex; gap: 0.5rem; background: rgba(14, 20, 34, 0.95);
-    }
-
-    /* Toast */
-    #toast {
-      position: fixed; bottom: 20px; right: 20px; z-index: 9999;
-      background: #1E293B; color: #fff; border: 1px solid var(--border-subtle);
-      padding: 0.75rem 1.25rem; border-radius: 10px; font-weight: 600; font-size: 0.85rem;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.6); display: none; align-items: center; gap: 0.6rem;
-    }
-
-    /* Responsividade Detalhada (Mobile & Tablet) */
-    @media (max-width: 768px) {
-      header { padding: 0.75rem 1rem; flex-direction: column; align-items: stretch; gap: 0.6rem; }
-      .header-pills { justify-content: space-between; }
-      .nav-bar-wrapper { top: 108px; padding: 0.35rem 0.75rem; }
-      main { padding: 0.75rem; }
-      .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.65rem; }
-      .kpi-card { padding: 0.85rem; }
-      .kpi-val { font-size: 1.35rem; }
-      .section-toolbar { flex-direction: column; align-items: stretch; gap: 0.75rem; }
-      .toolbar-actions { justify-content: stretch; }
-      .toolbar-actions .btn, .toolbar-actions .search-input { flex: 1; }
-
-      /* Oculta tabelas grandes no celular e ativa os cards touch */
-      .table-container { display: none; }
-      .mobile-card-deck { display: flex; }
-
-      .charts-grid { grid-template-columns: 1fr; }
-      .simulator-wrapper { grid-template-columns: 1fr; }
-    }
-
-    @media (min-width: 769px) and (max-width: 1024px) {
-      /* Tablet */
-      header { padding: 0.85rem 1.25rem; }
-      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-      .simulator-wrapper { grid-template-columns: 1fr; }
-      .table-container { display: block; }
-      .mobile-card-deck { display: none; }
-    }
-
-    /* --- ESTILOS DO COPILOTO IA DO GESTOR --- */
-    .quick-chips-wrapper {
-      margin-bottom: 1.25rem;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      padding: 0.85rem 1rem;
-    }
-    .chips-label {
-      display: block;
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 0.6rem;
-    }
-    .chips-scroller {
+    .header-right {
       display: flex;
+      align-items: center;
       gap: 0.6rem;
-      overflow-x: auto;
-      padding-bottom: 0.25rem;
-      -webkit-overflow-scrolling: touch;
+      flex-wrap: wrap;
     }
-    .chips-scroller::-webkit-scrollbar {
-      height: 4px;
-    }
-    .chips-scroller::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
-    }
-    .catalog-filter-btn {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-subtle);
-      color: #94A3B8;
-      border-radius: 999px;
-      padding: 0.25rem 0.65rem;
-      font-size: 0.725rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .catalog-filter-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: #FFFFFF;
-      border-color: rgba(255, 255, 255, 0.25);
-    }
-    .catalog-filter-btn.active {
-      background: rgba(16, 185, 129, 0.2);
-      border-color: #10B981;
-      color: #34D399;
-    }
-    .chip-btn {
-      background: rgba(16, 185, 129, 0.08);
-      color: #A7F3D0;
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      border-radius: 999px;
-      padding: 0.45rem 0.95rem;
-      font-size: 0.82rem;
-      font-weight: 600;
-      white-space: nowrap;
-      cursor: pointer;
-      transition: all 0.2s;
+
+    .btn-top-action {
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
-    }
-    .chip-btn:hover {
-      background: rgba(16, 185, 129, 0.2);
-      border-color: var(--primary);
-      color: #FFFFFF;
-      transform: translateY(-1px);
-    }
-    .chip-btn:active {
-      transform: translateY(0);
-    }
-
-    .copilot-chat-container {
-      background: #0B0F19;
+      gap: 0.4rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--radius-sm);
       border: 1px solid var(--border-subtle);
-      border-radius: 16px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
-    }
-    .copilot-chat-container {
-      background: #0B0F19;
-      border: 1px solid var(--border-subtle);
-      border-radius: 16px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
-      max-width: 100%;
-    }
-    .copilot-messages {
-      height: clamp(340px, 50vh, 520px);
-      overflow-y: auto;
-      padding: 1.25rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-      overscroll-behavior-y: contain;
-    }
-    .copilot-input-bar {
-      display: flex;
-      gap: 0.75rem;
-      padding: 1rem;
-      background: #111827;
-      border-top: 1px solid var(--border-subtle);
-      position: sticky;
-      bottom: 0;
-      z-index: 10;
-    }
-    .copilot-msg {
-      display: flex;
-      gap: 0.85rem;
-      max-width: 90%;
-      animation: fadeIn 0.3s ease-in-out;
-    }
-    .copilot-msg.bot {
-      align-self: flex-start;
-    }
-    .copilot-msg.user {
-      align-self: flex-end;
-      flex-direction: row-reverse;
-    }
-    .copilot-avatar {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(99, 102, 241, 0.25));
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-      flex-shrink: 0;
-      box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
-    }
-    .copilot-user-avatar {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-      flex-shrink: 0;
-    }
-    .copilot-bubble {
-      background: #111827;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px;
-      padding: 1rem 1.25rem;
-      color: #E5E7EB;
-      font-size: 0.92rem;
-      line-height: 1.6;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-    .copilot-msg.user .copilot-bubble {
-      background: rgba(16, 185, 129, 0.12);
-      border-color: rgba(16, 185, 129, 0.3);
-      color: #FFFFFF;
-    }
-    .copilot-bubble p {
-      margin-bottom: 0.5rem;
-    }
-    .copilot-bubble p:last-child {
-      margin-bottom: 0;
-    }
-    .copilot-bubble ul, .copilot-bubble ol {
-      margin-left: 1.25rem;
-      margin-bottom: 0.5rem;
-    }
-    .copilot-bubble li {
-      margin-bottom: 0.25rem;
-    }
-    .copilot-bubble strong {
-      color: #FFFFFF;
-    }
-    .copilot-input-bar {
-      display: flex;
-      gap: 0.75rem;
-      padding: 1rem;
-      background: #111827;
-      border-top: 1px solid var(--border-subtle);
-    }
-    .copilot-input-field {
-      flex: 1;
-      background: #0B0F19;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 10px;
-      padding: 0.85rem 1.15rem;
-      color: #FFFFFF;
+      background: var(--bg-surface);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 500;
       font-family: inherit;
-      font-size: 0.95rem;
-      transition: all 0.2s;
-    }
-    .copilot-input-field:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-    }
-    .copilot-loading-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--primary);
-      margin-right: 0.5rem;
-      animation: pulseDot 1s infinite alternate;
-    }
-    @keyframes pulseDot {
-      0% { opacity: 0.3; transform: scale(0.8); }
-      100% { opacity: 1; transform: scale(1.2); }
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
     }
 
-    /* Master Kill Switch (Executive Hardware Toggle Switch - Zero Emojis) */
+    .btn-top-action:hover {
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .main-body {
+      flex: 1;
+      padding: 1.5rem 1.75rem 3rem;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* TOAST & BANNERS */
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #111827;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+      border-radius: 8px;
+      padding: 0.75rem 1.1rem;
+      display: none;
+      align-items: center;
+      gap: 0.6rem;
+      z-index: 9999;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    #banner-ai-emergency {
+      display: none;
+      background: rgba(239, 68, 68, 0.12);
+      border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+      padding: 0.6rem 1rem;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+
+    .btn-emergency-resume {
+      background: #EF4444;
+      color: white;
+      border: none;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      cursor: pointer;
+      margin-left: 0.5rem;
+    }
+
+    /* HARDWARE SWITCH */
     .master-switch-wrapper {
       display: inline-flex;
       align-items: center;
-      gap: 0.6rem;
-      background: rgba(15, 23, 42, 0.7);
-      padding: 3px 12px 3px 5px;
-      border-radius: 999px;
+      gap: 0.5rem;
+      background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
       cursor: pointer;
       user-select: none;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .master-switch-wrapper:hover {
-      border-color: rgba(255, 255, 255, 0.2);
-      transform: translateY(-1px);
-    }
-    .master-switch-on {
-      background: rgba(16, 185, 129, 0.08);
-      border-color: rgba(16, 185, 129, 0.35);
-    }
-    .master-switch-on:hover {
-      border-color: rgba(16, 185, 129, 0.6);
-      box-shadow: 0 0 16px rgba(16, 185, 129, 0.2);
-    }
-    .master-switch-off {
-      background: rgba(239, 68, 68, 0.12);
-      border-color: rgba(239, 68, 68, 0.55);
-      box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);
-    }
-    .master-switch-off:hover {
-      border-color: #EF4444;
-      box-shadow: 0 0 20px rgba(239, 68, 68, 0.45);
+      transition: all 0.2s;
     }
     .hardware-track {
-      width: 32px;
-      height: 18px;
+      width: 28px;
+      height: 16px;
+      background: #374151;
       border-radius: 999px;
-      background: #334155;
       position: relative;
-      transition: background 0.25s ease;
-      flex-shrink: 0;
-    }
-    .master-switch-on .hardware-track {
-      background: #10B981;
-    }
-    .master-switch-off .hardware-track {
-      background: #475569;
+      transition: background 0.2s;
     }
     .hardware-thumb {
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
+      background: #fff;
       border-radius: 50%;
-      background: #FFFFFF;
       position: absolute;
       top: 2px;
       left: 2px;
-      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      transition: transform 0.2s;
     }
-    .master-switch-on .hardware-thumb {
-      transform: translateX(14px);
-    }
-    .master-switch-off .hardware-thumb {
-      transform: translateX(0);
-    }
-    .master-switch-label {
-      font-size: 0.775rem;
-      font-weight: 600;
-      letter-spacing: 0.01em;
+    .master-switch-on .hardware-track { background: var(--emerald); }
+    .master-switch-on .hardware-thumb { transform: translateX(12px); }
+    .master-switch-label { font-size: 0.75rem; font-weight: 600; color: var(--text-main); }
+
+    /* STATUS PILLS */
+    .pill {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-    }
-    .master-switch-on .master-switch-label {
-      color: #34D399;
-    }
-    .master-switch-off .master-switch-label {
-      color: #F87171;
-    }
-    #banner-ai-emergency {
-      display: none;
-      background: rgba(127, 29, 29, 0.95);
-      backdrop-filter: blur(12px);
-      color: #FFFFFF;
-      padding: 0.6rem 1.25rem;
-      font-size: 0.825rem;
+      gap: 0.4rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
       font-weight: 600;
-      text-align: center;
-      position: sticky;
-      top: 59px;
-      z-index: 48;
-      border-bottom: 1px solid rgba(239, 68, 68, 0.4);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
     }
-    .btn-emergency-resume {
-      margin-left: 14px;
-      background: #FFFFFF;
-      color: #991B1B;
-      border: none;
+    .pill-emerald {
+      background: rgba(16, 185, 129, 0.1);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* KPI GRID */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .kpi-card:hover {
+      border-color: var(--border-medium);
+      transform: translateY(-2px);
+    }
+
+    .kpi-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .kpi-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .kpi-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .kpi-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      font-feature-settings: 'tnum';
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.3rem;
+    }
+    .kpi-sub {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    /* CARDS & CONTAINERS */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .card-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--vtex-pink);
+    }
+    .card-title {
+      font-size: 0.95rem;
       font-weight: 700;
-      font-size: 0.725rem;
-      padding: 4px 12px;
-      border-radius: 6px;
+      color: var(--text-main);
+    }
+    .card-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    /* TAB PANES */
+    .tab-pane {
+      display: none;
+      animation: fadeIn 0.15s ease;
+    }
+    .tab-pane.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* DATA TABLES */
+    .table-responsive {
+      overflow-x: auto;
+      border-radius: var(--radius-sm);
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.84rem;
+    }
+    .data-table th {
+      background: #0E1422;
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 0.9rem;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
+    }
+    .data-table td {
+      padding: 0.85rem 0.9rem;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+      font-feature-settings: 'tnum';
+      font-variant-numeric: tabular-nums;
+    }
+    .data-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
-      transition: opacity 0.2s;
+      border: none;
+      transition: all 0.15s;
+      text-decoration: none;
     }
-    .btn-emergency-resume:hover {
-      opacity: 0.9;
+    .btn-primary {
+      background: var(--vtex-pink);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--vtex-pink-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px var(--vtex-pink-glow);
+    }
+    .btn-secondary {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-surface-hover);
+      border-color: var(--border-medium);
+    }
+    .btn-sm {
+      padding: 0.35rem 0.65rem;
+      font-size: 0.75rem;
     }
 
+    /* INPUTS & FORMS */
+    .search-input, .input-styled {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      padding: 0.5rem 0.8rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input:focus, .input-styled:focus {
+      border-color: var(--vtex-pink);
+    }
 
-</style>
+    /* STAT CARDS */
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.15rem;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.3rem;
+    }
+    .stat-value {
+      font-size: 1.35rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* COPILOT CHAT & SIMULATOR */
+    .copilot-container {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 280px);
+      min-height: 450px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .copilot-messages, .chat-messages {
+      flex: 1;
+      padding: 1.25rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .copilot-input-bar {
+      padding: 0.85rem 1.25rem;
+      background: var(--bg-surface-elevated);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .copilot-input-field {
+      flex: 1;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 1rem;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .copilot-input-field:focus {
+      border-color: var(--vtex-pink);
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 1024px) {
+      .app-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+      }
+      .app-sidebar.sidebar-open {
+        transform: translateX(0);
+      }
+      .sidebar-overlay.active {
+        display: block;
+      }
+      .sidebar-toggle {
+        display: inline-flex;
+      }
+      .sidebar-close-btn {
+        display: inline-flex;
+      }
+      .main-body {
+        padding: 1rem;
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -811,7 +785,7 @@ def render_dashboard_html() -> str:
     <span id="toast-msg">Ação executada com sucesso!</span>
   </div>
 
-    <!-- BANNER DE EMERGÊNCIA - ATENDIMENTO MANUAL ATIVO (ZERO EMOJIS) -->
+  <!-- BANNER DE EMERGÊNCIA - ATENDIMENTO MANUAL ATIVO (ZERO EMOJIS) -->
   <div id="banner-ai-emergency">
     <div style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -820,96 +794,137 @@ def render_dashboard_html() -> str:
     </div>
   </div>
 
-  <!-- HEADER EXECUTIVO -->
-  <header>
-    <a href="#" class="brand">
-      <div class="brand-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg></div>
-      <div class="brand-text">
-        <h1>Victor Cell <span>Balcão</span></h1>
-        <p>Peças para Tablets & Atendimento WhatsApp</p>
-      </div>
-    </a>
-
-    <div class="header-pills">
-      <!-- DISJUNTOR GERAL DA IA (HARDWARE TOGGLE SWITCH - ZERO EMOJIS) -->
-      <div id="btn-master-ai" class="master-switch-wrapper master-switch-on" onclick="toggleMasterAISwitch()" title="Alternar entre Atendimento Automático IA ou 100% Manual">
-        <div class="hardware-track">
-          <div class="hardware-thumb"></div>
+  <div class="app-layout">
+    <!-- SIDEBAR LATERAL RETRÁTIL (ESTILO VTEX ADMIN CONSOLE) -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
         </div>
-        <span class="master-switch-label" id="label-master-ai">IA Automática Ativa</span>
+        <div class="brand-info">
+          <div class="brand-name">Victor Cell <span class="brand-badge-vtex">PRO</span></div>
+          <div class="brand-sub">ERP & Balcão WhatsApp</div>
+        </div>
+        <button class="sidebar-close-btn" onclick="toggleSidebar()" aria-label="Fechar Menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
 
-      <div class="pill pill-emerald" id="pill-store">
-        <span class="pill-dot"></span>
-        <span id="store-status">Balcão Aberto</span>
+      <nav class="sidebar-nav">
+        <!-- GRUPO 1: OPERAÇÃO DE BALCÃO -->
+        <div class="nav-section-label">Operação de Balcão</div>
+        <button class="nav-tab active" onclick="switchTab('conversations')" title="Atendimentos WhatsApp">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Atendimentos WhatsApp</span>
+          <span class="tab-badge" id="badge-convs-count">0</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('orders')" title="Separação & Balcão de Saída">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          <span>Separação & Balcão de Saída</span>
+          <span class="tab-badge" id="badge-orders-count">0</span>
+        </button>
+
+        <!-- GRUPO 2: ESTOQUE & ERP NATIVO -->
+        <div class="nav-section-label">Estoque & ERP Nativo</div>
+        <button class="nav-tab" onclick="switchTab('overview')" title="Métricas & Relatórios">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span>Métricas & Relatórios</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('catalog')" title="Catálogo de Peças">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          <span>Catálogo de Peças</span>
+          <span class="tab-badge" id="badge-catalog-count">0</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('erp')" title="ERP & Entrada de Estoque">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+          <span>ERP & Entrada de Estoque</span>
+        </button>
+
+        <!-- GRUPO 3: INTELIGÊNCIA ARTIFICIAL -->
+        <div class="nav-section-label">Inteligência Artificial</div>
+        <button class="nav-tab" onclick="switchTab('copilot')" title="Copiloto de Gestão">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Copiloto de Gestão</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('gemini')" title="Simulador WhatsApp Sandbox">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <span>Simulador WhatsApp Sandbox</span>
+        </button>
+
+        <!-- GRUPO 4: GOVERNANÇA & SISTEMA -->
+        <div class="nav-section-label">Governança & Sistema</div>
+        <button class="nav-tab" onclick="switchTab('audit')" title="Auditoria & Logs">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          <span>Auditoria & Logs</span>
+          <span class="tab-badge" id="badge-audit-count">0</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('profile')" title="Perfil da Loja">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Perfil da Loja</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">ADM</div>
+          <div class="user-meta">
+            <div class="user-name">Administrador</div>
+            <div class="user-role">Balcão & Gestão</div>
+          </div>
+        </div>
+        <a href="/logout" class="sidebar-logout" title="Sair do painel">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </a>
       </div>
-      <div class="pill pill-emerald" id="pill-wa">
-        <span class="pill-dot"></span>
-        <span id="wa-status">WhatsApp Conectado</span>
-      </div>
-      <a href="https://ntfy.sh/victor-cell-balcao-alertas" target="_blank" class="btn btn-secondary btn-sm" style="color: #60A5FA; border-color: rgba(96, 165, 250, 0.3); text-decoration: none; font-weight: 500;" title="Receber alertas com alarme e nome do cliente no celular">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>Alertas Push
-      </a>
-      <button class="btn btn-secondary btn-sm" onclick="refreshAll()" title="Recarregar dados">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar
-      </button>
-      <a href="/logout" class="btn btn-secondary btn-sm" style="color: #EF4444; border-color: rgba(239, 68, 68, 0.3); text-decoration: none;" title="Sair do painel">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg> Sair
-      </a>
-    </div>
-  </header>
+    </aside>
 
-  <!-- NAVEGAÇÃO EM ABAS (RESPONSIVA) -->
-  <div class="nav-bar-wrapper">
-    <div class="nav-tabs">
-      <button class="nav-tab active" onclick="switchTab('conversations')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <span>Atendimentos</span>
-        <span class="tab-badge" id="badge-convs-count">0</span>
-      </button>
-      <button class="nav-tab" onclick="switchTab('orders')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-        <span>Separação & Balcão de Saída</span>
-        <span class="tab-badge" id="badge-orders-count">0</span>
-      </button>
-      <button class="nav-tab" onclick="switchTab('overview')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        <span>Métricas & Relatórios</span>
-      </button>
-      <button class="nav-tab" onclick="switchTab('catalog')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-        <span>Catálogo de Peças</span>
-        <span class="tab-badge" id="badge-catalog-count">0</span>
-      </button>
-      <button class="nav-tab" onclick="switchTab('erp')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-        <span>ERP & Estoque</span>
-      </button>
-      <button class="nav-tab" onclick="switchTab('copilot')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        <span>Copiloto Técnico</span>
-      </button>
-      <button class="nav-tab" onclick="switchTab('audit')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-        <span>Auditoria & Logs</span>
-        <span class="tab-badge" id="badge-audit-count">0</span>
-      </button>
-      <button class="nav-tab" onclick="switchTab('profile')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span>Perfil da Loja</span>
-      </button>
-      <button class="nav-tab" onclick="switchTab('gemini')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        <span>Conexão WhatsApp</span>
-      </button>
-    </div>
-  </div>
+    <!-- BACKDROP OVERLAY FOR MOBILE -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-  <!-- CONTEÚDO PRINCIPAL -->
-  <main>
+    <!-- VIEWPORT DE CONTEÚDO PRINCIPAL -->
+    <div class="content-viewport">
+      <!-- TOP HEADER EXECUTIVO -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Abrir Menu Lateral">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <div class="breadcrumb">
+            <span class="bc-root">Victor Cell</span>
+            <span class="bc-sep">/</span>
+            <span class="bc-active" id="bc-current-title">Atendimentos WhatsApp</span>
+          </div>
+        </div>
 
-    <!-- KPI STAT CARDS (GLOBALMENTE VISÍVEIS) -->
-    <div class="kpi-grid">
+        <div class="header-right">
+          <!-- DISJUNTOR GERAL DA IA -->
+          <div id="btn-master-ai" class="master-switch-wrapper master-switch-on" onclick="toggleMasterAISwitch()" title="Alternar Atendimento Automático IA ou Manual">
+            <div class="hardware-track"><div class="hardware-thumb"></div></div>
+            <span class="master-switch-label" id="label-master-ai">IA Ativa</span>
+          </div>
+
+          <div class="pill pill-emerald" id="pill-store">
+            <span class="pill-dot"></span>
+            <span id="store-status">Balcão Aberto</span>
+          </div>
+          <div class="pill pill-emerald" id="pill-wa">
+            <span class="pill-dot"></span>
+            <span id="wa-status">WhatsApp Conectado</span>
+          </div>
+          <a href="https://ntfy.sh/victor-cell-balcao-alertas" target="_blank" class="btn-top-action" title="Receber alertas com alarme no celular">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            Alertas Push
+          </a>
+          <button class="btn-top-action" onclick="refreshAll()" title="Recarregar dados">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            Atualizar
+          </button>
+        </div>
+      </header>
+
+      <!-- CORPO PRINCIPAL COM AS ABAS -->
+      <main class="main-body">
+<div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-header">
           <span class="kpi-title">Faturamento em Pedidos</span>
@@ -1782,9 +1797,11 @@ def render_dashboard_html() -> str:
       </div>
     </div>
 
-  </main>
+              </main>
+    </div> <!-- /content-viewport -->
+  </div> <!-- /app-layout -->
 
-    <script>
+<script>
     // Interceptor global: Redireciona imediatamente para o login se a sessão expirar
     const originalFetch = window.fetch;
     window.fetch = async function(...args) {
@@ -1991,7 +2008,35 @@ def render_dashboard_html() -> str:
       setTimeout(() => { toast.style.display = 'none'; }, 3500);
     }
 
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('app-sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      if (sidebar) sidebar.classList.toggle('sidebar-open');
+      if (overlay) overlay.classList.toggle('active');
+    }
     function switchTab(tabId) {
+      const tabTitles = {
+        conversations: 'Atendimentos WhatsApp',
+        orders: 'Separação & Balcão de Saída',
+        overview: 'Métricas & Relatórios',
+        catalog: 'Catálogo de Peças',
+        erp: 'ERP & Entrada de Estoque',
+        copilot: 'Copiloto de Gestão',
+        audit: 'Auditoria & Logs',
+        profile: 'Perfil da Loja',
+        gemini: 'Simulador WhatsApp Sandbox'
+      };
+      const titleElem = document.getElementById('bc-current-title');
+      if (titleElem && tabTitles[tabId]) {
+        titleElem.textContent = tabTitles[tabId];
+      }
+      const sidebar = document.getElementById('app-sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      if (sidebar && window.innerWidth < 1024) {
+        sidebar.classList.remove('sidebar-open');
+        if (overlay) overlay.classList.remove('active');
+      }
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
       const activeBtn = Array.from(document.querySelectorAll('.nav-tab')).find(b => b.getAttribute('onclick').includes(tabId));
@@ -3060,7 +3105,7 @@ def render_dashboard_html() -> str:
 def render_login_html(error_message: Optional[str] = None) -> str:
     error_banner = ""
     if error_message:
-        error_banner = f'''
+        error_banner = f"""
         <div class="login-alert">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -3069,8 +3114,8 @@ def render_login_html(error_message: Optional[str] = None) -> str:
           </svg>
           <span>{error_message}</span>
         </div>
-        '''
-    return f'''<!DOCTYPE html>
+        """
+    return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -3359,4 +3404,4 @@ def render_login_html(error_message: Optional[str] = None) -> str:
     }}
   </script>
 </body>
-</html>'''
+</html>"""
