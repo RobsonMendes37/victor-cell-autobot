@@ -311,7 +311,7 @@ def render_dashboard_html() -> str:
 
 
       <!-- AUDITORIA & CATEGORIZAÇÃO DE MENSAGENS DO WHATSAPP (TEMPO REAL) -->
-      <div class="card" style="margin-bottom: 1.25rem; background: linear-gradient(135deg, rgba(14, 20, 34, 0.95), rgba(99, 102, 241, 0.05)); border-color: rgba(99, 102, 241, 0.25);">
+      <div class="card banner-card-gradient" style="margin-bottom: 1.25rem;">
         <div class="card-header">
           <div class="card-title-group">
             <div class="card-icon" style="background: rgba(99, 102, 241, 0.12); color: #818CF8;">
@@ -449,7 +449,7 @@ def render_dashboard_html() -> str:
         </div>
 
         <!-- BARRA DE FILTROS INTERATIVOS -->
-        <div style="background: rgba(14, 20, 34, 0.6); padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
+        <div class="toolbar-filter-panel">
           <!-- Filtro de Período -->
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
             <span style="font-size: 0.75rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">Período:</span>
@@ -543,7 +543,7 @@ def render_dashboard_html() -> str:
     <!-- TAB 4: ESTOQUE GOOGLE SHEETS -->
     <div class="tab-pane" id="tab-catalog">
       <!-- GOOGLE SHEETS LIVE BANNER & CONTROLS -->
-      <div class="section-card" style="margin-bottom: 1.25rem; background: linear-gradient(135deg, rgba(14, 20, 34, 0.95), rgba(16, 185, 129, 0.08)); border-color: rgba(16, 185, 129, 0.3);">
+      <div class="section-card banner-sheets-gradient" style="margin-bottom: 1.25rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 0.25rem;">
           <div style="display: flex; align-items: center; gap: 0.85rem;">
             <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
@@ -627,13 +627,13 @@ def render_dashboard_html() -> str:
               <span class="badge-count" id="catalog-counter">0 peças</span>
             </div>
             <div class="toolbar-actions" style="gap: 0.5rem;">
-              <input type="text" id="catalog-search" placeholder="Buscar por nome, modelo (ex: P615, A15), SKU..." class="search-input" oninput="filterCatalogTable()" style="min-width: 260px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.45rem 0.75rem; color: #fff; font-size: 0.85rem;">
+              <input type="text" id="catalog-search" placeholder="Buscar por nome, modelo (ex: P615, A15), SKU..." class="search-input" oninput="filterCatalogTable()" style="min-width: 260px;">
               <button class="btn btn-secondary btn-sm" onclick="fetchCatalog()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
             </div>
           </div>
 
           <!-- CHIPS DE FILTRO RÁPIDO (MARCAS & CATEGORIAS) -->
-          <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.06);">
+          <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border-subtle);">
             <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
               <span style="font-size: 0.75rem; color: #94A3B8; font-weight: 600; margin-right: 0.25rem;">Marca:</span>
               <button class="catalog-filter-btn active" data-filter-type="brand" data-filter-val="all" onclick="setBrandFilter('all', this)">Todas</button>
@@ -669,6 +669,22 @@ def render_dashboard_html() -> str:
               <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando catálogo...</td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- PAGINAÇÃO DO CATÁLOGO DE PEÇAS (10 ITENS POR PÁGINA) -->
+        <div class="pagination-bar" id="catalog-pagination-bar">
+          <div style="font-size: 0.8rem; color: var(--text-muted);" id="catalog-pagination-info">
+            Mostrando 1 a 10 de 0 peças
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="pagination-btn" id="btn-catalog-prev" onclick="changeCatalogPage(-1)" disabled>
+              ← Anterior
+            </button>
+            <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); padding: 0 0.5rem;" id="catalog-page-number">1 / 1</span>
+            <button class="pagination-btn" id="btn-catalog-next" onclick="changeCatalogPage(1)" disabled>
+              Próxima →
+            </button>
+          </div>
         </div>
 
         <div class="mobile-card-deck" id="catalog-cards-mobile"></div>
@@ -831,14 +847,14 @@ def render_dashboard_html() -> str:
         <div style="padding: 1.25rem;">
           <!-- CHIPS DE PERGUNTAS RÁPIDAS -->
           <div class="quick-chips-wrapper">
-            <span class="chips-label">Consultas Rápidas:</span>
+            <span class="chips-label">Consultas Rápidas do Gestor:</span>
             <div class="chips-scroller">
-              <button class="chip-btn" onclick="sendQuickPrompt('Faça um resumo executivo direto e conciso de hoje: faturamento, pedidos, estoque e a principal ação.')">Resumo do Dia</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Quais peças precisam de reposição urgente? Responda de forma direta e concisa.')">Estoque & Reposição</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Como foi o volume e faturamento de vendas hoje? Seja direto.')">Volume de Vendas</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Qual a situação das entregas via Uber Flash hoje? Seja direto.')">Entregas Uber Flash</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Qual o status rápido dos atendimentos no WhatsApp agora? Quantos estão com humanos?')">Atendimentos no Balcão</button>
-              <button class="chip-btn" onclick="sendQuickPrompt('Qual a principal ação prática para aumentar as vendas amanhã? Seja direto e objetivo.')">Ação para Vender Mais</button>
+              <button class="quick-chip-btn" onclick="sendQuickPrompt('Faça um resumo executivo direto e conciso de hoje: faturamento, pedidos, estoque e a principal ação.')">📊 Resumo do Dia</button>
+              <button class="quick-chip-btn" onclick="sendQuickPrompt('Quais peças precisam de reposição urgente? Responda de forma direta e concisa.')">📦 Estoque & Reposição</button>
+              <button class="quick-chip-btn" onclick="sendQuickPrompt('Como foi o volume e faturamento de vendas hoje? Seja direto.')">💰 Faturamento & Ticket</button>
+              <button class="quick-chip-btn" onclick="sendQuickPrompt('Qual a situação das entregas via Uber Flash hoje? Seja direto.')">🚗 Entregas Uber Flash</button>
+              <button class="quick-chip-btn" onclick="sendQuickPrompt('Qual o status rápido dos atendimentos no WhatsApp agora? Quantos estão com humanos?')">💬 Atendimentos Balcão</button>
+              <button class="quick-chip-btn" onclick="sendQuickPrompt('Qual a principal ação prática para aumentar as vendas amanhã? Seja direto e objetivo.')">🎯 Ação p/ Vender Mais</button>
             </div>
           </div>
 
@@ -1008,7 +1024,7 @@ def render_dashboard_html() -> str:
         </div>
 
         <!-- FILTROS DE AUDITORIA -->
-        <div class="audit-toolbar" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); margin-top: 0.5rem;">
+        <div class="audit-toolbar" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); margin-top: 0.5rem;">
           <div class="level-pills">
             <button class="pill-btn active" data-level="" onclick="filterAuditLevel('', this)">Todos</button>
             <button class="pill-btn pill-info" data-level="INFO" onclick="filterAuditLevel('INFO', this)">Informativo</button>
@@ -1169,22 +1185,6 @@ def render_dashboard_html() -> str:
           </div>
 
           <div class="form-group">
-            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Cor Primária de Destaque</label>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <input type="color" id="tenant-primary-color" value="#F71963" onchange="document.getElementById('tenant-primary-color-text').value = this.value" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
-              <input type="text" id="tenant-primary-color-text" value="#F71963" onchange="document.getElementById('tenant-primary-color').value = this.value" class="input-styled" style="flex: 1; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono);">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Cor Hover (Botões e Foco)</label>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <input type="color" id="tenant-primary-hover" value="#E00E54" onchange="document.getElementById('tenant-primary-hover-text').value = this.value" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
-              <input type="text" id="tenant-primary-hover-text" value="#E00E54" onchange="document.getElementById('tenant-primary-hover').value = this.value" class="input-styled" style="flex: 1; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono);">
-            </div>
-          </div>
-
-          <div class="form-group">
             <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Ícone / Emoji do Logo</label>
             <input type="text" id="tenant-logo-icon" class="input-styled" placeholder="Ex: ⚡ ou 📱 ou 🔧" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
           </div>
@@ -1194,20 +1194,114 @@ def render_dashboard_html() -> str:
             <input type="text" id="tenant-logo-url" class="input-styled" placeholder="Ex: /static/brands/minha-loja.png" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
           </div>
 
+          <!-- PALETA DE CORES CENTRALIZADA (SISTEMA DE 4 CORES + FILTROS) -->
+          <div style="grid-column: 1 / -1; margin-top: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem; display: flex; align-items: center; gap: 6px;">
+              <span>🎨 Paleta de Cores Centralizada (Constantes do Sistema em Hexadecimal)</span>
+            </div>
+            <p style="font-size: 0.775rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Defina as 4 cores base do sistema no formato hexadecimal (ex: #F71963). O gestor tem controle total da identidade visual.
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+
+              <!-- 1. Cor Primária / Marca Principal -->
+              <div class="color-picker-card">
+                <label style="font-size: 0.775rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">
+                  1. Cor Primária (Principal)
+                </label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="color" id="tenant-primary-color" value="#F71963" oninput="syncColorPicker('tenant-primary-color', 'tenant-primary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-primary-color-text" value="#F71963" maxlength="7" placeholder="#F71963" oninput="syncColorText('tenant-primary-color-text', 'tenant-primary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                </div>
+                <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Botões de ação, tabs ativas e logo</span>
+              </div>
+
+              <!-- 2. Cor Secundária -->
+              <div class="color-picker-card">
+                <label style="font-size: 0.775rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">
+                  2. Cor Secundária (Info & Gráficos)
+                </label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="color" id="tenant-secondary-color" value="#6366F1" oninput="syncColorPicker('tenant-secondary-color', 'tenant-secondary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-secondary-color-text" value="#6366F1" maxlength="7" placeholder="#6366F1" oninput="syncColorText('tenant-secondary-color-text', 'tenant-secondary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                </div>
+                <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Gráficos de mix, badges de info</span>
+              </div>
+
+              <!-- 3. Cor Terciária -->
+              <div class="color-picker-card">
+                <label style="font-size: 0.775rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">
+                  3. Cor Terciária (Sucesso & Estoque)
+                </label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="color" id="tenant-tertiary-color" value="#10B981" oninput="syncColorPicker('tenant-tertiary-color', 'tenant-tertiary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-tertiary-color-text" value="#10B981" maxlength="7" placeholder="#10B981" oninput="syncColorText('tenant-tertiary-color-text', 'tenant-tertiary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                </div>
+                <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Itens em estoque, vendas fechadas</span>
+              </div>
+
+              <!-- 4. Cor Quaternária -->
+              <div class="color-picker-card">
+                <label style="font-size: 0.775rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">
+                  4. Cor Quaternária (Avisos & Logística)
+                </label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="color" id="tenant-quaternary-color" value="#F59E0B" oninput="syncColorPicker('tenant-quaternary-color', 'tenant-quaternary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-quaternary-color-text" value="#F59E0B" maxlength="7" placeholder="#F59E0B" oninput="syncColorText('tenant-quaternary-color-text', 'tenant-quaternary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                </div>
+                <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Uber Flash, cotações e alertas</span>
+              </div>
+
+              <!-- 5. Cor dos Filtros -->
+              <div class="color-picker-card">
+                <label style="font-size: 0.775rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">
+                  5. Cor dos Filtros (Chips / Pills)
+                </label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="color" id="tenant-filter-color" value="#334155" oninput="syncColorPicker('tenant-filter-color', 'tenant-filter-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-filter-color-text" value="#334155" maxlength="7" placeholder="#334155" oninput="syncColorText('tenant-filter-color-text', 'tenant-filter-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                </div>
+                <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Fundo de botões de filtro e chips</span>
+              </div>
+
+              <!-- Cor Hover -->
+              <div class="color-picker-card">
+                <label style="font-size: 0.775rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">
+                  Cor Hover de Botões
+                </label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="color" id="tenant-primary-hover" value="#E00E54" oninput="syncColorPicker('tenant-primary-hover', 'tenant-primary-hover-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-primary-hover-text" value="#E00E54" maxlength="7" placeholder="#E00E54" oninput="syncColorText('tenant-primary-hover-text', 'tenant-primary-hover')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                </div>
+                <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Estado interativo ao passar o mouse</span>
+              </div>
+
+            </div>
+          </div>
+
           <!-- PRÉVIA INSTANTÂNEA DA MARCA -->
           <div style="grid-column: 1 / -1;" class="tenant-preview-box">
             <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 5px;">
-              <span>👁️ Amostra & Pré-visualização em Tempo Real</span>
+              <span>👁️ Amostra & Pré-visualização da Paleta em Tempo Real</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
               <div id="tenant-preview-badge" style="background: var(--tenant-brand); color: #fff; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px var(--tenant-brand-glow);">
                 <span id="tenant-preview-icon" style="font-size: 1.1rem;">⚡</span>
                 <span id="tenant-preview-name">Victor Cell</span>
                 <span id="tenant-preview-tag" class="brand-badge-vtex">PRO</span>
               </div>
-              <button type="button" id="tenant-preview-btn" style="background: var(--tenant-brand); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease;">
-                Botão de Ação Primária
+              <button type="button" id="tenant-preview-btn" style="background: var(--tenant-brand); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer;">
+                1. Primária
               </button>
+              <button type="button" id="tenant-preview-sec-btn" style="background: var(--primary); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer;">
+                2. Secundária
+              </button>
+              <span id="tenant-preview-tert-badge" style="background: var(--emerald); color: #fff; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.8rem;">
+                3. Terciária
+              </span>
+              <span id="tenant-preview-quat-badge" style="background: var(--amber); color: #000; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 0.8rem;">
+                4. Quaternária
+              </span>
               <div style="font-size: 0.75rem; color: var(--text-dim);" id="tenant-preview-slogan">ERP & Balcão Inteligente</div>
             </div>
           </div>
@@ -1336,7 +1430,7 @@ def render_dashboard_html() -> str:
         <button class="drawer-close-btn" onclick="closeJsonViewer()">✕</button>
       </div>
       <div class="vtex-modal-body">
-        <pre id="json-modal-content" style="background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.775rem; color: #A5B4FC; overflow-x: auto; max-height: 480px;"></pre>
+        <pre id="json-modal-content" class="json-code-box"></pre>
       </div>
       <div class="vtex-modal-footer">
         <button class="btn btn-secondary" onclick="closeJsonViewer()">Fechar</button>
@@ -1344,7 +1438,7 @@ def render_dashboard_html() -> str:
     </div>
   </div>
 
-  <script src="/static/js/dashboard.js?v=20261102_05"></script>
+  <script src="/static/js/dashboard.js?v=20261102_06"></script>
 </body>
 </html>"""
 

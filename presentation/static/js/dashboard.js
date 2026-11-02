@@ -1110,9 +1110,12 @@
     // 3. CATÁLOGO GOOGLE SHEETS
     let currentBrandFilter = 'all';
     let currentCatFilter = 'all';
+    const CATALOG_PAGE_SIZE = 10;
+    let currentCatalogPage = 1;
 
     function setBrandFilter(val, btn) {
       currentBrandFilter = val;
+      currentCatalogPage = 1;
       document.querySelectorAll('[data-filter-type="brand"]').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
       renderCatalogRows();
@@ -1120,12 +1123,19 @@
 
     function setCatFilter(val, btn) {
       currentCatFilter = val;
+      currentCatalogPage = 1;
       document.querySelectorAll('[data-filter-type="cat"]').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
       renderCatalogRows();
     }
 
     function filterCatalogTable() {
+      currentCatalogPage = 1;
+      renderCatalogRows();
+    }
+
+    function changeCatalogPage(delta) {
+      currentCatalogPage += delta;
       renderCatalogRows();
     }
 
@@ -1193,15 +1203,41 @@
 
       const tbody = document.getElementById('catalog-tbody');
       const mobileDeck = document.getElementById('catalog-cards-mobile');
+      const pagInfo = document.getElementById('catalog-pagination-info');
+      const pagNum = document.getElementById('catalog-page-number');
+      const btnPrev = document.getElementById('btn-catalog-prev');
+      const btnNext = document.getElementById('btn-catalog-next');
+
       document.getElementById('catalog-counter').innerText = `${filtered.length} de ${allCatalog.length} peças`;
 
       if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma peça corresponde aos filtros aplicados.</td></tr>';
         mobileDeck.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma peça encontrada.</div>';
+        if (pagInfo) pagInfo.innerText = '0 peças encontradas';
+        if (pagNum) pagNum.innerText = '1 / 1';
+        if (btnPrev) btnPrev.disabled = true;
+        if (btnNext) btnNext.disabled = true;
         return;
       }
 
-      tbody.innerHTML = filtered.map(p => `
+      const totalPages = Math.ceil(filtered.length / CATALOG_PAGE_SIZE) || 1;
+      if (currentCatalogPage < 1) currentCatalogPage = 1;
+      if (currentCatalogPage > totalPages) currentCatalogPage = totalPages;
+
+      const startIdx = (currentCatalogPage - 1) * CATALOG_PAGE_SIZE;
+      const endIdx = Math.min(startIdx + CATALOG_PAGE_SIZE, filtered.length);
+      const paged = filtered.slice(startIdx, endIdx);
+
+      if (pagInfo) {
+        pagInfo.innerText = `Mostrando ${startIdx + 1} a ${endIdx} de ${filtered.length} peças`;
+      }
+      if (pagNum) {
+        pagNum.innerText = `${currentCatalogPage} / ${totalPages}`;
+      }
+      if (btnPrev) btnPrev.disabled = (currentCatalogPage <= 1);
+      if (btnNext) btnNext.disabled = (currentCatalogPage >= totalPages);
+
+      tbody.innerHTML = paged.map(p => `
         <tr>
           <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.775rem; color: var(--primary);">${p.sku}</td>
           <td>
@@ -1216,7 +1252,7 @@
         </tr>
       `).join('');
 
-      mobileDeck.innerHTML = filtered.map(p => `
+      mobileDeck.innerHTML = paged.map(p => `
         <div class="customer-card-mobile">
           <div class="card-mobile-top">
             <div>
@@ -1967,6 +2003,27 @@
       }
     }
 
+    function syncColorPicker(pickerId, textId) {
+      const picker = document.getElementById(pickerId);
+      const text = document.getElementById(textId);
+      if (picker && text) {
+        text.value = picker.value.toUpperCase();
+      }
+      updateTenantPreview();
+    }
+
+    function syncColorText(textId, pickerId) {
+      const text = document.getElementById(textId);
+      const picker = document.getElementById(pickerId);
+      if (!text || !picker) return;
+      let val = text.value.trim();
+      if (val && !val.startsWith('#')) val = '#' + val;
+      if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        picker.value = val;
+        updateTenantPreview();
+      }
+    }
+
     function applyTenantConfig(config) {
       if (!config) return;
       tenantConfig = config;
@@ -1984,12 +2041,13 @@
         subElems.forEach(el => el.innerText = config.brand_slogan);
       }
 
-      // 2. Cores e Variáveis CSS (White-Label Dinâmico)
+      // 2. Cores e Variáveis CSS (White-Label Dinâmico - Paleta Centralizada)
       if (config.theme) {
         const root = document.documentElement;
         if (config.theme.primary_color) {
           root.style.setProperty('--vtex-pink', config.theme.primary_color);
           root.style.setProperty('--tenant-brand', config.theme.primary_color);
+          root.style.setProperty('--primary', config.theme.primary_color);
         }
         if (config.theme.primary_hover) {
           root.style.setProperty('--vtex-pink-hover', config.theme.primary_hover);
@@ -2000,6 +2058,23 @@
           root.style.setProperty('--tenant-brand-glow', config.theme.primary_glow);
           const bgAlpha = config.theme.primary_glow.replace(/[\d\.]+\)$/, '0.09)');
           root.style.setProperty('--vtex-pink-bg', bgAlpha);
+        }
+        if (config.theme.secondary_color) {
+          root.style.setProperty('--secondary-color', config.theme.secondary_color);
+          root.style.setProperty('--tenant-secondary', config.theme.secondary_color);
+        }
+        if (config.theme.tertiary_color) {
+          root.style.setProperty('--tertiary-color', config.theme.tertiary_color);
+          root.style.setProperty('--tenant-tertiary', config.theme.tertiary_color);
+          root.style.setProperty('--emerald', config.theme.tertiary_color);
+        }
+        if (config.theme.quaternary_color) {
+          root.style.setProperty('--quaternary-color', config.theme.quaternary_color);
+          root.style.setProperty('--tenant-quaternary', config.theme.quaternary_color);
+          root.style.setProperty('--amber', config.theme.quaternary_color);
+        }
+        if (config.theme.filter_color) {
+          root.style.setProperty('--tenant-filter-bg', config.theme.filter_color);
         }
         if (config.theme.bg_canvas) {
           root.style.setProperty('--bg-canvas', config.theme.bg_canvas);
@@ -2025,12 +2100,24 @@
         document.getElementById('tenant-brand-slogan').value = config.brand_slogan || '';
         document.getElementById('tenant-brand-badge').value = config.brand_badge || 'PRO';
         if (config.theme) {
-          document.getElementById('tenant-primary-color').value = config.theme.primary_color || '#F71963';
-          document.getElementById('tenant-primary-color-text').value = config.theme.primary_color || '#F71963';
-          document.getElementById('tenant-primary-hover').value = config.theme.primary_hover || '#E00E54';
-          document.getElementById('tenant-primary-hover-text').value = config.theme.primary_hover || '#E00E54';
-          document.getElementById('tenant-logo-icon').value = config.theme.logo_icon || '⚡';
-          document.getElementById('tenant-logo-url').value = config.theme.logo_url || '';
+          const setField = (id, val) => {
+            const el = document.getElementById(id);
+            if (el && val) el.value = val;
+          };
+          setField('tenant-primary-color', config.theme.primary_color || '#F71963');
+          setField('tenant-primary-color-text', config.theme.primary_color || '#F71963');
+          setField('tenant-primary-hover', config.theme.primary_hover || '#E00E54');
+          setField('tenant-primary-hover-text', config.theme.primary_hover || '#E00E54');
+          setField('tenant-secondary-color', config.theme.secondary_color || '#6366F1');
+          setField('tenant-secondary-color-text', config.theme.secondary_color || '#6366F1');
+          setField('tenant-tertiary-color', config.theme.tertiary_color || '#10B981');
+          setField('tenant-tertiary-color-text', config.theme.tertiary_color || '#10B981');
+          setField('tenant-quaternary-color', config.theme.quaternary_color || '#F59E0B');
+          setField('tenant-quaternary-color-text', config.theme.quaternary_color || '#F59E0B');
+          setField('tenant-filter-color', config.theme.filter_color || '#334155');
+          setField('tenant-filter-color-text', config.theme.filter_color || '#334155');
+          setField('tenant-logo-icon', config.theme.logo_icon || '⚡');
+          setField('tenant-logo-url', config.theme.logo_url || '');
         }
         updateTenantPreview();
         setupTenantPreviewListeners();
@@ -2042,6 +2129,9 @@
       const slogan = document.getElementById('tenant-brand-slogan')?.value || 'ERP & Balcão Inteligente';
       const badge = document.getElementById('tenant-brand-badge')?.value || 'PRO';
       const primaryColor = document.getElementById('tenant-primary-color')?.value || '#F71963';
+      const secondaryColor = document.getElementById('tenant-secondary-color')?.value || '#6366F1';
+      const tertiaryColor = document.getElementById('tenant-tertiary-color')?.value || '#10B981';
+      const quaternaryColor = document.getElementById('tenant-quaternary-color')?.value || '#F59E0B';
       const icon = document.getElementById('tenant-logo-icon')?.value || '⚡';
 
       const previewName = document.getElementById('tenant-preview-name');
@@ -2064,23 +2154,34 @@
 
       const previewBtn = document.getElementById('tenant-preview-btn');
       if (previewBtn) previewBtn.style.background = primaryColor;
+
+      const previewSecBtn = document.getElementById('tenant-preview-sec-btn');
+      if (previewSecBtn) previewSecBtn.style.background = secondaryColor;
+
+      const previewTertBadge = document.getElementById('tenant-preview-tert-badge');
+      if (previewTertBadge) previewTertBadge.style.background = tertiaryColor;
+
+      const previewQuatBadge = document.getElementById('tenant-preview-quat-badge');
+      if (previewQuatBadge) previewQuatBadge.style.background = quaternaryColor;
     }
 
     let tenantListenersBound = false;
     function setupTenantPreviewListeners() {
       if (tenantListenersBound) return;
       tenantListenersBound = true;
-      ['tenant-brand-name', 'tenant-brand-slogan', 'tenant-brand-badge', 'tenant-primary-color', 'tenant-primary-color-text', 'tenant-logo-icon'].forEach(id => {
+      const ids = [
+        'tenant-brand-name', 'tenant-brand-slogan', 'tenant-brand-badge', 'tenant-logo-icon',
+        'tenant-primary-color', 'tenant-primary-color-text',
+        'tenant-secondary-color', 'tenant-secondary-color-text',
+        'tenant-tertiary-color', 'tenant-tertiary-color-text',
+        'tenant-quaternary-color', 'tenant-quaternary-color-text',
+        'tenant-filter-color', 'tenant-filter-color-text',
+        'tenant-primary-hover', 'tenant-primary-hover-text'
+      ];
+      ids.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
           el.addEventListener('input', () => {
-            if (id === 'tenant-primary-color') {
-              const textEl = document.getElementById('tenant-primary-color-text');
-              if (textEl) textEl.value = el.value;
-            } else if (id === 'tenant-primary-color-text') {
-              const pickerEl = document.getElementById('tenant-primary-color');
-              if (pickerEl && /^#[0-9A-Fa-f]{6}$/.test(el.value)) pickerEl.value = el.value;
-            }
             updateTenantPreview();
           });
         }
@@ -2090,19 +2191,24 @@
     async function saveTenantBranding(e) {
       if (e) e.preventDefault();
       try {
+        const primaryVal = document.getElementById('tenant-primary-color')?.value || '#F71963';
         const payload = {
           tenant_id: (tenantConfig && tenantConfig.tenant_id) || 'tenant_custom',
-          brand_name: document.getElementById('tenant-brand-name').value,
-          brand_slogan: document.getElementById('tenant-brand-slogan').value,
-          brand_badge: document.getElementById('tenant-brand-badge').value,
+          brand_name: document.getElementById('tenant-brand-name')?.value || 'Victor Cell',
+          brand_slogan: document.getElementById('tenant-brand-slogan')?.value || 'ERP & Balcão Inteligente',
+          brand_badge: document.getElementById('tenant-brand-badge')?.value || 'PRO',
           theme: {
-            primary_color: document.getElementById('tenant-primary-color').value,
-            primary_hover: document.getElementById('tenant-primary-hover').value,
-            primary_glow: hexToRgba(document.getElementById('tenant-primary-color').value, 0.25),
+            primary_color: primaryVal,
+            primary_hover: document.getElementById('tenant-primary-hover')?.value || '#E00E54',
+            primary_glow: hexToRgba(primaryVal, 0.25),
+            secondary_color: document.getElementById('tenant-secondary-color')?.value || '#6366F1',
+            tertiary_color: document.getElementById('tenant-tertiary-color')?.value || '#10B981',
+            quaternary_color: document.getElementById('tenant-quaternary-color')?.value || '#F59E0B',
+            filter_color: document.getElementById('tenant-filter-color')?.value || '#334155',
             bg_canvas: '#090D14',
             bg_surface: '#121826',
-            logo_icon: document.getElementById('tenant-logo-icon').value,
-            logo_url: document.getElementById('tenant-logo-url').value
+            logo_icon: document.getElementById('tenant-logo-icon')?.value || '⚡',
+            logo_url: document.getElementById('tenant-logo-url')?.value || ''
           },
           modules: (tenantConfig && tenantConfig.modules) || {
             whatsapp: true, orders: true, metrics: true, catalog: true,
@@ -2138,6 +2244,18 @@
       const b = num & 255;
       return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
+
+    // Expor funções interativas ao escopo global para acesso inline em onclick/oninput
+    window.changeCatalogPage = changeCatalogPage;
+    window.setBrandFilter = setBrandFilter;
+    window.setCatFilter = setCatFilter;
+    window.filterCatalogTable = filterCatalogTable;
+    window.syncColorPicker = syncColorPicker;
+    window.syncColorText = syncColorText;
+    window.sendQuickPrompt = sendQuickPrompt;
+    window.clearCopilotChat = clearCopilotChat;
+    window.sendCopilotMessage = sendCopilotMessage;
+    window.saveTenantBranding = saveTenantBranding;
 
     // Inicialização ao Carregar
     initTheme();

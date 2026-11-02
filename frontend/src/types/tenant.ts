@@ -2,6 +2,10 @@ export interface TenantTheme {
   primary_color: string;
   primary_hover: string;
   primary_glow: string;
+  secondary_color?: string;
+  tertiary_color?: string;
+  quaternary_color?: string;
+  filter_color?: string;
   bg_canvas: string;
   bg_surface: string;
   logo_icon: string;

@@ -211,3 +211,97 @@ def test_tenant_config_get_and_post(auth_client):
     auth_client.post("/api/tenant/config", json=default_payload)
 
 
+def test_tenant_config_with_centralized_palette(auth_client):
+    payload = {
+        "tenant_id": "victor_cell",
+        "brand_name": "Victor Cell Enterprise",
+        "brand_slogan": "ERP & Balcão Inteligente",
+        "brand_badge": "VIP",
+        "theme": {
+            "primary_color": "#F71963",
+            "primary_hover": "#E00E54",
+            "primary_glow": "rgba(247, 25, 99, 0.25)",
+            "secondary_color": "#6366F1",
+            "tertiary_color": "#10B981",
+            "quaternary_color": "#F59E0B",
+            "filter_color": "#334155",
+            "bg_canvas": "#090D14",
+            "bg_surface": "#121826",
+            "logo_icon": "⚡",
+            "logo_url": ""
+        },
+        "modules": {
+            "whatsapp": True, "orders": True, "metrics": True, "catalog": True,
+            "erp": True, "copilot": True, "audit": True, "profile": True, "simulator": True
+        }
+    }
+    res_post = auth_client.post("/api/tenant/config", json=payload)
+    assert res_post.status_code == 200
+    theme = res_post.json()["config"]["theme"]
+    assert theme["secondary_color"] == "#6366F1"
+    assert theme["tertiary_color"] == "#10B981"
+    assert theme["quaternary_color"] == "#F59E0B"
+    assert theme["filter_color"] == "#334155"
+
+
+def test_api_orders_rest_endpoints(auth_client):
+    # 1. Listagem com paginação e filtros
+    res_list = auth_client.get("/api/orders?limit=10&offset=0")
+    assert res_list.status_code == 200
+    data = res_list.json()
+    assert "orders" in data
+    assert "total" in data
+    assert "limit" in data
+    assert data["limit"] == 10
+
+    # 2. Get por ID
+    if len(data["orders"]) > 0:
+        first_id = data["orders"][0]["id"]
+        res_get = auth_client.get(f"/api/orders/{first_id}")
+        assert res_get.status_code == 200
+        order_data = res_get.json()
+        assert order_data["order"]["id"] == first_id
+
+    # 3. 404 para ID inexistente
+    res_not_found = auth_client.get("/api/orders/order-non-existent-999")
+    assert res_not_found.status_code == 404
+
+
+def test_api_catalog_by_sku_rest_endpoint(auth_client):
+    res_catalog = auth_client.get("/api/catalog")
+    assert res_catalog.status_code == 200
+    items = res_catalog.json().get("items", [])
+    if len(items) > 0:
+        sku = items[0]["sku"]
+        res_sku = auth_client.get(f"/api/catalog/{sku}")
+        assert res_sku.status_code == 200
+        assert res_sku.json()["product"]["sku"] == sku
+
+    # 404 para SKU inexistente
+    res_404 = auth_client.get("/api/catalog/SKU-NON-EXISTENT-XYZ")
+    assert res_404.status_code == 404
+
+
+def test_dashboard_html_palette_and_catalog_pagination(auth_client):
+    res = auth_client.get("/dashboard")
+    assert res.status_code == 200
+    html = res.text
+    # Catalog pagination elements
+    assert "catalog-pagination-bar" in html
+    assert "btn-catalog-prev" in html
+    assert "btn-catalog-next" in html
+    assert "catalog-pagination-info" in html
+    # Centralized Palette elements
+    assert "tenant-secondary-color" in html
+    assert "tenant-tertiary-color" in html
+    assert "tenant-quaternary-color" in html
+    assert "tenant-filter-color" in html
+    assert "tenant-preview-sec-btn" in html
+    assert "tenant-preview-tert-badge" in html
+    assert "tenant-preview-quat-badge" in html
+    # Copilot chips and chat elements
+    assert "quick-chip-btn" in html
+    assert "copilot-chat-container" in html
+
+
+

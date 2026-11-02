@@ -211,12 +211,17 @@ TENANT_CONFIG_FILE = "data/tenant_config.json"
 
 class TenantTheme(BaseModel):
     primary_color: str = "#F71963"
+    secondary_color: str = "#6366F1"
+    tertiary_color: str = "#10B981"
+    quaternary_color: str = "#F59E0B"
+    filter_color: str = "#334155"
     primary_hover: str = "#E00E54"
     primary_glow: str = "rgba(247, 25, 99, 0.25)"
     bg_canvas: str = "#090D14"
     bg_surface: str = "#121826"
     logo_icon: str = "⚡"
     logo_url: Optional[str] = ""
+
 
 
 class TenantModules(BaseModel):
@@ -644,6 +649,107 @@ async def get_orders_csv(request: Request):
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=Logs_Expedicao_PowerBI.csv"},
     )
+
+
+@app.get("/api/orders", tags=["Operações & Despacho"], summary="Listar Pedidos do Balcão")
+async def list_orders_endpoint(
+    request: Request,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+):
+    """Retorna a listagem de pedidos com suporte a filtros por status, busca e paginação."""
+    check_dashboard_auth(request)
+    orders = await sqlite_repo.list_orders()
+    fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
+
+    filtered = []
+    for o in orders:
+        if status and o.status.value.upper() != status.upper():
+            continue
+        if search:
+            q = search.lower()
+            haystack = f"{o.id} {o.customer_name} {o.customer_phone} {o.product_sku} {o.destination_address or ''}".lower()
+            if q not in haystack:
+                continue
+        filtered.append({
+            "id": o.id,
+            "created_at": o.created_at.astimezone(fortaleza_tz).strftime("%d/%m %H:%M"),
+            "customer_name": o.customer_name,
+            "customer_phone": o.customer_phone,
+            "formatted_phone": format_phone_br(o.customer_phone),
+            "product_sku": o.product_sku,
+            "quantity": o.quantity,
+            "product_price": o.product_price,
+            "destination_address": o.destination_address,
+            "status": o.status.value,
+            "expires_at": o.expires_at.astimezone(fortaleza_tz).strftime("%H:%M"),
+        })
+
+    total_matched = len(filtered)
+    paged = filtered[offset : offset + limit] if limit > 0 else filtered
+
+    return {
+        "status": "success",
+        "total": total_matched,
+        "limit": limit,
+        "offset": offset,
+        "orders": paged,
+    }
+
+
+@app.get("/api/orders/{order_id}", tags=["Operações & Despacho"], summary="Buscar Pedido por ID")
+async def get_order_by_id_endpoint(order_id: str, request: Request):
+    """Busca os detalhes de um pedido individual por seu identificador."""
+    check_dashboard_auth(request)
+    orders = await sqlite_repo.list_orders()
+    fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
+    for o in orders:
+        if str(o.id) == order_id:
+            return {
+                "status": "success",
+                "order": {
+                    "id": o.id,
+                    "created_at": o.created_at.astimezone(fortaleza_tz).strftime("%d/%m %H:%M"),
+                    "customer_name": o.customer_name,
+                    "customer_phone": o.customer_phone,
+                    "formatted_phone": format_phone_br(o.customer_phone),
+                    "product_sku": o.product_sku,
+                    "quantity": o.quantity,
+                    "product_price": o.product_price,
+                    "destination_address": o.destination_address,
+                    "status": o.status.value,
+                    "expires_at": o.expires_at.astimezone(fortaleza_tz).strftime("%H:%M"),
+                },
+            }
+    raise HTTPException(status_code=404, detail=f"Pedido #{order_id} não encontrado")
+
+
+@app.get("/api/catalog/{sku}", tags=["Catálogo & Estoque"], summary="Buscar Peça do Catálogo por SKU")
+async def get_catalog_product_by_sku(sku: str, request: Request):
+    """Busca informações detalhadas de um produto do catálogo por SKU."""
+    check_dashboard_auth(request)
+    product = await product_repo.get_by_sku(sku)
+    if not product:
+        raise HTTPException(status_code=404, detail=f"Peça com SKU '{sku}' não encontrada no catálogo")
+    return {
+        "status": "success",
+        "product": {
+            "sku": product.sku,
+            "name": product.name,
+            "price": product.price,
+            "category": product.category,
+            "compatible_models": product.compatible_models,
+            "has_frame": product.has_frame,
+            "quality": product.quality.value if hasattr(product.quality, "value") else str(product.quality),
+            "stock_quantity": product.stock_quantity,
+            "cost_price": product.cost_price,
+            "warranty_days": product.warranty_days,
+            "has_stock": product.has_stock,
+            "location": product.location,
+        },
+    }
 
 
 @app.post("/api/reports/sync-sheets")
