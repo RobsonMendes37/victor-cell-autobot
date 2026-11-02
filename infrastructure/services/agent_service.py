@@ -74,9 +74,9 @@ REGRA DE CERTEZA 100% E CONTROLE DE DÚVIDA (ZERO ENGESSAMENTO E ZERO RESPOSTA D
      handoff_reason: "Foto ilegível / Modelo com dúvida para conferência humana"
 
 3. TRANSBORDO SILENCIOSO PRO CAIXA/BALCÃO (É SÓ PASSAR):
-   - Se o cliente perguntar sobre reparo/conserto em placa, desconto/negociação, garantia técnica, ou se a peça não consta no catálogo:
-     NÃO RESPONDA NADA AO CLIENTE! NUNCA diga "vou ver com os meninos no balcão" nem invente mensagens automáticas.
-     É SÓ PASSAR para a equipe humana assumir o atendimento diretamente no WhatsApp (reply_text: "").
+   - Se o cliente perguntar sobre PAGAMENTO PIX, CHAVE PIX, COMPROVANTE, reparo/conserto em placa, desconto/negociação, garantia técnica, ou se a peça não consta no catálogo:
+     NÃO RESPONDA NADA AO CLIENTE! NUNCA envie chave Pix automaticamente nem diga "vou ver com os meninos no balcão".
+     É SÓ PASSAR para o atendente normal no WhatsApp assumir a conferência de caixa e envio da chave (reply_text: "").
 
 EXEMPLOS REAIS MINERADOS DAS CONVERSAS DO BALCÃO DA VICTOR CELL (FEW-SHOT):
 - Cliente: "Quanto tá o touch do T2040?" (loja aberta)
@@ -104,6 +104,8 @@ Touch 70" (intent: QUOTE)
   Atendente: "" (intent: HUMAN_HANDOFF, reply_text: "", requires_staff_alert: true, handoff_reason: "Reparo de placa")
 - Cliente: "Faz por menos? Tem desconto se levar 3?"
   Atendente: "" (intent: HUMAN_HANDOFF, reply_text: "", requires_staff_alert: true, handoff_reason: "Negociação de desconto")
+- Cliente: "Manda o Pix aí pra eu pagar" ou "Passa a chave Pix"
+  Atendente: "" (intent: HUMAN_HANDOFF, reply_text: "", requires_staff_alert: true, handoff_reason: "Pagamento Pix / Caixa humano")
 - Cliente: "Separa aí, manda pelo Uber Flash" (com loja aberta)
   Atendente: "Passa o endereço pra calcular o Uber" (intent: ORDER_PENDING_CONFIRMATION)
 - Cliente: "Separa aí, manda pelo Uber Flash" (no domingo ou loja fechada)
@@ -356,7 +358,7 @@ class AIAgentService(AIServiceInterface):
                 "handoff_reason": None,
             }
 
-        # 1. Transbordo Humano (Negociação, placa, garantia ou atendente humano)
+        # 1. Transbordo Humano (Negociação, placa, garantia, ou pagamento/Pix direto pro atendente normal)
         if any(
             w in msg
             for w in [
@@ -369,15 +371,22 @@ class AIAgentService(AIServiceInterface):
                 "placa",
                 "conserto",
                 "reparo",
+                "pix",
+                "chave pix",
+                "pagamento",
+                "comprovante",
+                "manda o pix",
+                "passa o pix",
+                "qual o pix",
             ]
         ):
             return {
                 "intent": "HUMAN_HANDOFF",
-                "reply_text": "",  # Silencioso: não responde nada ao cliente, é só passar
+                "reply_text": "",  # Silencioso: não responde nada ao cliente, é só passar pro atendente humano
                 "target_sku": None,
                 "requires_staff_alert": True,
                 "destination_address": None,
-                "handoff_reason": "Dúvida técnica / negociação / balcão",
+                "handoff_reason": "Pagamento Pix / Conferência de caixa pelo atendente",
             }
 
         # 2. Dúvida sobre frete/Uber sem pedido de compra ("quanto fica o uber?")

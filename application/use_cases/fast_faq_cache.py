@@ -1,7 +1,8 @@
 """
 Fast In-Memory FAQ Cache Service.
 Provides sub-millisecond, deterministic balcão responses for common high-frequency queries
-(store address, pix key, operating hours) with zero network latency and zero AI token cost.
+(store address, operating hours) with zero network latency and zero AI token cost.
+NOTE: Pix inquiries are intentionally excluded here and routed directly to the human attendant.
 """
 
 import re
@@ -21,10 +22,6 @@ class FastFaqCacheService:
         r"\b(?:qual\s+(?:o\s+)?endere[cç]o|onde\s+fica|onde\s+[eé]\s+a\s+loja|localiza[cç][aã]o|manda\s+(?:o\s+)?endere[cç]o|manda\s+localiza[cç][aã]o|fica\s+onde|local\s+da\s+loja)\b",
     ]
 
-    PIX_PATTERNS = [
-        r"\b(?:qual\s+(?:o\s+)?pix|passa\s+(?:o\s+)?pix|manda\s+(?:o\s+)?pix|chave\s+pix|qual\s+a\s+chave\s+pix|dados\s+(?:pra|para)\s+pix|tem\s+pix)\b",
-    ]
-
     HOURS_PATTERNS = [
         r"\b(?:que\s+horas\s+abre|qual\s+(?:o\s+)?hor[aá]rio|hor[aá]rio\s+de\s+funcionamento|que\s+horas\s+fecha|t[aá]\s+aberto|at[eé]\s+que\s+horas)\b",
     ]
@@ -34,7 +31,7 @@ class FastFaqCacheService:
         cls, text: str, store_profile: Optional[StoreProfile] = None
     ) -> Optional[Dict[str, Any]]:
         clean = text.lower().strip()
-        # Não intercepta se o cliente estiver cotando peça junto ("qual o pix da tela do a7")
+        # Não intercepta se o cliente estiver cotando peça junto ("qual o endereço pra retirar a tela do a7")
         part_keywords = [
             "tela",
             "touch",
@@ -48,11 +45,12 @@ class FastFaqCacheService:
             "separa",
             "separar",
             "uber",
+            "pix",  # Pix é 100% transbordo humano para o caixa/atendente normal
         ]
         if any(w in clean for w in part_keywords):
             return None
 
-        # 1. Endereço
+        # 1. Endereço da loja
         for pat in cls.ADDRESS_PATTERNS:
             if re.search(pat, clean, re.IGNORECASE):
                 addr = (
@@ -66,21 +64,7 @@ class FastFaqCacheService:
                     "reply_text": addr,
                 }
 
-        # 2. Chave Pix
-        for pat in cls.PIX_PATTERNS:
-            if re.search(pat, clean, re.IGNORECASE):
-                pix = (
-                    f"Pix: {store_profile.pix_key}"
-                    if (store_profile and store_profile.pix_key)
-                    else "Pix: 85999990001 (Celular / Victor Cell)."
-                )
-                return {
-                    "matched": True,
-                    "intent": "FAQ_PIX",
-                    "reply_text": pix,
-                }
-
-        # 3. Horário de Funcionamento
+        # 2. Horário de Funcionamento
         for pat in cls.HOURS_PATTERNS:
             if re.search(pat, clean, re.IGNORECASE):
                 sched = settings.get_store_schedule_status()

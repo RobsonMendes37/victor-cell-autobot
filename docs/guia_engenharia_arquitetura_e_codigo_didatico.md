@@ -557,7 +557,11 @@ O método [Conversation.is_ai_allowed](file:///home/robson/Projetos_Desenvolvime
 
 ### 10.2 Cache Rápido de FAQ com Latência Zero (`application/use_cases/fast_faq_cache.py`)
 
-Dúvidas frequentes de alta repetição (*"qual o endereço da loja?"*, *"passa o pix"*, *"que horas abre?"*) não precisam ser processadas por um modelo de linguagem generativo na nuvem.
+Dúvidas institucionais de alta repetição (*"qual o endereço da loja?"*, *"que horas abre?"*, *"onde fica a loja?"*) não precisam ser processadas por um modelo de linguagem generativo na nuvem.
+
+> [!IMPORTANT]
+> **Diretriz de Segurança Financeira (Fluxo Pix):**  
+> Dúvidas sobre **chave Pix, pagamento ou comprovantes** foram expressamente excluídas de qualquer auto-resposta. Quando o cliente solicita a chave Pix (*"passa o pix"*, *"manda a chave"*, *"dados pra pagamento"*), o robô NÃO envia dados bancários automaticamente. Ele aciona imediatamente o **transbordo silencioso** (`HUMAN_HANDOFF`), permitindo que o atendente humano confira o valor exato, frete e disponibilidade antes de enviar os dados do caixa.
 
 O [FastFaqCacheService](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/application/use_cases/fast_faq_cache.py) intercepta essas perguntas antes da chamada ao Gemini:
 * **Tempo de Resposta:** Menos de **0,05 milissegundos** (em memória RAM local).
