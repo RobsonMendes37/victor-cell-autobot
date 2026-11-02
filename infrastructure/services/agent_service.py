@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from domain.entities import Conversation, ConversationState
 from domain.gateways import AIServiceInterface
 from infrastructure.config import settings
+from infrastructure.services.circuit_breaker import CircuitBreaker
 
 logger = logging.getLogger("AIAgentService")
 
@@ -146,9 +147,14 @@ class AIAgentService(AIServiceInterface):
         "gemma-4-26b-a4b-it",         # Prioridade 7: 14.400 req/dia (Reserva massiva)
     ]
 
-    def __init__(self):
+    def __init__(self, circuit_breaker: Optional[CircuitBreaker] = None):
         self.api_key = settings.GEMINI_API_KEY
         self._client = None
+        self.circuit_breaker = circuit_breaker or CircuitBreaker(
+            failure_threshold=3,
+            recovery_timeout_seconds=60.0,
+            name="GeminiAI",
+        )
         self._init_client()
 
     def _init_client(self):
@@ -181,8 +187,8 @@ class AIAgentService(AIServiceInterface):
         schedule = settings.get_store_schedule_status()
         is_open = schedule["is_open"]
 
-        # Chamada assíncrona ao Gemini com tentativa de modelos flash suportados
-        if self._client:
+        # Chamada assíncrona ao Gemini com tentativa de modelos flash suportados e Circuit Breaker
+        if self._client and self.circuit_breaker.can_execute():
             prompt = SYSTEM_PROMPT.format(
                 store_name=store_profile.store_name,
                 store_city=store_profile.city,
@@ -252,6 +258,7 @@ class AIAgentService(AIServiceInterface):
                 # Mensagens de texto: prioriza 1.000 req/dia gratuitos do Flash Lite + fallbacks e Gemma
                 models_to_try = self.SUPPORTED_MODELS
 
+            last_ai_error: Optional[Exception] = None
             for model_name in models_to_try:
                 try:
                     response = await self._client.aio.models.generate_content(
@@ -272,9 +279,18 @@ class AIAgentService(AIServiceInterface):
                     )
                     return result
                 except Exception as e:
+                    last_ai_error = e
                     logger.warning(
                         f"Tentativa com modelo {model_name} falhou ({e}). Tentando próximo..."
                     )
+
+            if last_ai_error:
+                self.circuit_breaker.record_failure(last_ai_error)
+        elif self._client and not self.circuit_breaker.can_execute():
+            logger.warning(
+                f"[CircuitBreaker] Circuito {self.circuit_breaker.name} está ABERTO. "
+                f"Desviando requisição diretamente para fallback semântico sem latência de rede."
+            )
 
         # Fallback Semântico Seguro
         return self._semantic_fallback(
@@ -617,3 +633,7 @@ CONTEXTO OPERACIONAL EM TEMPO REAL:
             "Para a geração de análises analíticas aprofundadas com a inteligência Gemini, verifique a cota de sua chave de API nas configurações do sistema."
         )
 
+
+    def get_circuit_stats(self) -> Dict[str, Any]:
+        """Retorna o estado operacional e métricas de saúde do Circuit Breaker."""
+        return self.circuit_breaker.get_stats()

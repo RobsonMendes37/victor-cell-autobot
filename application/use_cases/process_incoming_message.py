@@ -10,11 +10,13 @@ Features:
 """
 
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 import pytz
 
+from application.use_cases.catalog_search_service import CatalogSearchService
 from domain.entities import (
     ConversationState,
     QualityTier,
@@ -27,6 +29,7 @@ from domain.repositories import (
     ProductRepositoryInterface,
 )
 from infrastructure.config import settings
+from infrastructure.services.metrics_service import metrics_collector
 
 logger = logging.getLogger("ProcessIncomingMessageUseCase")
 
@@ -60,6 +63,8 @@ class ProcessIncomingMessageUseCase:
         media_bytes: Optional[bytes] = None,
         mime_type: Optional[str] = None,
     ) -> Dict[str, Any]:
+        exec_start_time = time.time()
+        metrics_collector.record_received()
         clean_phone = "".join(filter(str.isdigit, customer_phone))
         if not clean_phone:
             return {"status": "INVALID_PHONE"}
@@ -172,28 +177,32 @@ class ProcessIncomingMessageUseCase:
         target_sku = ai_decision.get("target_sku") or conversation.active_sku
         destination_address = ai_decision.get("destination_address")
 
-        # Fallback semântico: se a IA cotou mas omitiu o SKU, busca correspondência no catálogo por tokens e especificações
+        # Fallback semântico inteligente: se a IA cotou mas omitiu o SKU, busca correspondência com CatalogSearchService e fuzzy matching
         if not target_sku and intent in ["QUOTE", "ORDER_PENDING_CONFIRMATION"]:
-            stop_words = {"quanto", "valor", "preço", "preco", "amigo", "patrão", "patrao", "bom", "dia", "tarde", "noite", "olá", "ola", "você", "voce", "tem", "essa", "pode", "separar", "manda", "uber"}
-            tokens = [w.strip("?,.!:;") for w in message_text.split() if len(w) >= 3 and w.lower() not in stop_words]
-            for token in tokens:
-                matches = await self.product_repo.search(token)
-                if matches:
-                    if any(k in message_text.lower() for k in ["tela", "display"]):
-                        matches = [m for m in matches if any(t in m.name.lower() for t in ["tela", "display", "touch"])]
-                    elif "touch" in message_text.lower():
-                        matches = [m for m in matches if "touch" in m.name.lower()]
-                    elif "bateria" in message_text.lower():
-                        matches = [m for m in matches if "bateria" in m.name.lower()]
+            fuzzy_matches = CatalogSearchService.search_best_matches(catalog, message_text, min_threshold=0.65)
+            if fuzzy_matches:
+                target_sku = fuzzy_matches[0][0].sku
+            else:
+                stop_words = {"quanto", "valor", "preço", "preco", "amigo", "patrão", "patrao", "bom", "dia", "tarde", "noite", "olá", "ola", "você", "voce", "tem", "essa", "pode", "separar", "manda", "uber"}
+                tokens = [w.strip("?,.!:;") for w in message_text.split() if len(w) >= 3 and w.lower() not in stop_words]
+                for token in tokens:
+                    matches = await self.product_repo.search(token)
+                    if matches:
+                        if any(k in message_text.lower() for k in ["tela", "display"]):
+                            matches = [m for m in matches if any(t in m.name.lower() for t in ["tela", "display", "touch"])]
+                        elif "touch" in message_text.lower():
+                            matches = [m for m in matches if "touch" in m.name.lower()]
+                        elif "bateria" in message_text.lower():
+                            matches = [m for m in matches if "bateria" in m.name.lower()]
 
-                    if "original" in message_text.lower():
-                        matches = [m for m in matches if getattr(m, 'quality', None) == QualityTier.ORIGINAL_NACIONAL]
-                    elif "paralela" in message_text.lower():
-                        matches = [m for m in matches if getattr(m, 'quality', None) == QualityTier.PARALELA_CHINA]
+                        if "original" in message_text.lower():
+                            matches = [m for m in matches if getattr(m, 'quality', None) == QualityTier.ORIGINAL_NACIONAL]
+                        elif "paralela" in message_text.lower():
+                            matches = [m for m in matches if getattr(m, 'quality', None) == QualityTier.PARALELA_CHINA]
 
-                    if len(matches) == 1:
-                        target_sku = matches[0].sku
-                        break
+                        if len(matches) == 1:
+                            target_sku = matches[0].sku
+                            break
 
         # Regra de Ouro: Transbordo para atendimento humano NUNCA responde nada ao cliente. É só passar!
         if intent == "HUMAN_HANDOFF":
@@ -355,6 +364,13 @@ class ProcessIncomingMessageUseCase:
                     logger.warning(f"Erro no staff_dispatcher handoff: {e}")
 
         await self.conversation_repo.save(conversation)
+
+        exec_duration = time.time() - exec_start_time
+        metrics_collector.record_processed(exec_duration, replied_by_ai=True)
+        if intent == "HUMAN_HANDOFF":
+            metrics_collector.record_handoff()
+        if order_created:
+            metrics_collector.record_order_created()
 
         return {
             "status": "SUCCESS",

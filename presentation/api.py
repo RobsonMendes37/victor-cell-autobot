@@ -45,6 +45,8 @@ from infrastructure.notifiers.ntfy_channel import NtfyNotificationChannel
 from infrastructure.repositories.database_factory import create_database_repository
 from infrastructure.repositories.sheets_exporter import SheetsExporter
 from infrastructure.services.agent_service import AIAgentService
+from infrastructure.services.metrics_service import metrics_collector
+from infrastructure.services.rate_limiter import SlidingWindowRateLimiter
 from presentation.dashboard import render_dashboard_html, render_login_html
 
 SESSION_COOKIE_NAME = "victor_session"
@@ -118,6 +120,9 @@ staff_dispatcher = StaffNotificationDispatcher(
     ],
     repository=sqlite_repo,
 )
+
+webhook_rate_limiter = SlidingWindowRateLimiter(max_requests=25, window_seconds=60.0)
+simulator_rate_limiter = SlidingWindowRateLimiter(max_requests=30, window_seconds=60.0)
 
 use_case = ProcessIncomingMessageUseCase(
     conversation_repo=sqlite_repo,
@@ -626,16 +631,33 @@ async def get_whatsapp_qrcode(request: Request):
 
 @app.get("/health", tags=["Auditoria & Observabilidade"], summary="Health Check do Sistema", status_code=status.HTTP_200_OK)
 async def health_check():
-    """Health check endpoint for Docker container liveness and monitoring."""
+    """Health check endpoint for Docker container liveness, circuit breaker and monitoring."""
     local_time = settings.get_local_now().strftime("%Y-%m-%d %H:%M:%S")
     open_status = settings.is_store_open()
+    circuit_stats = ai_service.get_circuit_stats()
+    metrics_summary = metrics_collector.get_summary_dict()
     return {
-        "status": "healthy",
+        "status": "healthy" if circuit_stats.get("state") != "OPEN" else "degraded",
         "store": "Victor Cell Peças",
+        "version": "2.2.0-enterprise",
         "local_time_fortaleza": local_time,
         "is_store_open": open_status,
         "sheet_integration": bool(settings.GOOGLE_SHEET_ID),
+        "circuit_breaker": circuit_stats,
+        "metrics": metrics_summary,
     }
+
+
+@app.get("/metrics", tags=["Auditoria & Observabilidade"], summary="Métricas Prometheus (Formato Aberto)")
+async def prometheus_metrics():
+    """Exposes real-time SRE metrics formatted for Prometheus scraping and Grafana dashboards."""
+    circuit_stats = ai_service.get_circuit_stats()
+    state_map = {"CLOSED": 0, "HALF_OPEN": 1, "OPEN": 2}
+    state_code = state_map.get(circuit_stats.get("state", "CLOSED"), 0)
+    return Response(
+        content=metrics_collector.to_prometheus_format(circuit_state_code=state_code),
+        media_type="text/plain; version=0.0.4",
+    )
 
 
 @app.get("/products", tags=["Catálogo & Estoque"], summary="Catálogo Simples de Produtos")
@@ -890,6 +912,18 @@ async def evolution_webhook(
     clean_phone = "".join(filter(str.isdigit, remote_jid.split("@")[0]))
     if not clean_phone:
         return {"status": "ignored", "reason": "Missing or invalid phone"}
+
+    if not from_me:
+        allowed, rate_info = webhook_rate_limiter.is_allowed(clean_phone)
+        if not allowed:
+            metrics_collector.record_rate_limit()
+            logger.warning(f"Rate limit excedido para o número {clean_phone}. Descartando evento temporariamente.")
+            return Response(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content=json.dumps({"status": "rate_limited", "detail": "Taxa de mensagens muito alta. Aguarde alguns instantes."}),
+                media_type="application/json",
+                headers={"Retry-After": str(int(rate_info["retry_after"]))},
+            )
 
     message_content = data.get("message", {})
     text = (

@@ -334,7 +334,7 @@ Conforme demandado pelas melhores práticas do Google, VTEX e TOTVS, nenhum cód
 flowchart LR
     Dev[Código Fonte] --> Step1[Passo 1: Ruff Linting]
     Step1 --> Step2[Passo 2: Mypy Typecheck]
-    Step2 --> Step3[Passo 3: Pytest 89 Testes]
+    Step2 --> Step3[Passo 3: Pytest 105 Testes]
     Step3 --> Step4[Passo 4: Hot Backup DB]
     Step4 --> Commit[Git Commit Aprovado]
 ```
@@ -347,7 +347,7 @@ flowchart LR
 
 # Ou utilizando os atalhos do Makefile:
 make check       # Roda o Quality Gate completo
-make test        # Executa os 89 testes automatizados
+make test        # Executa os 105 testes automatizados
 make lint        # Verifica o código com Ruff
 make typecheck   # Valida tipagem de todos os arquivos com Mypy
 make backup      # Gera backup compactado .db.gz com retenção de 7 dias
@@ -364,3 +364,103 @@ make seed        # Popula dados de homologação e pedidos realistas
 * **Handoff Silencioso:** Ato da IA se retirar da conversa e passar o controle para um humano sem emitir mensagens verbosas ou avisar o cliente.
 * **Whitelabel:** Capacidade do software de ter sua marca, cores, nome e regras comerciais customizadas para ser revendido para outros estabelecimentos.
 * **Circuit Breaker:** Padrão de resiliência que "desarma o disjuntor" quando um serviço externo (como Bling ERP) começa a falhar repetidamente, passando a usar o cache local para a loja não parar.
+
+
+---
+
+## 8. Resiliência Extrema, Segurança de Borda & Inteligência Algorítmica (Deep Dive)
+
+Nesta seção, dissecamos as estruturas avançadas incorporadas para elevar o PecasBot ao padrão de resiliência e observabilidade das maiores empresas de tecnologia (*Big Tech Tier*).
+
+### 8.1 Circuit Breaker Pattern (`infrastructure/services/circuit_breaker.py`)
+
+No atendimento via WhatsApp, cada segundo conta. Se a API do Google Gemini sofrer uma lentidão temporária ou esgotar a cota de requisições por minuto (HTTP 429), um robô ingênuo tentaria conectar-se a cada uma das mensagens recebidas, fazendo os clientes esperarem até 30 segundos por resposta.
+
+O **Circuit Breaker** (Disjuntor de Circuito) resolve isso através de uma máquina de estados finitos:
+
+```mermaid
+stateDiagram-v2
+    [*] --> CLOSED
+    CLOSED --> OPEN: 3 falhas consecutivas (HTTP 429 / 503)
+    OPEN --> HALF_OPEN: Após janela de recuperação (60 segundos)
+    HALF_OPEN --> CLOSED: Chamada de teste bem-sucedida
+    HALF_OPEN --> OPEN: Chamada de teste falhou
+```
+
+* **CLOSED (Fechado - Operação Normal):** As requisições fluem normalmente para os modelos Gemini via rede.
+* **OPEN (Aberto - Disjuntor Desarmado):** Quando ocorrem 3 falhas seguidas, o disjuntor desarma. Pelos próximos 60 segundos, o sistema **NÃO faz nenhuma chamada de rede**. Ele desvia imediatamente (em menos de 1 milissegundo) para o fallback semântico de alta precisão. O cliente recebe sua cotação instantaneamente, sem travamentos.
+* **HALF-OPEN (Semi-Aberto - Teste de Recuperação):** Passados os 60 segundos, o disjuntor deixa passar exatamente uma requisição de teste. Se for bem-sucedida, ele volta para `CLOSED`. Se falhar, reabre para `OPEN` por mais 60 segundos.
+
+---
+
+### 8.2 Busca Semântica e Tolerância a Erros Ortográficos (`application/use_cases/catalog_search_service.py`)
+
+No balcão físico e no WhatsApp, clientes e técnicos raramente digitam nomes de catálogo exatos. Eles escrevem com erros ("*sansung*", "*multilazer*"), gírias ("*telinha*", "*frontar*") ou codinomes de fábrica gravados no chassi do tablet ("*t220*", "*t295*", "*nb304*").
+
+Para resolver isso sem introduzir dependências externas gigantescas, implementamos o **CatalogSearchService**:
+
+#### 1. Distância de Levenshtein em Python Puro
+Mede o número mínimo de inserções, deleções ou substituições de um caractere para transformar uma palavra em outra:
+```python
+def levenshtein_distance(s1: str, s2: str) -> int:
+    ...
+```
+A similaridade normalizada é calculada por:
+$$	ext{similaridade} = 1.0 - \left( rac{	ext{distância}}{\max(	ext{len}(s_1), 	ext{len}(s_2))} ight)$$
+Se a similaridade for superior a 0.85, "*sansung*" é reconhecido como "*samsung*" com tolerância matemática.
+
+#### 2. Dicionário Canônico de Codinomes de Fábrica
+Mapeia automaticamente referências de carcaça para o produto correto no catálogo:
+* `t220`, `t225`, `sm-t220`, `smt225` $ightarrow$ **Samsung Galaxy Tab A7 Lite**
+* `t290`, `t295`, `sm-t290` $ightarrow$ **Samsung Galaxy Tab A 8.0 (2019)**
+* `x200`, `x205` $ightarrow$ **Samsung Galaxy Tab A8 10.5**
+* `nb304`, `nb305` $ightarrow$ **Multilaser M10A 3G/4G**
+* `nb301`, `nb302` $ightarrow$ **Multilaser M7s**
+
+#### 3. Matriz de Discriminação de Peças
+Diferencia e aplica penalidades na pontuação:
+* Se o cliente pediu "*touch*", mas o item for apenas "*display*", o score sofre penalidade de $-0.25$.
+* Se o cliente pediu qualidade "*original nacional*", peças paralelas sofrem penalidade de $-0.10$.
+
+---
+
+### 8.3 Rate Limiter de Janela Deslizante (`infrastructure/services/rate_limiter.py`)
+
+Ataques de negação de serviço (DoS) ou robôs maliciosos poderiam disparar milhares de mensagens no WhatsApp para derrubar o servidor ou esgotar a cota da Google Cloud.
+
+O **SlidingWindowRateLimiter** registra os carimbos de data/hora (*timestamps*) de cada mensagem por chave (`clean_phone` ou IP):
+* Em vez de zerar no minuto fechado (o que permitiria rajadas na virada do minuto), a **Janela Deslizante** valida os últimos 60 segundos contínuos.
+* Se um mesmo número enviar mais de 25 mensagens por minuto, as requisições subsequentes recebem código HTTP `429 Too Many Requests` com cabeçalho `Retry-After`.
+
+---
+
+### 8.4 Telemetria SRE e Exportador Prometheus (`infrastructure/services/metrics_service.py`)
+
+Para que a operação possa ser monitorada em tempo real via ferramentas corporativas como Prometheus, Datadog ou Grafana, o PecasBot expõe o endpoint padrão:
+
+`GET /metrics`
+
+As métricas exportadas seguem o padrão aberto **OpenMetrics / Prometheus v0.0.4**:
+* `pecasbot_uptime_seconds`: Segundos de atividade ininterrupta do serviço.
+* `pecasbot_messages_received_total`: Total de mensagens recebidas.
+* `pecasbot_messages_processed_total`: Mensagens processadas na esteira.
+* `pecasbot_messages_ai_replied_total`: Cotações geradas pela IA Gemini.
+* `pecasbot_messages_fallback_replied_total`: Respostas resolvidas pelo fallback determinístico.
+* `pecasbot_handoffs_total`: Conversas transferidas para a equipe humana no balcão.
+* `pecasbot_orders_created_total`: Pedidos de separação de peças consolidados.
+* `pecasbot_processing_latency_p95_ms`: Latência do 95º percentil (P95) em milissegundos.
+* `pecasbot_circuit_breaker_state`: Estado operacional do disjuntor (0 = CLOSED, 1 = HALF_OPEN, 2 = OPEN).
+
+---
+
+### 8.5 Concorrência Otimizada em SQLite
+
+Para suportar múltiplas gravações simultâneas sem incorrer no erro clássico `sqlite3.OperationalError: database is locked`, o [`SqliteRepository`](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/infrastructure/repositories/sqlite_repository.py) aplica os seguintes parâmetros de motor em sua inicialização:
+
+```sql
+PRAGMA journal_mode = WAL;       -- Escreve em log separado sem bloquear leitores
+PRAGMA synchronous = NORMAL;     -- Reduz operações lentas de fsync em disco
+PRAGMA busy_timeout = 5000;      -- Espera até 5 segundos para liberar travas de concorrência
+PRAGMA foreign_keys = ON;        -- Garante integridade referencial nas tabelas
+PRAGMA cache_size = -64000;      -- Aloca 64 MB de memória RAM dedicada para cache de páginas
+```
