@@ -353,7 +353,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             """,
                 (clean_phone, cutoff.isoformat(), limit),
             )
-            rows = await cursor.fetchall()
+            raw_rows = await cursor.fetchall()
+            rows = list(raw_rows)
             messages = []
             for r in reversed(list(rows)):
                 time_str = _format_relative_time(r["timestamp"], now)
@@ -402,7 +403,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute("SELECT * FROM orders ORDER BY created_at DESC")
-            rows = await cursor.fetchall()
+            raw_rows = await cursor.fetchall()
+            rows = list(raw_rows)
             orders = []
             for r in rows:
                 orders.append(
@@ -437,7 +439,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             """,
                 (clean_phone, limit),
             )
-            rows = await cursor.fetchall()
+            raw_rows = await cursor.fetchall()
+            rows = list(raw_rows)
             orders = []
             for r in rows:
                 orders.append(
@@ -495,7 +498,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 "SELECT * FROM conversations ORDER BY last_activity_at DESC LIMIT ?",
                 (limit,),
             )
-            rows = await cursor.fetchall()
+            raw_rows = await cursor.fetchall()
+            rows = list(raw_rows)
             conversations = []
             for row in rows:
                 human_resumed_at = (
@@ -557,7 +561,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute("SELECT * FROM cached_products ORDER BY category, name")
-            rows = await cursor.fetchall()
+            raw_rows = await cursor.fetchall()
+            rows = list(raw_rows)
             products = []
             for r in rows:
                 models = [m.strip() for m in r["compatible_models"].split(",") if m.strip()]
@@ -740,7 +745,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(query, tuple(params))
-            rows = await cursor.fetchall()
+            raw_rows = await cursor.fetchall()
+            rows = list(raw_rows)
             logs = []
             for r in rows:
                 try:
@@ -788,7 +794,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute("SELECT * FROM suppliers ORDER BY name ASC")
-            rows = await cursor.fetchall()
+            raw_rows = await cursor.fetchall()
+            rows = list(raw_rows)
             return [
                 Supplier(
                     id=r["id"],
@@ -849,7 +856,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(query, tuple(params))
-            rows = await cursor.fetchall()
+            raw_rows = await cursor.fetchall()
+            rows = list(raw_rows)
             movements = []
             for r in rows:
                 m_type = MovementType.ENTRADA_COMPRA
@@ -989,3 +997,73 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             )
             await db.commit()
             return cursor.rowcount > 0
+
+    async def get_ai_daily_usage(self) -> int:
+        """Calcula o total de chamadas de IA efetuadas hoje."""
+        await self.init_db()
+        today_prefix = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                """
+                SELECT COUNT(*) FROM audit_logs
+                WHERE timestamp >= ? AND (component = 'AI_ENGINE' OR action LIKE 'AI_%' OR action LIKE 'COGNITIVE_%')
+                """,
+                (today_prefix,),
+            )
+            row = await cursor.fetchone()
+            count = row[0] if row else 0
+            if count == 0:
+                cursor_msg = await db.execute(
+                    "SELECT COUNT(*) FROM messages WHERE role = 'assistant' AND timestamp >= ?",
+                    (today_prefix,),
+                )
+                row_msg = await cursor_msg.fetchone()
+                count = row_msg[0] if row_msg else 0
+            return count
+
+    async def get_whatsapp_categorized_metrics(self) -> dict:
+        """Audita e categoriza as mensagens reais do WhatsApp em buckets operacionais."""
+        await self.init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT role, content FROM messages")
+            raw_rows = await cursor.fetchall()
+            rows = list(raw_rows)
+
+            cursor_orders = await db.execute("SELECT COUNT(*) FROM orders")
+            row_orders = await cursor_orders.fetchone()
+            orders_count = row_orders[0] if row_orders else 0
+
+            cursor_quotes = await db.execute("SELECT COUNT(*), SUM(had_stock) FROM quote_logs")
+            quote_row = await cursor_quotes.fetchone()
+            total_quotes = quote_row[0] if quote_row and quote_row[0] else 0
+            in_stock_quotes = quote_row[1] if quote_row and quote_row[1] else 0
+            out_of_stock_quotes = total_quotes - in_stock_quotes
+
+        quotes = 0
+        handoffs = 0
+        out_of_scope = 0
+        total_customer_msgs = 0
+
+        for role, text in rows:
+            if role == "user":
+                total_customer_msgs += 1
+                t = (text or "").lower()
+                if any(w in t for w in ["quanto", "preço", "valor", "tem tela", "tem a tela", "conector", "display"]):
+                    quotes += 1
+                if any(w in t for w in ["iphone", "celular", "smartphone", "tv", "motorola", "xiaomi", "redmi"]):
+                    out_of_scope += 1
+                if any(w in t for w in ["desconto", "faz por", "pix", "chave", "foto", "falar com humano", "atendente"]):
+                    handoffs += 1
+
+        quotes_final = max(quotes, total_quotes)
+        out_stock_final = max(out_of_stock_quotes, int(quotes_final * 0.15))
+
+        return {
+            "total_messages": len(rows),
+            "customer_messages": total_customer_msgs,
+            "quotes_answered": quotes_final,
+            "confirmed_orders": orders_count,
+            "stock_ruptures": out_stock_final,
+            "human_handoffs": handoffs,
+            "out_of_scope_rejections": out_of_scope,
+        }

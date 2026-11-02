@@ -590,6 +590,296 @@ def render_dashboard_html() -> str:
       color: var(--text-dim);
     }
 
+
+    /* CHAT DRAWER LATERAL (WHATSAPP AO VIVO) */
+    .drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 9998;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .drawer-overlay.active {
+      display: block;
+      opacity: 1;
+    }
+    .chat-drawer {
+      position: fixed;
+      top: 0;
+      right: -480px;
+      width: 460px;
+      max-width: 95vw;
+      height: 100vh;
+      background: #0E1422;
+      border-left: 1px solid var(--border-subtle);
+      box-shadow: -8px 0 32px rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      transition: right 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .chat-drawer.active {
+      right: 0;
+    }
+    .chat-drawer-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .drawer-close-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      transition: all 0.15s;
+    }
+    .drawer-close-btn:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #F87171;
+    }
+    .chat-drawer-body {
+      flex: 1;
+      padding: 1.25rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      background: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.7), #07090E);
+    }
+    .chat-bubble-drawer {
+      max-width: 82%;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      font-size: 0.825rem;
+      line-height: 1.45;
+      position: relative;
+      word-break: break-word;
+    }
+    .chat-bubble-drawer.incoming {
+      align-self: flex-start;
+      background: #1E293B;
+      color: #E2E8F0;
+      border-bottom-left-radius: 3px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .chat-bubble-drawer.outgoing {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #10593B, #0E4830);
+      color: #F0FDF4;
+      border-bottom-right-radius: 3px;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    .chat-bubble-meta {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      margin-top: 4px;
+      font-size: 0.675rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-family: var(--font-mono);
+    }
+    .chat-drawer-footer {
+      padding: 0.9rem 1.25rem;
+      border-top: 1px solid var(--border-subtle);
+      background: rgba(0, 0, 0, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    /* VTEX MODALS (PRODUTO ERP & JSON VIEWER) */
+    .vtex-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .vtex-modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+    .vtex-modal {
+      background: #0E1422;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      width: 100%;
+      max-width: 620px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalZoomIn {
+      from { transform: scale(0.96); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .vtex-modal-header {
+      padding: 1.1rem 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .vtex-modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .vtex-modal-body {
+      padding: 1.25rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .vtex-modal-footer {
+      padding: 0.9rem 1.25rem;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .vtex-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .vtex-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .vtex-form-group.col-span-2 {
+      grid-column: span 2;
+    }
+    .vtex-form-group label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .vtex-form-group input, .vtex-form-group select {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      color: #fff;
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .vtex-form-group input:focus, .vtex-form-group select:focus {
+      border-color: var(--vtex-pink);
+      box-shadow: 0 0 0 2px rgba(247, 25, 99, 0.2);
+    }
+
+    /* CARDS DE CATEGORIZAÇÃO WHATSAPP */
+    .wa-cat-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .wa-cat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .wa-cat-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .wa-cat-card-val {
+      font-size: 1.45rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+    }
+    .wa-cat-card-sub {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    /* CARDS DA PIPELINE DE IA */
+    .pipeline-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .pipeline-card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .pipeline-endpoint {
+      font-family: var(--font-mono);
+      font-size: 0.725rem;
+      color: #94A3B8;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      word-break: break-all;
+    }
+    .pipeline-fallback {
+      font-size: 0.735rem;
+      color: #64748B;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     /* TAB PANES */
     .tab-pane {
       display: none;
@@ -924,7 +1214,96 @@ def render_dashboard_html() -> str:
 
       <!-- CORPO PRINCIPAL COM AS ABAS -->
       <main class="main-body">
-<div class="kpi-grid">
+
+<!-- TAB 1: ATENDIMENTOS AO VIVO (IA VS HUMANO) -->
+    <div class="tab-pane active" id="tab-conversations">
+      <div class="section-card">
+        <div class="section-toolbar">
+          <div class="section-title-group">
+            <h2 class="section-title">Atendimento ao Vivo • Controle de IA & Balcão</h2>
+            <span class="badge-count" id="convs-counter">0 contatos</span>
+          </div>
+          <div class="toolbar-actions">
+            <input type="text" class="search-input" id="search-convs" placeholder="Buscar por nome, telefone ou peça..." oninput="filterConversations()">
+            <button class="btn btn-secondary btn-sm" onclick="fetchConversations()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
+          </div>
+        </div>
+
+        <!-- Visualização Tablet/Desktop (Tabela Rica) -->
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente / Oficina</th>
+                <th>Última Mensagem & Horário</th>
+                <th>Peça Sendo Cotada</th>
+                <th>Status do Atendimento</th>
+                <th>Ações de Balcão</th>
+              </tr>
+            </thead>
+            <tbody id="convs-tbody-desktop">
+              <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando atendimentos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Visualização Mobile (Cards Touch Fáceis de Clicar) -->
+        <div class="mobile-card-deck" id="convs-cards-mobile">
+          <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando atendimentos no celular...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: SEPARAÇÃO DE PEÇAS & BALCÃO DE SAÍDA -->
+    <div class="tab-pane" id="tab-orders">
+      <div class="section-card">
+        <div class="section-toolbar">
+          <div class="section-title-group">
+            <h2 class="section-title">Fila de Separação de Peças & Balcão de Saída</h2>
+            <span class="badge-count" id="orders-counter">0 pedidos</span>
+          </div>
+          <div class="toolbar-actions">
+            <!-- Filtro de Modalidade (Balcão vs Uber Flash) -->
+            <div class="filter-pill-group" style="display: flex; gap: 4px; margin-right: 6px;">
+              <button class="filter-btn active" data-order-filter="all" onclick="filterOrdersMode('all', this)">Todos</button>
+              <button class="filter-btn" data-order-filter="balcao" onclick="filterOrdersMode('balcao', this)">Retirada Balcão</button>
+              <button class="filter-btn" data-order-filter="uber" onclick="filterOrdersMode('uber', this)">Uber Flash</button>
+            </div>
+            <a href="/api/reports/orders/csv" class="btn btn-emerald btn-sm" download="Pedidos_VictorCell_PowerBI.csv">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Exportar CSV
+            </a>
+            <button class="btn btn-secondary btn-sm" onclick="fetchStats()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Pedido & Data</th>
+                <th>Cliente (WhatsApp)</th>
+                <th>Peça Solicitada no Balcão</th>
+                <th>Valor</th>
+                <th>Modalidade / Destino</th>
+                <th>Status do Pedido</th>
+                <th>Reserva de Estoque (30 min)</th>
+              </tr>
+            </thead>
+            <tbody id="orders-tbody">
+              <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando pedidos de separação...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mobile-card-deck" id="orders-cards-mobile"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: VISÃO GERAL & KPIS -->
+    <div class="tab-pane" id="tab-overview">
+
+      <!-- KPIS PRINCIPAIS (CONSOLIDADOS EM MÉTRICAS & RELATÓRIOS) -->
+      <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-header">
           <span class="kpi-title">Faturamento em Pedidos</span>
@@ -970,92 +1349,60 @@ def render_dashboard_html() -> str:
       </div>
     </div>
 
-    <!-- TAB 1: ATENDIMENTOS AO VIVO (IA VS HUMANO) -->
-    <div class="tab-pane active" id="tab-conversations">
-      <div class="section-card">
-        <div class="section-toolbar">
-          <div class="section-title-group">
-            <h2 class="section-title">Atendimento ao Vivo • Controle de IA & Balcão</h2>
-            <span class="badge-count" id="convs-counter">0 contatos</span>
-          </div>
-          <div class="toolbar-actions">
-            <input type="text" class="search-input" id="search-convs" placeholder="Buscar por nome, telefone ou peça..." oninput="filterConversations()">
-            <button class="btn btn-secondary btn-sm" onclick="fetchConversations()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
-          </div>
-        </div>
 
-        <!-- Visualização Tablet/Desktop (Tabela Rica) -->
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Cliente / Oficina</th>
-                <th>Peça Sendo Cotada / Ativa</th>
-                <th>Status do Atendimento</th>
-                <th>Última Interação</th>
-                <th>Ação Rápida do Balcão</th>
-              </tr>
-            </thead>
-            <tbody id="convs-tbody-desktop">
-              <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando atendimentos...</td></tr>
-            </tbody>
-          </table>
-        </div>
 
-        <!-- Visualização Mobile (Cards Touch Fáceis de Clicar) -->
-        <div class="mobile-card-deck" id="convs-cards-mobile">
-          <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando atendimentos no celular...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 2: SEPARAÇÃO DE PEÇAS & BALCÃO DE SAÍDA -->
-    <div class="tab-pane" id="tab-orders">
-      <div class="section-card">
-        <div class="section-toolbar">
-          <div class="section-title-group">
-            <h2 class="section-title">Fila de Separação de Peças & Balcão de Saída</h2>
-            <span class="badge-count" id="orders-counter">0 pedidos</span>
-          </div>
-          <div class="toolbar-actions">
-            <!-- Filtro de Modalidade (Balcão vs Uber Flash) -->
-            <div class="filter-pill-group" style="display: flex; gap: 4px; margin-right: 6px;">
-              <button class="filter-btn active" data-order-filter="all" onclick="filterOrdersMode('all', this)">Todos</button>
-              <button class="filter-btn" data-order-filter="balcao" onclick="filterOrdersMode('balcao', this)">Retirada Balcão</button>
-              <button class="filter-btn" data-order-filter="uber" onclick="filterOrdersMode('uber', this)">Uber Flash</button>
+      <!-- AUDITORIA & CATEGORIZAÇÃO DE MENSAGENS DO WHATSAPP (TEMPO REAL) -->
+      <div class="card" style="margin-bottom: 1.25rem; background: linear-gradient(135deg, rgba(14, 20, 34, 0.95), rgba(99, 102, 241, 0.05)); border-color: rgba(99, 102, 241, 0.25);">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="card-icon" style="background: rgba(99, 102, 241, 0.12); color: #818CF8;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </div>
-            <a href="/api/reports/orders/csv" class="btn btn-emerald btn-sm" download="Pedidos_VictorCell_PowerBI.csv">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Exportar CSV
-            </a>
-            <button class="btn btn-secondary btn-sm" onclick="fetchStats()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
+            <div>
+              <div class="card-title">Auditoria de Interações no WhatsApp • Categorização de Demandas</div>
+              <div class="card-subtitle">Classificação em tempo real de mensagens recebidas: cotações, pedidos, rupturas e transbordos</div>
+            </div>
+          </div>
+          <span class="badge-count" id="wa-audit-updated">Atualizado em tempo real</span>
+        </div>
+        <div class="card-body" style="padding: 1.1rem 1.25rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;" id="wa-categories-grid">
+            <div class="wa-cat-card" style="border-left: 3px solid #F59E0B;">
+              <div class="wa-cat-card-header"><span>Cotações de Peças</span><span>💬</span></div>
+              <div class="wa-cat-card-val" style="color: #FBBF24;" id="cat-val-quotes">0</div>
+              <div class="wa-cat-card-sub">Preços e modelos consultados</div>
+            </div>
+            <div class="wa-cat-card" style="border-left: 3px solid #10B981;">
+              <div class="wa-cat-card-header"><span>Pedidos Fechados</span><span>🛒</span></div>
+              <div class="wa-cat-card-val" style="color: #34D399;" id="cat-val-orders">0</div>
+              <div class="wa-cat-card-sub">Balcão e Uber Flash</div>
+            </div>
+            <div class="wa-cat-card" style="border-left: 3px solid #EF4444;">
+              <div class="wa-cat-card-header"><span>Sem Saldo / Ruptura</span><span>⚠️</span></div>
+              <div class="wa-cat-card-val" style="color: #F87171;" id="cat-val-ruptures">0</div>
+              <div class="wa-cat-card-sub">Demanda não atendida em estoque</div>
+            </div>
+            <div class="wa-cat-card" style="border-left: 3px solid #818CF8;">
+              <div class="wa-cat-card-header"><span>Transbordo p/ Balcão</span><span>👤</span></div>
+              <div class="wa-cat-card-val" style="color: #A5B4FC;" id="cat-val-handoffs">0</div>
+              <div class="wa-cat-card-sub">Assumido por atendente humano</div>
+            </div>
+            <div class="wa-cat-card" style="border-left: 3px solid #64748B;">
+              <div class="wa-cat-card-header"><span>Fora de Escopo</span><span>🚫</span></div>
+              <div class="wa-cat-card-val" style="color: #94A3B8;" id="cat-val-outofscope">0</div>
+              <div class="wa-cat-card-sub">Celulares, serviços ou recusas</div>
+            </div>
+          </div>
+          <div style="background: rgba(255,255,255,0.06); border-radius: 999px; height: 10px; overflow: hidden; display: flex;" id="wa-categories-bar" title="Distribuição percentual das mensagens">
+            <div style="width: 45%; background: #F59E0B;" title="Cotações"></div>
+            <div style="width: 25%; background: #10B981;" title="Pedidos"></div>
+            <div style="width: 15%; background: #EF4444;" title="Rupturas"></div>
+            <div style="width: 10%; background: #818CF8;" title="Transbordo"></div>
+            <div style="width: 5%; background: #64748B;" title="Fora de Escopo"></div>
           </div>
         </div>
-
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>ID / Data</th>
-                <th>Cliente (WhatsApp)</th>
-                <th>Peça a Separar</th>
-                <th>Valor</th>
-                <th>Modalidade / Destino</th>
-                <th>Status</th>
-                <th>Validade Reserva</th>
-              </tr>
-            </thead>
-            <tbody id="orders-tbody">
-              <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando pedidos de separação...</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="mobile-card-deck" id="orders-cards-mobile"></div>
       </div>
-    </div>
 
-    <!-- TAB 3: VISÃO GERAL & KPIS -->
-    <div class="tab-pane" id="tab-overview">
       <!-- SEÇÃO DE INTELIGÊNCIA COMERCIAL DE WHATSAPP -->
       <div class="section-card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(14, 20, 34, 0.95), rgba(99, 102, 241, 0.05)); border-color: rgba(99, 102, 241, 0.25);">
         <div class="section-toolbar">
@@ -1296,7 +1643,7 @@ def render_dashboard_html() -> str:
           <div class="kpi-body">
             <div class="kpi-label">Esgotadas em Loja</div>
             <div class="kpi-value" id="kpi-catalog-out">0</div>
-            <div class="kpi-sub">Ruptura física de estoque</div>
+            <div class="kpi-sub">Peças Esgotadas (Sem Saldo)</div>
           </div>
         </div>
         <div class="kpi-card">
@@ -1378,6 +1725,9 @@ def render_dashboard_html() -> str:
               <div class="card-title">Entrada Rápida de Estoque com IA (Voz & OCR)</div>
               <div class="card-subtitle">Fale no microfone ou envie foto da etiqueta do fornecedor para extração automática</div>
             </div>
+          </div>
+          <div>
+            <button class="btn btn-emerald" onclick="openNewProductModal()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align: -2px; margin-right: 4px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> + Nova Peça no Estoque</button>
           </div>
         </div>
 
@@ -1566,30 +1916,45 @@ def render_dashboard_html() -> str:
         </div>
 
         <div style="padding: 1.25rem;">
+          <!-- PIPELINE MULTIMODAL DE IA EM TEMPO REAL & CONSUMO REAL (SQLITE) -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.15rem;">
-              <div style="font-size: 0.775rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Gemini 3.5 Flash Lite (Principal)</div>
-              <div style="font-size: 1.6rem; font-weight: 800; color: #34D399; margin: 0.35rem 0;" id="quota-flash-lite">70 / 500 RPD</div>
-              <div style="background: rgba(255,255,255,0.08); height: 8px; border-radius: 999px; overflow: hidden;">
-                <div id="quota-progress-bar" style="width: 14%; height: 100%; background: #10B981;"></div>
+            <!-- Card 1: Consumo Real Dinâmico -->
+            <div class="pipeline-card" style="border-left: 3px solid #10B981;">
+              <div class="pipeline-card-title">
+                <span>Consumo Real de Requisições</span>
+                <span class="pill pill-emerald" style="font-size: 0.65rem;">SQLite Vivo</span>
               </div>
-              <div style="font-size: 0.725rem; color: var(--text-dim); margin-top: 0.4rem;">14% consumido hoje • 430 disponíveis</div>
+              <div style="font-size: 1.7rem; font-weight: 800; color: #34D399; font-family: var(--font-mono);" id="ai-real-requests">-- req / dia</div>
+              <div style="background: rgba(255,255,255,0.08); height: 8px; border-radius: 999px; overflow: hidden;">
+                <div id="ai-quota-bar" style="width: 2%; height: 100%; background: #10B981; transition: width 0.3s ease;"></div>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-dim);" id="ai-quota-subtext">
+                <span>Calculado dinamicamente</span>
+                <span id="ai-quota-pct">0% da cota</span>
+              </div>
             </div>
 
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.15rem;">
-              <div style="font-size: 0.775rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Reserva Gemini 3.1 Flash Lite</div>
-              <div style="font-size: 1.6rem; font-weight: 800; color: #818CF8; margin: 0.35rem 0;">2 / 500 RPD</div>
-              <div style="background: rgba(255,255,255,0.08); height: 8px; border-radius: 999px; overflow: hidden;">
-                <div style="width: 1%; height: 100%; background: #6366F1;"></div>
+            <!-- Card 2: Conversação & Atendimento -->
+            <div class="pipeline-card" style="border-left: 3px solid #6366F1;">
+              <div class="pipeline-card-title">
+                <span>Motor de Conversação</span>
+                <span class="pill pill-indigo" style="font-size: 0.65rem;" id="ai-model-convo">Gemini 2.5 Flash</span>
               </div>
-              <div style="font-size: 0.725rem; color: var(--text-dim); margin-top: 0.4rem;">498 requisições sobressalentes</div>
+              <div class="pipeline-endpoint" id="ai-endpoint-convo">/v1beta/models/gemini-2.5-flash:generateContent</div>
+              <div class="pipeline-fallback">
+                <span>Fallback:</span> <strong style="color: #A5B4FC;" id="ai-fallback-convo">Gemini 1.5 Pro + Fast FAQ Cache</strong>
+              </div>
             </div>
 
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.15rem;">
-              <div style="font-size: 0.775rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Roteador Multimodal (Áudio de Voz)</div>
-              <div style="font-size: 1.6rem; font-weight: 800; color: #FBBF24; margin: 0.35rem 0;">3.6 / 3.8 Flash</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; margin-top: 0.35rem;">
-                Áudios de voz são direcionados automaticamente aos modelos com decodificador acústico nativo.
+            <!-- Card 3: Áudio e Visão OCR -->
+            <div class="pipeline-card" style="border-left: 3px solid #F59E0B;">
+              <div class="pipeline-card-title">
+                <span>Multimodal (Voz & OCR)</span>
+                <span class="pill pill-amber" style="font-size: 0.65rem;">Nativo</span>
+              </div>
+              <div class="pipeline-endpoint">Áudio: Multimodal OGG / Foto: Vision JPEG</div>
+              <div class="pipeline-fallback">
+                <span>Circuit Breaker:</span> <strong style="color: #34D399;" id="ai-circuit-status">OPERACIONAL (0 falhas)</strong>
               </div>
             </div>
           </div>
@@ -1794,14 +2159,430 @@ def render_dashboard_html() -> str:
             </button>
           </div>
         </form>
+
+        <!-- EXEMPLOS CANÔNICOS DE TOM DE BALCÃO (GOLDEN DIALOGUES - 36 CONVERSAS MINERADAS) -->
+        <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
+            <div>
+              <h4 style="font-size: 0.92rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #F59E0B;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Padrões Canônicos de Tom de Balcão (Golden Dialogues das 36 Conversas Reais)
+              </h4>
+              <p style="font-size: 0.775rem; color: var(--text-muted); margin-top: 2px;">
+                A IA é calibrada estritamente com estes diálogos reais de assistências técnicas do Centro de Fortaleza.
+              </p>
+            </div>
+            <span class="badge-count">Calibrado com 36 chats</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            <!-- Exemplo 1: Cotação Direta -->
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 1rem;">
+              <div style="font-size: 0.75rem; font-weight: 700; color: #34D399; text-transform: uppercase; margin-bottom: 0.5rem;">Cenário 1: Cotação com Preço e Aro</div>
+              <div style="font-size: 0.775rem; color: #94A3B8; margin-bottom: 0.35rem;"><strong>Cliente:</strong> "bom dia amigo tem tela do moto g22?"</div>
+              <div style="font-size: 0.775rem; color: #F0FDF4; background: rgba(16, 185, 129, 0.1); padding: 0.5rem 0.65rem; border-radius: 6px; border-left: 2px solid #10B981;">
+                <strong>Victor Cell:</strong> "Bom dia amigo! Temos sim, primeira linha com aro por R$ 130 à vista no Pix. Quer que separe pro motoboy buscar ou você vem retirar no balcão?"
+              </div>
+            </div>
+
+            <!-- Exemplo 2: Ruptura com Alternativa -->
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 1rem;">
+              <div style="font-size: 0.75rem; font-weight: 700; color: #FBBF24; text-transform: uppercase; margin-bottom: 0.5rem;">Cenário 2: Peça sem Estoque (Ruptura c/ Alternativa)</div>
+              <div style="font-size: 0.775rem; color: #94A3B8; margin-bottom: 0.35rem;"><strong>Cliente:</strong> "tem tela a15 original nacional?"</div>
+              <div style="font-size: 0.775rem; color: #FFFBEB; background: rgba(245, 158, 11, 0.1); padding: 0.5rem 0.65rem; border-radius: 6px; border-left: 2px solid #F59E0B;">
+                <strong>Victor Cell:</strong> "A original esgotou hoje cedo amigo. Mas tenho a primeira linha premium com garantia por R$ 140. Separo uma pra você?"
+              </div>
+            </div>
+
+            <!-- Exemplo 3: Domingo / Fechado (Zero Parênteses) -->
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 1rem;">
+              <div style="font-size: 0.75rem; font-weight: 700; color: #818CF8; text-transform: uppercase; margin-bottom: 0.5rem;">Cenário 3: Domingo / Fora de Horário (Zero Parênteses)</div>
+              <div style="font-size: 0.775rem; color: #94A3B8; margin-bottom: 0.35rem;"><strong>Cliente:</strong> "boa tarde tá funcionando hoje?"</div>
+              <div style="font-size: 0.775rem; color: #EEF2FF; background: rgba(99, 102, 241, 0.1); padding: 0.5rem 0.65rem; border-radius: 6px; border-left: 2px solid #6366F1;">
+                <strong>Victor Cell:</strong> "Fechado hoje domingo, abrimos amanhã às 08:00 no centro. Deixe a peça que você precisa anotada que logo cedo respondemos sua cotação!"
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
-              </main>
+
+    <!-- CHAT DRAWER LATERAL (ATENDIMENTO WHATSAPP AO VIVO) -->
+    <div id="drawer-chat-overlay" class="drawer-overlay" onclick="closeChatDrawer()"></div>
+    <div id="drawer-chat" class="chat-drawer">
+      <div class="chat-drawer-header">
+        <div class="user-profile">
+          <div class="user-avatar" id="drawer-avatar">CL</div>
+          <div class="user-info">
+            <span class="user-name" id="drawer-name">Cliente WhatsApp</span>
+            <span class="user-phone" id="drawer-phone">--</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="status-pill status-robot" id="drawer-status-pill">IA Ativa</span>
+          <button class="drawer-close-btn" onclick="closeChatDrawer()" aria-label="Fechar">✕</button>
+        </div>
+      </div>
+      <div class="chat-drawer-body" id="drawer-messages">
+        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando histórico...</div>
+      </div>
+      <div class="chat-drawer-footer">
+        <button class="btn btn-amber btn-sm" id="drawer-action-btn" onclick="toggleDrawerConversationMode()">⏸️ Assumir Atendimento</button>
+        <a href="#" target="_blank" id="drawer-wa-link" class="btn btn-secondary btn-sm">Abrir no Zap ↗</a>
+      </div>
+    </div>
+
+    <!-- MODAL VTEX ADMIN: CADASTRAR NOVA PEÇA NO ESTOQUE (ERP NATIVO) -->
+    <div id="modal-new-product" class="vtex-modal-overlay">
+      <div class="vtex-modal">
+        <div class="vtex-modal-header">
+          <div class="vtex-modal-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--vtex-pink);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <span>Cadastrar Nova Peça no Estoque (ERP Nativo)</span>
+          </div>
+          <button class="drawer-close-btn" onclick="closeNewProductModal()">✕</button>
+        </div>
+        <form id="form-new-product" onsubmit="submitNewProduct(event)" class="vtex-modal-body">
+          <div class="vtex-form-grid">
+            <div class="vtex-form-group col-span-2">
+              <label>SKU / Código Único *</label>
+              <input type="text" id="np-sku" required placeholder="Ex: TELA-MOTO-G22-PRETA" style="font-family: var(--font-mono);">
+            </div>
+            <div class="vtex-form-group col-span-2">
+              <label>Modelo Compatível & Descrição *</label>
+              <input type="text" id="np-model" required placeholder="Ex: Motorola Moto G22 (XT2231)">
+            </div>
+            <div class="vtex-form-group">
+              <label>Categoria *</label>
+              <select id="np-category" required>
+                <option value="Telas Frontais">Telas Frontais</option>
+                <option value="Baterias">Baterias</option>
+                <option value="Conectores de Carga">Conectores de Carga</option>
+                <option value="Tampas Traseiras">Tampas Traseiras</option>
+                <option value="Câmeras">Câmeras</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+            <div class="vtex-form-group">
+              <label>Qualidade *</label>
+              <select id="np-quality" required>
+                <option value="PRIMEIRA_LINHA">Primeira Linha (Incell/OLED)</option>
+                <option value="ORIGINAL_NACIONAL">Original Nacional</option>
+              </select>
+            </div>
+            <div class="vtex-form-group">
+              <label>Possui Aro? *</label>
+              <select id="np-has-frame">
+                <option value="true">Sim (Com Aro)</option>
+                <option value="false">Não (Sem Aro)</option>
+              </select>
+            </div>
+            <div class="vtex-form-group">
+              <label>Quantidade Inicial *</label>
+              <input type="number" id="np-quantity" required min="1" value="5">
+            </div>
+            <div class="vtex-form-group">
+              <label>Preço de Venda Balcão (R$) *</label>
+              <input type="number" id="np-price" required step="0.01" min="0.01" placeholder="120.00">
+            </div>
+            <div class="vtex-form-group">
+              <label>Custo Unitário (R$)</label>
+              <input type="number" id="np-cost" step="0.01" min="0" placeholder="65.00">
+            </div>
+            <div class="vtex-form-group">
+              <label>Fornecedor</label>
+              <input type="text" id="np-supplier" placeholder="Ex: Distribuidora Central">
+            </div>
+            <div class="vtex-form-group">
+              <label>Localização / Gaveta</label>
+              <input type="text" id="np-location" placeholder="Ex: Gaveta G-12">
+            </div>
+          </div>
+          <div class="vtex-modal-footer" style="margin-top: 1.25rem; padding-bottom: 0;">
+            <button type="button" class="btn btn-secondary" onclick="closeNewProductModal()">Cancelar</button>
+            <button type="submit" class="btn btn-emerald" id="btn-save-product">Salvar Peça no Estoque</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL VTEX ADMIN: INSPEÇÃO DE JSON TÉCNICO (AUDITORIA) -->
+    <div id="modal-json-viewer" class="vtex-modal-overlay">
+      <div class="vtex-modal" style="max-width: 680px;">
+        <div class="vtex-modal-header">
+          <div class="vtex-modal-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #818CF8;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span id="json-modal-title">Payload JSON Técnico</span>
+          </div>
+          <button class="drawer-close-btn" onclick="closeJsonViewer()">✕</button>
+        </div>
+        <div class="vtex-modal-body">
+          <pre id="json-modal-content" style="background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.775rem; color: #A5B4FC; overflow-x: auto; max-height: 480px;"></pre>
+        </div>
+        <div class="vtex-modal-footer">
+          <button class="btn btn-secondary" onclick="closeJsonViewer()">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    </main>
     </div> <!-- /content-viewport -->
   </div> <!-- /app-layout -->
 
 <script>
+
+    // --- UTILITÁRIOS DE FORMATAÇÃO E USABILIDADE ---
+    function formatPhoneBR(raw) {
+      if (!raw) return '--';
+      const digits = String(raw).replace(/\D/g, '');
+      if (digits.length === 13 && digits.startsWith('55')) {
+        return `(${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
+      } else if (digits.length === 12 && digits.startsWith('55')) {
+        return `(${digits.slice(2, 4)}) ${digits.slice(4, 8)}-${digits.slice(8)}`;
+      } else if (digits.length === 11) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+      } else if (digits.length === 10) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+      }
+      return raw;
+    }
+
+    function formatOrderStatusBadge(status) {
+      const s = String(status || '').toUpperCase();
+      if (s === 'CONFIRMED') {
+        return '<span class="status-pill" style="background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3);">✓ Separando / Confirmado</span>';
+      } else if (s === 'WAITING_CONFIRMATION') {
+        return '<span class="status-pill" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3);">⏳ Aguardando Confirmação</span>';
+      } else if (s === 'DISPATCHED_UBER') {
+        return '<span class="status-pill" style="background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.3);">🚗 Em Rota Uber Flash</span>';
+      } else if (s === 'DELIVERED') {
+        return '<span class="status-pill" style="background: rgba(6, 182, 212, 0.15); color: #38BDF8; border: 1px solid rgba(6, 182, 212, 0.3);">📦 Entregue / Concluído</span>';
+      } else if (s === 'CANCELLED') {
+        return '<span class="status-pill" style="background: rgba(239, 68, 68, 0.15); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3);">✕ Cancelado</span>';
+      }
+      return `<span class="status-pill status-robot">${escapeHtml(status)}</span>`;
+    }
+
+    // --- CHAT DRAWER DE ATENDIMENTO AO VIVO (WHATSAPP) ---
+    let currentDrawerPhone = null;
+    let currentDrawerActive = true;
+
+    async function openChatDrawer(phone, name, formattedPhone, isActive) {
+      currentDrawerPhone = phone;
+      currentDrawerActive = isActive;
+      const cleanPhone = (phone || '').replace(/\D/g, '');
+      const initials = getInitials(name || 'Cliente');
+
+      document.getElementById('drawer-avatar').innerText = initials;
+      document.getElementById('drawer-name').innerText = name || 'Cliente WhatsApp';
+      document.getElementById('drawer-phone').innerText = formatPhoneBR(formattedPhone || phone);
+      document.getElementById('drawer-wa-link').href = cleanPhone ? `https://wa.me/${cleanPhone}` : '#';
+
+      const pill = document.getElementById('drawer-status-pill');
+      const actionBtn = document.getElementById('drawer-action-btn');
+      if (isActive) {
+        pill.className = 'status-pill status-robot';
+        pill.innerText = 'IA Ativa';
+        actionBtn.className = 'btn btn-amber btn-sm';
+        actionBtn.innerText = '⏸️ Assumir Atendimento';
+      } else {
+        pill.className = 'status-pill status-human';
+        pill.innerText = 'Balcão Manual';
+        actionBtn.className = 'btn btn-emerald btn-sm';
+        actionBtn.innerText = '▶️ Liberar p/ IA';
+      }
+
+      document.getElementById('drawer-chat-overlay').classList.add('active');
+      document.getElementById('drawer-chat').classList.add('active');
+
+      const msgBox = document.getElementById('drawer-messages');
+      msgBox.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Carregando histórico ao vivo...</div>';
+
+      try {
+        const res = await fetch(`/api/conversations/${cleanPhone}/messages`);
+        const data = await res.json();
+        const messages = data.messages || [];
+
+        if (messages.length === 0) {
+          msgBox.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma mensagem registrada nesta conversa ainda.</div>';
+          return;
+        }
+
+        msgBox.innerHTML = messages.map(m => {
+          const isUser = m.role === 'user';
+          const senderLabel = isUser ? 'Cliente' : (m.role === 'system' ? 'Sistema Balcão' : 'Victor Cell (IA)');
+          const bubbleClass = isUser ? 'incoming' : 'outgoing';
+          const time = m.created_at || '';
+
+          return `
+            <div class="chat-bubble-drawer ${bubbleClass}">
+              <div style="font-size: 0.68rem; font-weight: 700; opacity: 0.75; margin-bottom: 2px;">${senderLabel}</div>
+              <div style="white-space: pre-wrap;">${escapeHtml(m.content)}</div>
+              <div class="chat-bubble-meta">
+                <span>${time}</span>
+                ${!isUser ? '<span>✓✓</span>' : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+        msgBox.scrollTop = msgBox.scrollHeight;
+      } catch (err) {
+        msgBox.innerHTML = '<div style="text-align: center; padding: 2rem; color: #F87171;">Erro ao carregar mensagens: ' + escapeHtml(err.message) + '</div>';
+      }
+    }
+
+    function closeChatDrawer() {
+      document.getElementById('drawer-chat-overlay').classList.remove('active');
+      document.getElementById('drawer-chat').classList.remove('active');
+      currentDrawerPhone = null;
+    }
+
+    async function toggleDrawerConversationMode() {
+      if (!currentDrawerPhone) return;
+      if (currentDrawerActive) {
+        await pauseConversation(currentDrawerPhone);
+        currentDrawerActive = false;
+        document.getElementById('drawer-status-pill').className = 'status-pill status-human';
+        document.getElementById('drawer-status-pill').innerText = 'Balcão Manual';
+        document.getElementById('drawer-action-btn').className = 'btn btn-emerald btn-sm';
+        document.getElementById('drawer-action-btn').innerText = '▶️ Liberar p/ IA';
+      } else {
+        await resumeConversation(currentDrawerPhone);
+        currentDrawerActive = true;
+        document.getElementById('drawer-status-pill').className = 'status-pill status-robot';
+        document.getElementById('drawer-status-pill').innerText = 'IA Ativa';
+        document.getElementById('drawer-action-btn').className = 'btn btn-amber btn-sm';
+        document.getElementById('drawer-action-btn').innerText = '⏸️ Assumir Atendimento';
+      }
+    }
+
+    // --- MODAL DE CADASTRO MANUAL DE PRODUTOS NO ESTOQUE (ERP NATIVO) ---
+    function openNewProductModal() {
+      document.getElementById('modal-new-product').classList.add('active');
+      document.getElementById('np-sku').focus();
+    }
+
+    function closeNewProductModal() {
+      document.getElementById('modal-new-product').classList.remove('active');
+      document.getElementById('form-new-product').reset();
+    }
+
+    async function submitNewProduct(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-product');
+      btn.disabled = true;
+      btn.innerText = 'Salvando no estoque...';
+
+      const payload = {
+        sku: document.getElementById('np-sku').value.trim().toUpperCase(),
+        model: document.getElementById('np-model').value.trim(),
+        category: document.getElementById('np-category').value,
+        quality: document.getElementById('np-quality').value,
+        has_frame: document.getElementById('np-has-frame').value === 'true',
+        price: parseFloat(document.getElementById('np-price').value),
+        cost: document.getElementById('np-cost').value ? parseFloat(document.getElementById('np-cost').value) : null,
+        initial_quantity: parseInt(document.getElementById('np-quantity').value, 10),
+        supplier: document.getElementById('np-supplier').value.trim() || null,
+        location: document.getElementById('np-location').value.trim() || null
+      };
+
+      try {
+        const res = await fetch('/api/erp/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Falha ao cadastrar peça');
+
+        showToast(`Peça ${payload.sku} cadastrada com ${payload.initial_quantity} un no estoque!`, 'success');
+        closeNewProductModal();
+        fetchCatalog();
+        loadErpSummary();
+        loadErpMovements();
+      } catch (err) {
+        showToast('Erro ao cadastrar peça: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Salvar Peça no Estoque';
+      }
+    }
+
+    // --- TOGGLE PLANILHA GOOGLE SHEETS ---
+    function toggleGoogleSheetsFrame() {
+      const container = document.getElementById('sheets-frame-container');
+      const textSpan = document.getElementById('toggle-sheets-btn-text');
+      if (!container) return;
+      if (container.style.display === 'none' || !container.style.display) {
+        container.style.display = 'block';
+        if (textSpan) textSpan.innerText = 'Ocultar Planilha';
+      } else {
+        container.style.display = 'none';
+        if (textSpan) textSpan.innerText = 'Exibir Planilha Google Sheets';
+      }
+    }
+
+    // --- MODAL DE INSPEÇÃO JSON TÉCNICO (AUDITORIA) ---
+    function openJsonViewer(index) {
+      const log = (window.renderedAuditLogs || [])[index];
+      if (!log) return;
+      document.getElementById('json-modal-title').innerText = `Auditoria #${log.id || index} • ${log.action}`;
+      document.getElementById('json-modal-content').innerText = JSON.stringify(log, null, 2);
+      document.getElementById('modal-json-viewer').classList.add('active');
+    }
+
+    function closeJsonViewer() {
+      document.getElementById('modal-json-viewer').classList.remove('active');
+    }
+
+    // --- STATUS DA PIPELINE COGNITIVA MULTIMODAL (IA EM TEMPO REAL) ---
+    async function fetchAIPipelineStatus() {
+      try {
+        const res = await fetch('/api/ai/pipeline-status');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // 1. Consumo Real
+        const usage = data.usage || {};
+        const reqCount = usage.real_daily_requests || 0;
+        const reqElem = document.getElementById('ai-real-requests');
+        if (reqElem) reqElem.innerText = `${reqCount} / ${usage.quota_limit || 1500} RPD`;
+
+        const pct = Math.min(100, Math.max(1, Math.round(usage.percentage || 0)));
+        const barElem = document.getElementById('ai-quota-bar');
+        if (barElem) barElem.style.width = pct + '%';
+
+        const pctElem = document.getElementById('ai-quota-pct');
+        if (pctElem) pctElem.innerText = `${pct}% da cota diária`;
+
+        // 2. Modelos & Endpoints
+        const pipe = data.pipeline || {};
+        if (pipe.conversation) {
+          const mElem = document.getElementById('ai-model-convo');
+          if (mElem) mElem.innerText = pipe.conversation.model || 'Gemini 2.5 Flash';
+          const epElem = document.getElementById('ai-endpoint-convo');
+          if (epElem) epElem.innerText = pipe.conversation.endpoint || '/v1beta/models/gemini-2.5-flash:generateContent';
+          const fbElem = document.getElementById('ai-fallback-convo');
+          if (fbElem) fbElem.innerText = (pipe.conversation.fallback || 'Gemini 1.5 Pro') + ' + Fast FAQ Cache';
+        }
+
+        // 3. Circuit Breaker
+        if (pipe.circuit_breaker) {
+          const cbElem = document.getElementById('ai-circuit-status');
+          const cb = pipe.circuit_breaker;
+          if (cbElem) {
+            cbElem.innerText = `${cb.state || 'CLOSED'} (${cb.failures || 0} falhas)`;
+            cbElem.style.color = (cb.state === 'CLOSED') ? '#34D399' : '#F87171';
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao buscar status da pipeline de IA:', err);
+      }
+    }
+
+
     // Interceptor global: Redireciona imediatamente para o login se a sessão expirar
     const originalFetch = window.fetch;
     window.fetch = async function(...args) {
@@ -2051,7 +2832,10 @@ def render_dashboard_html() -> str:
       if (tabId === 'audit') fetchAuditLogs();
       if (tabId === 'profile') fetchStoreProfile();
       if (tabId === 'erp') { loadErpSummary(); loadErpMovements(); }
-      if (tabId === 'simulator' || tabId === 'gemini') fetchWhatsAppQR();
+      if (tabId === 'simulator' || tabId === 'gemini') {
+        fetchWhatsAppQR();
+        fetchAIPipelineStatus();
+      }
     }
 
     // 1. ATENDIMENTOS AO VIVO (IA VS HUMANO)
@@ -2103,6 +2887,12 @@ def render_dashboard_html() -> str:
         const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : '#';
         const isActive = c.is_ai_active;
         const initials = getInitials(c.customer_name);
+        const lastMsg = c.last_message || 'Iniciando conversa...';
+        const lastMsgRole = c.last_message_role === 'assistant' ? 'IA' : 'Cliente';
+        const snippet = lastMsg.length > 50 ? lastMsg.slice(0, 50) + '...' : lastMsg;
+        const roleBadge = c.last_message_role === 'assistant'
+          ? '<span style="color: #34D399; font-weight: 700; font-size: 0.7rem;">IA:</span>'
+          : '<span style="color: #60A5FA; font-weight: 700; font-size: 0.7rem;">Cliente:</span>';
 
         return `
           <tr>
@@ -2112,9 +2902,17 @@ def render_dashboard_html() -> str:
                 <div class="user-info">
                   <span class="user-name">${escapeHtml(c.customer_name || 'Cliente WhatsApp')}</span>
                   <a href="${waLink}" target="_blank" class="user-phone" title="Abrir no WhatsApp">
-                    ${c.formatted_phone || c.phone} ↗
+                    ${formatPhoneBR(c.formatted_phone || c.phone)} ↗
                   </a>
                 </div>
+              </div>
+            </td>
+            <td>
+              <div style="font-size: 0.8rem; color: #E2E8F0; line-height: 1.35; max-width: 280px;" title="${escapeHtml(lastMsg)}">
+                ${roleBadge} ${escapeHtml(snippet)}
+              </div>
+              <div style="font-size: 0.7rem; color: var(--text-dim); font-family: var(--font-mono); margin-top: 3px;">
+                ⏰ ${c.last_activity || '--'}
               </div>
             </td>
             <td>
@@ -2125,17 +2923,19 @@ def render_dashboard_html() -> str:
             <td>
               ${isActive
                 ? `<span class="status-pill status-robot">IA Ativa</span>`
-                : `<span class="status-pill status-human">Balcão Manual (${c.paused_until ? 'até ' + c.paused_until : 'Pausado'})</span>`
+                : `<span class="status-pill status-human">Balcão Manual</span>`
               }
-            </td>
-            <td style="font-size: 0.775rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;">
-              ${c.last_activity || '--'}
             </td>
             <td>
-              ${!isActive
-                ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">▶️ Liberar p/ Automação</button>`
-                : `<button class="btn btn-amber btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Assumir Atendimento</button>`
-              }
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button class="btn btn-secondary btn-sm" onclick="openChatDrawer('${c.phone}', '${escapeHtml(c.customer_name || 'Cliente')}', '${c.formatted_phone || c.phone}', ${isActive})">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 3px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Ver Chat
+                </button>
+                ${!isActive
+                  ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">▶️ Liberar</button>`
+                  : `<button class="btn btn-amber btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Assumir</button>`
+                }
+              </div>
             </td>
           </tr>
         `;
@@ -2147,6 +2947,8 @@ def render_dashboard_html() -> str:
         const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : '#';
         const isActive = c.is_ai_active;
         const initials = getInitials(c.customer_name);
+        const lastMsg = c.last_message || 'Iniciando conversa...';
+        const snippet = lastMsg.length > 55 ? lastMsg.slice(0, 55) + '...' : lastMsg;
 
         return `
           <div class="customer-card-mobile">
@@ -2156,7 +2958,7 @@ def render_dashboard_html() -> str:
                 <div class="user-info">
                   <span class="user-name">${escapeHtml(c.customer_name || 'Cliente WhatsApp')}</span>
                   <a href="${waLink}" target="_blank" class="user-phone">
-                    ${c.formatted_phone || c.phone} ↗
+                    ${formatPhoneBR(c.formatted_phone || c.phone)} ↗
                   </a>
                 </div>
               </div>
@@ -2169,15 +2971,20 @@ def render_dashboard_html() -> str:
             </div>
 
             <div class="card-mobile-body">
-              <div style="font-size: 0.725rem; color: var(--text-dim);">Peça Sendo Cotada:</div>
-              <span class="part-pill">${escapeHtml(c.active_sku_name)}</span>
+              <div style="font-size: 0.775rem; color: #CBD5E1; background: rgba(0,0,0,0.3); padding: 0.5rem 0.65rem; border-radius: 6px; margin-bottom: 0.4rem;">
+                💬 ${escapeHtml(snippet)}
+              </div>
+              <div style="font-size: 0.725rem; color: var(--text-dim);">Peça Sendo Cotada: <span class="part-pill">${escapeHtml(c.active_sku_name)}</span></div>
               <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem;">Último contato: ${c.last_activity || '--'}</div>
             </div>
 
-            <div class="card-mobile-actions">
+            <div class="card-mobile-actions" style="display: flex; gap: 6px;">
+              <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="openChatDrawer('${c.phone}', '${escapeHtml(c.customer_name || 'Cliente')}', '${c.formatted_phone || c.phone}', ${isActive})">
+                💬 Abrir Chat Live
+              </button>
               ${!isActive
-                ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">▶️ Liberar p/ Automação</button>`
-                : `<button class="btn btn-amber btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Assumir Atendimento</button>`
+                ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">▶️ Liberar</button>`
+                : `<button class="btn btn-amber btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Assumir</button>`
               }
             </div>
           </div>
@@ -2239,6 +3046,39 @@ def render_dashboard_html() -> str:
         // Tabela de Pedidos
         renderOrders(data.recent_orders || []);
 
+        // Atualizar Categorização de Mensagens do WhatsApp
+        if (data.whatsapp_categorization) {
+          const wc = data.whatsapp_categorization;
+          const qElem = document.getElementById('cat-val-quotes');
+          const oElem = document.getElementById('cat-val-orders');
+          const rElem = document.getElementById('cat-val-ruptures');
+          const hElem = document.getElementById('cat-val-handoffs');
+          const sElem = document.getElementById('cat-val-outofscope');
+          if (qElem) qElem.innerText = wc.quotations_count || 0;
+          if (oElem) oElem.innerText = wc.orders_count || 0;
+          if (rElem) rElem.innerText = wc.ruptures_count || 0;
+          if (hElem) hElem.innerText = wc.handoffs_count || 0;
+          if (sElem) sElem.innerText = wc.out_of_scope_count || 0;
+
+          const total = (wc.quotations_count || 0) + (wc.orders_count || 0) + (wc.ruptures_count || 0) + (wc.handoffs_count || 0) + (wc.out_of_scope_count || 0) || 1;
+          const qPct = Math.round(((wc.quotations_count || 0) / total) * 100);
+          const oPct = Math.round(((wc.orders_count || 0) / total) * 100);
+          const rPct = Math.round(((wc.ruptures_count || 0) / total) * 100);
+          const hPct = Math.round(((wc.handoffs_count || 0) / total) * 100);
+          const sPct = Math.max(0, 100 - (qPct + oPct + rPct + hPct));
+
+          const barElem = document.getElementById('wa-categories-bar');
+          if (barElem) {
+            barElem.innerHTML = `
+              <div style="width: ${qPct}%; background: #F59E0B;" title="Cotações: ${qPct}%"></div>
+              <div style="width: ${oPct}%; background: #10B981;" title="Pedidos: ${oPct}%"></div>
+              <div style="width: ${rPct}%; background: #EF4444;" title="Rupturas: ${rPct}%"></div>
+              <div style="width: ${hPct}%; background: #818CF8;" title="Transbordo: ${hPct}%"></div>
+              <div style="width: ${sPct}%; background: #64748B;" title="Fora de Escopo: ${sPct}%"></div>
+            `;
+          }
+        }
+
         // Ranking
         renderTopProducts(data.top_products || []);
 
@@ -2298,21 +3138,19 @@ def render_dashboard_html() -> str:
           <tr>
             <td>
               <div style="font-weight: 700; color: #fff;">#${o.id}</div>
-              <div style="font-size: 0.725rem; color: var(--text-dim);">${o.created_at}</div>
+              <div style="font-size: 0.725rem; color: var(--text-dim); font-family: var(--font-mono);">${o.created_at}</div>
             </td>
             <td>
               <div style="font-weight: 600; color: #E2E8F0;">${escapeHtml(o.customer_name)}</div>
-              <a href="${waLink}" target="_blank" style="font-size: 0.725rem; color: #34D399; font-family: monospace; text-decoration: none; display: inline-flex; align-items: center; gap: 3px;">
-                ${o.customer_phone} ↗
+              <a href="${waLink}" target="_blank" style="font-size: 0.75rem; color: #34D399; font-family: var(--font-mono); text-decoration: none; display: inline-flex; align-items: center; gap: 3px;">
+                ${formatPhoneBR(o.customer_phone)} ↗
               </a>
             </td>
             <td><span class="part-pill" style="font-weight: 700;">${escapeHtml(o.product_sku)}</span></td>
             <td style="font-weight: 800; color: #34D399; font-size: 0.95rem;">R$ ${(o.product_price || 0).toFixed(2)}</td>
             <td>${modalPill}</td>
-            <td>
-              <span class="status-pill status-robot" style="font-weight: 600;">${o.status}</span>
-            </td>
-            <td style="color: #FBBF24; font-weight: 600; font-size: 0.8rem;">⏰ Até ${o.expires_at}</td>
+            <td>${formatOrderStatusBadge(o.status)}</td>
+            <td style="color: #FBBF24; font-weight: 600; font-size: 0.8rem;" title="Garante a peça por 30 minutos sem risco de venda duplicada">⏰ Até ${o.expires_at}</td>
           </tr>
         `;
       }).join('');
@@ -2792,21 +3630,57 @@ def render_dashboard_html() -> str:
         return;
       }
 
-      tbody.innerHTML = filtered.map(l => {
+      window.renderedAuditLogs = filtered;
+
+      tbody.innerHTML = filtered.map((l, idx) => {
         const badgeClass = l.level === 'ERROR' ? 'badge-error' : (l.level === 'WARN' ? 'badge-warn' : 'badge-info');
         const d = new Date(l.timestamp);
         const tsFormatted = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + d.toLocaleDateString('pt-BR');
+        const det = (typeof l.details === 'object' && l.details) ? l.details : {};
         const detStr = typeof l.details === 'object' ? JSON.stringify(l.details) : String(l.details || '');
         const lat = (l.duration_ms !== null && l.duration_ms !== undefined) ? `${Number(l.duration_ms).toFixed(0)} ms` : '-';
+
+        // Humanizar Ação e Detalhe
+        let humanSummary = '';
+        const act = l.action || '';
+        if (act.includes('DEBOUNCE')) {
+          humanSummary = 'Buffer WhatsApp: Mensagem agrupada na janela de digitação';
+        } else if (act.includes('ORDER_CREATED') || act.includes('RESERVATION')) {
+          humanSummary = `Reserva criada: Peça ${det.sku || ''} para cliente ${formatPhoneBR(det.customer_phone)}`;
+        } else if (act.includes('NATIVE_PRODUCT')) {
+          humanSummary = `Cadastro de Peça: ${det.sku || ''} (${det.quantity || 0} un no balcão)`;
+        } else if (act.includes('STOCK_MOVEMENT')) {
+          humanSummary = `Estoque: ${det.movement_type || 'ENTRADA'} de ${det.quantity || 0} un (${det.sku || ''})`;
+        } else if (act.includes('PRICE_OVERRIDE')) {
+          humanSummary = `Negociação de Preço: Oferta de R$ ${det.offered_price || ''} abaixo do balcão`;
+        } else if (act.includes('OUT_OF_STOCK')) {
+          humanSummary = `Ruptura: Peça indisponível consultada (${det.sku || ''})`;
+        } else if (act.includes('HUMAN_INTERVENTION')) {
+          humanSummary = `Transbordo: Balcão solicitado para ${formatPhoneBR(det.customer_phone)}`;
+        } else if (act.includes('AI_RESPONSE')) {
+          humanSummary = `Resposta da IA gerada (${det.model || 'Gemini 2.5 Flash'})`;
+        } else {
+          humanSummary = act.replace(/_/g, ' ');
+        }
+
         return `
           <tr>
-            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted);">${tsFormatted}</td>
+            <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);">${tsFormatted}</td>
             <td><span class="audit-badge ${badgeClass}">${l.level}</span></td>
             <td><span class="audit-badge badge-comp">${l.component}</span></td>
             <td style="font-weight: 600; font-size: 0.8rem; color: #fff;">${l.action}</td>
-            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.775rem; color: var(--text-muted);">${l.actor || '-'}</td>
-            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--emerald);">${lat}</td>
-            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.725rem; color: #CBD5E1; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${detStr.replace(/"/g, '&quot;')}">${detStr}</td>
+            <td style="font-family: var(--font-mono); font-size: 0.775rem; color: var(--text-muted);">${l.actor || '-'}</td>
+            <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--emerald);">${lat}</td>
+            <td>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <span style="font-size: 0.775rem; color: #CBD5E1; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(detStr)}">
+                  ${escapeHtml(humanSummary)}
+                </span>
+                <button class="btn btn-secondary btn-xs" style="padding: 2px 7px; font-size: 0.7rem;" onclick="openJsonViewer(${idx})">
+                  JSON Técnico
+                </button>
+              </div>
+            </td>
           </tr>
         `;
       }).join('');
@@ -3076,6 +3950,7 @@ def render_dashboard_html() -> str:
     }
 
     function refreshAll() {
+      fetchAIPipelineStatus();
       showToast('Atualizando dados...', 'success');
       fetchConversations();
       fetchStats();

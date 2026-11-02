@@ -110,7 +110,7 @@ class Settings(BaseSettings):
                 "day_name": day_name,
                 "current_time": local_now.strftime("%H:%M"),
                 "reopen_desc": f"abre amanhã (segunda) às {self.STORE_OPENING_TIME}",
-                "short_notice": f"Fechado hoje (domingo), abre amanhã {self.STORE_OPENING_TIME}",
+                "short_notice": f"Fechado hoje domingo, abre amanhã {self.STORE_OPENING_TIME}",
                 "badge_text": f"🔴 Fechado Hoje (Domingo) • Reabre Segunda {self.STORE_OPENING_TIME}",
             }
 

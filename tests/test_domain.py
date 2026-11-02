@@ -82,7 +82,7 @@ def test_store_schedule_sunday():
     status = settings.get_store_schedule_status(sunday_dt)
     assert status["is_open"] is False
     assert status["is_sunday"] is True
-    assert "Fechado hoje (domingo)" in status["short_notice"]
+    assert "Fechado hoje domingo" in status["short_notice"]
     assert "abre amanhã" in status["short_notice"]
 
 def test_store_schedule_weekday_open():
