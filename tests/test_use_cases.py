@@ -157,16 +157,16 @@ async def test_inactivity_resets_context_and_prevents_stale_orders(use_case, tes
     seja interpretada como confirmação de pedido pendente.
     """
     from datetime import datetime, timezone, timedelta
-    phone = "5585991117777"
+    phone = "5585991117770"
 
-    # 1. Cotação
+    # 1. Cotação (Peça de Tablet presente no repositório de teste: Tab A8)
     await use_case.execute(
         customer_phone=phone,
-        message_text="Quanto tá a tela do A15 original?",
+        message_text="Quanto tá a tela do tablet Tab A8?",
         from_me=False,
     )
     conv = await test_sqlite.get_or_create(phone)
-    assert conv.active_sku == "TEL-SAM-A15-ORIG"
+    assert conv.active_sku == "TEL-TAB-A8-1LINHA"
 
     # 2. Simula passagem do tempo de 3 horas de inatividade na conversa e no histórico
     past_iso = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()

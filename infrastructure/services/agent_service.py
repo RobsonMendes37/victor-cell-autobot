@@ -267,10 +267,10 @@ class AIAgentService(AIServiceInterface):
                     )
 
         # Fallback Semântico Seguro
-        return self._semantic_fallback(user_message, conversation, schedule)
+        return self._semantic_fallback(user_message, conversation, schedule, customer_orders_context=customer_orders_context)
 
     def _extract_real_address(self, text: str) -> str | None:
-        pattern = r"\b(rua|r\.|avenida|av\.|travessa|trav\.|alameda|bairro|praça)\b\s+[^,\n]+(?:,\s*\d+)?(?:\s*-\s*[^,\n]+)?"
+        pattern = r"(?i)(?:\b(?:rua|avenida|travessa|alameda|bairro|praça)\b|\b(?:r\.|av\.|trav\.))\s+[^,\n]+(?:,\s*\d+)?(?:\s*-\s*[^,\n]+)?"
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             start = match.start()
@@ -278,7 +278,11 @@ class AIAgentService(AIServiceInterface):
         return None
 
     def _semantic_fallback(
-        self, user_msg: str, conversation: Conversation, schedule: Optional[Dict[str, Any]] = None
+        self,
+        user_msg: str,
+        conversation: Conversation,
+        schedule: Optional[Dict[str, Any]] = None,
+        customer_orders_context: Optional[str] = None,
     ) -> Dict[str, Any]:
         if schedule is None:
             schedule = settings.get_store_schedule_status()
@@ -292,6 +296,24 @@ class AIAgentService(AIServiceInterface):
                 "intent": "GENERAL_QUESTION",
                 "reply_text": f"Só peças de tablet{closed_suffix}".strip(),
                 "target_sku": None,
+                "requires_staff_alert": False,
+                "destination_address": None,
+                "handoff_reason": None,
+            }
+
+        # 0.5 Rastreio de Pedido Recente / Pós-Venda ("deu certo?", "já mandou?", "já despachou?")
+        is_tracking_inquiry = any(
+            w in msg
+            for w in [
+                "deu certo", "já mandou", "ja mandou", "já despachou", "ja despachou",
+                "despachou o uber", "mandou o uber", "status do pedido", "meu pedido", "rastreio"
+            ]
+        )
+        if is_tracking_inquiry and customer_orders_context:
+            return {
+                "intent": "GENERAL_QUESTION",
+                "reply_text": "Pedido tá em separação aqui pra despachar.",
+                "target_sku": conversation.active_sku,
                 "requires_staff_alert": False,
                 "destination_address": None,
                 "handoff_reason": None,

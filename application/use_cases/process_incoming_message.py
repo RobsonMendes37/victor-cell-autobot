@@ -127,6 +127,22 @@ class ProcessIncomingMessageUseCase:
             )
         catalog_context = "\n".join(catalog_lines)
 
+        # 6.1 Recupera pedidos recentes para contextualizar rastreio/pós-venda
+        customer_orders_context = None
+        recent_orders = []
+        if hasattr(self.order_repo, "get_recent_orders_by_phone"):
+            recent_orders = await self.order_repo.get_recent_orders_by_phone(clean_phone, limit=3)
+        elif self.sqlite_repo and hasattr(self.sqlite_repo, "get_recent_orders_by_phone"):
+            recent_orders = await self.sqlite_repo.get_recent_orders_by_phone(clean_phone, limit=3)
+
+        if recent_orders:
+            order_lines = []
+            for o in recent_orders:
+                order_lines.append(
+                    f"Pedido #{o.id} - SKU: {o.product_sku} - Status: {o.status.value} - Destino: {o.destination_address or 'Balcão'}"
+                )
+            customer_orders_context = chr(10).join(order_lines)
+
         # 7. Processamento Cognitivo via Gemini
         ai_decision = await self.ai_service.process_and_reply(
             conversation=conversation,
@@ -135,6 +151,7 @@ class ProcessIncomingMessageUseCase:
             history=recent_history,
             media_bytes=media_bytes,
             mime_type=mime_type,
+            customer_orders_context=customer_orders_context,
         )
 
         reply_text = ai_decision.get("reply_text", "")
@@ -143,12 +160,35 @@ class ProcessIncomingMessageUseCase:
         target_sku = ai_decision.get("target_sku") or conversation.active_sku
         destination_address = ai_decision.get("destination_address")
 
+        # Fallback semântico: se a IA cotou mas omitiu o SKU, busca correspondência no catálogo por tokens e especificações
+        if not target_sku and intent in ["QUOTE", "ORDER_PENDING_CONFIRMATION"]:
+            stop_words = {"quanto", "valor", "preço", "preco", "amigo", "patrão", "patrao", "bom", "dia", "tarde", "noite", "olá", "ola", "você", "voce", "tem", "essa", "pode", "separar", "manda", "uber"}
+            tokens = [w.strip("?,.!:;") for w in message_text.split() if len(w) >= 3 and w.lower() not in stop_words]
+            for token in tokens:
+                matches = await self.product_repo.search(token)
+                if matches:
+                    if any(k in message_text.lower() for k in ["tela", "display"]):
+                        matches = [m for m in matches if any(t in m.name.lower() for t in ["tela", "display", "touch"])]
+                    elif "touch" in message_text.lower():
+                        matches = [m for m in matches if "touch" in m.name.lower()]
+                    elif "bateria" in message_text.lower():
+                        matches = [m for m in matches if "bateria" in m.name.lower()]
+
+                    if "original" in message_text.lower():
+                        matches = [m for m in matches if getattr(m, 'quality', None) == QualityTier.ORIGINAL_NACIONAL]
+                    elif "paralela" in message_text.lower():
+                        matches = [m for m in matches if getattr(m, 'quality', None) == QualityTier.PARALELA_CHINA]
+
+                    if len(matches) == 1:
+                        target_sku = matches[0].sku
+                        break
+
         # Regra de Ouro: Transbordo para atendimento humano NUNCA responde nada ao cliente. É só passar!
         if intent == "HUMAN_HANDOFF":
             reply_text = ""
 
-        if ai_decision.get("target_sku"):
-            conversation.active_sku = ai_decision["target_sku"]
+        if target_sku:
+            conversation.active_sku = target_sku
 
         # 8. Persiste a mensagem do cliente e a resposta no histórico multi-turn
         if hasattr(self.conversation_repo, "save_message"):

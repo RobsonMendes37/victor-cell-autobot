@@ -59,5 +59,7 @@ class GoogleSheetsInventoryAdapter(InventoryProvider):
         return await self.repo.increment_stock(sku, quantity)
 
     async def sync_catalog(self) -> int:
-        prods = await self.repo.sync_catalog()
+        if hasattr(self.repo, '_last_cache_update'):
+            self.repo._last_cache_update = None
+        prods = await self.repo.list_all()
         return len(prods)

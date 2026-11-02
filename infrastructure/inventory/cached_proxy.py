@@ -95,18 +95,20 @@ class CachedInventoryProxy(InventoryProvider):
 
     async def decrement_stock(self, sku: str, quantity: int = 1) -> bool:
         success = await self.target.decrement_stock(sku, quantity)
-        if sku in self._cache:
-            curr = self._cache[sku].stock_quantity
-            if curr >= quantity:
-                self._cache[sku].stock_quantity = curr - quantity
-                self._cache[sku].has_stock = self._cache[sku].stock_quantity > 0
+        if success and sku in self._cache:
+            target_prod = await self.target.get_by_sku(sku)
+            if target_prod:
+                self._cache[sku].stock_quantity = target_prod.stock_quantity
+                self._cache[sku].has_stock = target_prod.has_stock
         return success
 
     async def increment_stock(self, sku: str, quantity: int = 1) -> bool:
         success = await self.target.increment_stock(sku, quantity)
-        if sku in self._cache:
-            self._cache[sku].stock_quantity += quantity
-            self._cache[sku].has_stock = True
+        if success and sku in self._cache:
+            target_prod = await self.target.get_by_sku(sku)
+            if target_prod:
+                self._cache[sku].stock_quantity = target_prod.stock_quantity
+                self._cache[sku].has_stock = target_prod.has_stock
         return success
 
     async def handle_stock_webhook(self, payload: Dict[str, Any]) -> bool:
