@@ -126,3 +126,25 @@ class CachedInventoryProxy(InventoryProvider):
             self._cache = {p.sku: p for p in prods}
             self._cache_expires_at = datetime.now(timezone.utc) + timedelta(seconds=self.ttl)
             return count
+
+    async def record_movement(self, movement: Any) -> bool:
+        res = await self.target.record_movement(movement)
+        self._cache_expires_at = None
+        return res
+
+    async def list_movements(self, sku: Optional[str] = None, limit: int = 50) -> List[Any]:
+        return await self.target.list_movements(sku=sku, limit=limit)
+
+    async def list_suppliers(self) -> List[Any]:
+        return await self.target.list_suppliers()
+
+    async def save_supplier(self, supplier: Any) -> bool:
+        return await self.target.save_supplier(supplier)
+
+    async def register_product(self, product: Product) -> bool:
+        res = await self.target.register_product(product)
+        self._cache_expires_at = None
+        return res
+
+    async def get_inventory_metrics(self) -> Dict[str, Any]:
+        return await self.target.get_inventory_metrics()

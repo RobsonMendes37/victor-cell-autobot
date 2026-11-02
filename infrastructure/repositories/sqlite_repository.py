@@ -5,15 +5,20 @@ Persists Conversations, Orders, Messages (history), and Sent Message IDs.
 
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import aiosqlite
 
 from domain.entities import (
     Conversation,
     ConversationState,
+    MovementType,
     OrderStatus,
+    Product,
+    QualityTier,
     ReservationOrder,
+    StockMovement,
+    Supplier,
 )
 from domain.repositories import (
     ConversationRepositoryInterface,
@@ -171,6 +176,51 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 )
             """)
             await db.commit()
+                        # 10. Tabela de Fornecedores (LGPD & e-Gov Compliance)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS suppliers (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    document TEXT,
+                    phone TEXT,
+                    email TEXT,
+                    notes TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            await db.commit()
+
+            # 11. Tabela de Movimentações Físicas de Estoque (Rastreabilidade Fiscal / SPED)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS stock_movements (
+                    id TEXT PRIMARY KEY,
+                    sku TEXT NOT NULL,
+                    movement_type TEXT NOT NULL,
+                    quantity INTEGER NOT NULL,
+                    unit_cost REAL,
+                    unit_price REAL,
+                    supplier_id TEXT,
+                    batch_number TEXT,
+                    invoice_number TEXT,
+                    label_image_url TEXT,
+                    operator_name TEXT NOT NULL,
+                    notes TEXT,
+                    timestamp TEXT NOT NULL
+                )
+            """)
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_stock_movements_sku ON stock_movements(sku, timestamp);
+            """)
+            try:
+                await db.execute("ALTER TABLE cached_products ADD COLUMN cost_price REAL;")
+            except Exception:
+                pass
+            try:
+                await db.execute("ALTER TABLE cached_products ADD COLUMN location TEXT;")
+            except Exception:
+                pass
+            await db.commit()
+
             # 9. Tabela de Logs de Auditoria e Observabilidade Técnica
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -711,3 +761,231 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                     )
                 )
             return logs
+
+    async def save_supplier(self, supplier: Supplier) -> bool:
+        await self.init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT OR REPLACE INTO suppliers (id, name, document, phone, email, notes, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    supplier.id,
+                    supplier.name,
+                    supplier.document,
+                    supplier.phone,
+                    supplier.email,
+                    supplier.notes,
+                    supplier.created_at.isoformat(),
+                ),
+            )
+            await db.commit()
+            return True
+
+    async def list_suppliers(self) -> List[Supplier]:
+        await self.init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute("SELECT * FROM suppliers ORDER BY name ASC")
+            rows = await cursor.fetchall()
+            return [
+                Supplier(
+                    id=r["id"],
+                    name=r["name"],
+                    document=r["document"],
+                    phone=r["phone"],
+                    email=r["email"],
+                    notes=r["notes"],
+                    created_at=datetime.fromisoformat(r["created_at"]),
+                )
+                for r in rows
+            ]
+
+    async def record_stock_movement(self, movement: StockMovement) -> bool:
+        await self.init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO stock_movements (
+                    id, sku, movement_type, quantity, unit_cost, unit_price,
+                    supplier_id, batch_number, invoice_number, label_image_url,
+                    operator_name, notes, timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    movement.id,
+                    movement.sku,
+                    movement.movement_type.value,
+                    movement.quantity,
+                    movement.unit_cost,
+                    movement.unit_price,
+                    movement.supplier_id,
+                    movement.batch_number,
+                    movement.invoice_number,
+                    movement.label_image_url,
+                    movement.operator_name,
+                    movement.notes,
+                    movement.timestamp.isoformat(),
+                ),
+            )
+            await db.commit()
+            return True
+
+    async def list_stock_movements(
+        self,
+        sku: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[StockMovement]:
+        await self.init_db()
+        query = "SELECT * FROM stock_movements"
+        params: List[Any] = []
+        if sku:
+            query += " WHERE sku = ?"
+            params.append(sku)
+        query += " ORDER BY timestamp DESC LIMIT ?"
+        params.append(limit)
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, tuple(params))
+            rows = await cursor.fetchall()
+            movements = []
+            for r in rows:
+                m_type = MovementType.ENTRADA_COMPRA
+                for mt in MovementType:
+                    if mt.value == r["movement_type"]:
+                        m_type = mt
+                        break
+                movements.append(
+                    StockMovement(
+                        id=r["id"],
+                        sku=r["sku"],
+                        movement_type=m_type,
+                        quantity=r["quantity"],
+                        unit_cost=r["unit_cost"],
+                        unit_price=r["unit_price"],
+                        supplier_id=r["supplier_id"],
+                        batch_number=r["batch_number"],
+                        invoice_number=r["invoice_number"],
+                        label_image_url=r["label_image_url"],
+                        operator_name=r["operator_name"],
+                        notes=r["notes"],
+                        timestamp=datetime.fromisoformat(r["timestamp"]),
+                    )
+                )
+            return movements
+
+    async def save_native_product(self, product: Product) -> bool:
+        await self.init_db()
+        models_str = ", ".join(product.compatible_models)
+        q_val = product.quality.value if hasattr(product.quality, "value") else str(product.quality)
+        now_str = datetime.now(timezone.utc).isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT OR REPLACE INTO cached_products (
+                    sku, name, category, compatible_models, quality, has_frame,
+                    price, stock_quantity, warranty_days, has_stock, cost_price,
+                    location, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    product.sku,
+                    product.name,
+                    product.category,
+                    models_str,
+                    q_val,
+                    1 if product.has_frame else 0,
+                    product.price,
+                    product.stock_quantity,
+                    product.warranty_days,
+                    1 if product.has_stock else 0,
+                    product.cost_price,
+                    product.location,
+                    now_str,
+                ),
+            )
+            await db.commit()
+            return True
+
+    async def get_native_product(self, sku: str) -> Optional[Product]:
+        await self.init_db()
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute("SELECT * FROM cached_products WHERE sku = ?", (sku,))
+            r = await cursor.fetchone()
+            if not r:
+                return None
+            models = [m.strip() for m in r["compatible_models"].split(",") if m.strip()]
+            q_val = r["quality"]
+            q_enum = QualityTier.ORIGINAL_NACIONAL
+            for t in QualityTier:
+                if t.value == q_val:
+                    q_enum = t
+                    break
+            cost_p = r["cost_price"] if "cost_price" in r.keys() else None
+            loc = r["location"] if "location" in r.keys() else None
+            return Product(
+                sku=r["sku"],
+                name=r["name"],
+                category=r["category"],
+                compatible_models=models,
+                quality=q_enum,
+                has_frame=bool(r["has_frame"]),
+                price=float(r["price"]),
+                stock_quantity=int(r["stock_quantity"]),
+                warranty_days=int(r["warranty_days"] or 90),
+                has_stock=bool(r["has_stock"]),
+                cost_price=cost_p,
+                location=loc,
+            )
+
+    async def list_native_products(self) -> List[Product]:
+        return await self.get_cached_products()
+
+    async def update_native_stock(self, sku: str, new_quantity: int) -> bool:
+        await self.init_db()
+        has_stock = 1 if new_quantity > 0 else 0
+        now_str = datetime.now(timezone.utc).isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "UPDATE cached_products SET stock_quantity = ?, has_stock = ?, updated_at = ? WHERE sku = ?",
+                (new_quantity, has_stock, now_str, sku),
+            )
+            await db.commit()
+            return cursor.rowcount > 0
+
+    async def decrement_native_stock(self, sku: str, quantity: int = 1) -> bool:
+        await self.init_db()
+        now_str = datetime.now(timezone.utc).isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                """
+                UPDATE cached_products
+                SET stock_quantity = stock_quantity - ?,
+                    has_stock = CASE WHEN (stock_quantity - ?) > 0 THEN 1 ELSE 0 END,
+                    updated_at = ?
+                WHERE sku = ? AND stock_quantity >= ?
+                """,
+                (quantity, quantity, now_str, sku, quantity),
+            )
+            await db.commit()
+            return cursor.rowcount > 0
+
+    async def increment_native_stock(self, sku: str, quantity: int = 1) -> bool:
+        await self.init_db()
+        now_str = datetime.now(timezone.utc).isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                """
+                UPDATE cached_products
+                SET stock_quantity = stock_quantity + ?,
+                    has_stock = 1,
+                    updated_at = ?
+                WHERE sku = ?
+                """,
+                (quantity, now_str, sku),
+            )
+            await db.commit()
+            return cursor.rowcount > 0

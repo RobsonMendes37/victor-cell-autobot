@@ -881,6 +881,10 @@ def render_dashboard_html() -> str:
         <span>Catálogo de Peças</span>
         <span class="tab-badge" id="badge-catalog-count">0</span>
       </button>
+      <button class="nav-tab" onclick="switchTab('erp')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        <span>ERP & Estoque</span>
+      </button>
       <button class="nav-tab" onclick="switchTab('copilot')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         <span>Copiloto Técnico</span>
@@ -1344,6 +1348,139 @@ def render_dashboard_html() -> str:
         </div>
 
         <div class="mobile-card-deck" id="catalog-cards-mobile"></div>
+      </div>
+    </div>
+
+    <!-- TAB ERP: ESTOQUE NATIVO & ENTRADA COGNITIVA COM IA -->
+    <div class="tab-pane" id="tab-erp">
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="card-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+            </div>
+            <div>
+              <div class="card-title">Entrada Rápida de Estoque com IA (Voz & OCR)</div>
+              <div class="card-subtitle">Fale no microfone ou envie foto da etiqueta do fornecedor para extração automática</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1rem;">
+          <!-- Entrada por Voz -->
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 1rem;">
+            <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+              Entrada por Voz ou Ditado do Balcão
+            </div>
+            <textarea id="erp-voice-input" rows="3" style="width: 100%; background: #0c0f17; border: 1px solid var(--border); color: #fff; padding: 0.6rem; border-radius: 6px; font-size: 0.85rem; resize: vertical;" placeholder="Ex: Entraram 10 telas do Tab A8 a 110 do fornecedor Peças Brasil e 5 conectores do T295 a 15, NF 4580..."></textarea>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+              <button class="btn btn-primary" onclick="submitVoiceStockEntry()" id="btn-process-voice" style="font-size: 0.85rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Processar com IA
+              </button>
+              <button class="btn btn-secondary" onclick="demoVoiceStockEntry()" style="font-size: 0.85rem;">
+                Exemplo Rápido
+              </button>
+            </div>
+          </div>
+
+          <!-- Entrada por Foto / OCR -->
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 1rem;">
+            <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              Foto da Etiqueta / Código de Barras (OCR)
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+              Selecione a foto da embalagem ou etiqueta do lote de peças recebido:
+            </div>
+            <input type="file" id="erp-photo-input" accept="image/*" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; width: 100%;" />
+            <button class="btn btn-secondary" onclick="submitOcrStockEntry()" id="btn-process-ocr" style="font-size: 0.85rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Ler Etiqueta com IA
+            </button>
+          </div>
+        </div>
+
+        <!-- Área de Conferência Humana -->
+        <div id="erp-proposal-card" style="display: none; margin-top: 1.25rem; background: rgba(37, 211, 102, 0.05); border: 1px solid rgba(37, 211, 102, 0.2); border-radius: 8px; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div style="font-weight: 600; font-size: 0.95rem; color: var(--success); display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Proposta de Entrada Pré-Preenchida pela IA (Conferência Humana)
+            </div>
+            <button class="btn btn-primary" onclick="confirmCurrentStockEntry()" id="btn-confirm-stock" style="background: var(--success); border-color: var(--success); font-size: 0.85rem;">
+              Confirmar Entrada no Estoque
+            </button>
+          </div>
+          <div id="erp-proposal-details" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;"></div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Modelo</th>
+                  <th>Categoria</th>
+                  <th>Qtd Entrada</th>
+                  <th>Estoque Atual</th>
+                  <th>Estoque Pós</th>
+                  <th>Custo Unit.</th>
+                  <th>Preço Sugerido</th>
+                </tr>
+              </thead>
+              <tbody id="erp-proposal-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARDS DE BALANÇO E MÉTRICAS DO ERP -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="stat-card">
+          <div class="stat-label">Total de SKUs</div>
+          <div class="stat-value" id="erp-total-skus">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total de Unidades Físicas</div>
+          <div class="stat-value" id="erp-total-units">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Custo Total Imobilizado</div>
+          <div class="stat-value" id="erp-total-cost" style="color: var(--primary);">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Faturamento Projetado</div>
+          <div class="stat-value" id="erp-total-retail" style="color: var(--success);">-</div>
+        </div>
+      </div>
+
+      <!-- TABELA DE MOVIMENTAÇÕES FISCAIS / HISTÓRICO -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Extrato de Movimentações Físicas (Rastreabilidade e-Gov / SPED)</div>
+          <button class="btn btn-secondary" onclick="loadErpMovements()" style="font-size: 0.8rem;">
+            Atualizar Extrato
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Tipo</th>
+                <th>SKU</th>
+                <th>Qtd</th>
+                <th>Custo</th>
+                <th>Lote / NF</th>
+                <th>Operador</th>
+                <th>Observações</th>
+              </tr>
+            </thead>
+            <tbody id="erp-movements-tbody">
+              <tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">Carregando extrato de movimentações...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -1868,6 +2005,7 @@ def render_dashboard_html() -> str:
       if (tabId === 'orders' || tabId === 'overview') fetchStats();
       if (tabId === 'audit') fetchAuditLogs();
       if (tabId === 'profile') fetchStoreProfile();
+      if (tabId === 'erp') { loadErpSummary(); loadErpMovements(); }
       if (tabId === 'simulator' || tabId === 'gemini') fetchWhatsAppQR();
     }
 

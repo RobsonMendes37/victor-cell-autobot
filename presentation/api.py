@@ -33,6 +33,7 @@ from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Re
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 
+from application.use_cases.cognitive_stock_entry import CognitiveStockEntryUseCase
 from application.use_cases.debounce_buffer import DebounceBuffer
 from application.use_cases.process_incoming_message import ProcessIncomingMessageUseCase
 from domain.entities import ConversationState, QualityTier
@@ -1416,3 +1417,115 @@ async def update_store_profile_endpoint(payload: StoreProfilePayload, request: R
             },
         }
     return {"status": "error", "message": "Store profile não suportado"}
+
+
+# =====================================================================
+# Módulo de ERP Nativo & Entrada Cognitiva de Estoque (Voz & Visão OCR)
+# =====================================================================
+
+class VoiceStockEntryRequest(BaseModel):
+    audio_content: str
+    mime_type: str = "audio/ogg"
+    operator_name: str = "BALCAO"
+
+
+class OcrStockEntryRequest(BaseModel):
+    image_content: str
+    mime_type: str = "image/jpeg"
+    operator_name: str = "BALCAO"
+
+
+class ConfirmStockEntryRequest(BaseModel):
+    proposal: Dict[str, Any]
+    operator_name: str = "BALCAO"
+
+
+class SupplierCreateRequest(BaseModel):
+    name: str
+    document: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@app.post("/api/erp/stock/voice-entry", tags=["ERP & Estoque Nativo"], summary="Extração Cognitiva de Entrada por Voz")
+async def voice_stock_entry(req: VoiceStockEntryRequest, request: Request):
+    check_dashboard_auth(request)
+    use_case = CognitiveStockEntryUseCase(
+        inventory_provider=product_repo,
+        ai_client=getattr(ai_service, "_client", None),
+        audit_repo=sqlite_repo,
+    )
+    proposal = await use_case.parse_voice_stock_entry(
+        audio_content=req.audio_content,
+        mime_type=req.mime_type,
+        operator_name=req.operator_name,
+    )
+    return proposal
+
+
+@app.post("/api/erp/stock/ocr-entry", tags=["ERP & Estoque Nativo"], summary="Extração de Entrada via Foto de Etiqueta (OCR)")
+async def ocr_stock_entry(req: OcrStockEntryRequest, request: Request):
+    check_dashboard_auth(request)
+    use_case = CognitiveStockEntryUseCase(
+        inventory_provider=product_repo,
+        ai_client=getattr(ai_service, "_client", None),
+        audit_repo=sqlite_repo,
+    )
+    proposal = await use_case.parse_ocr_label_entry(
+        image_content=req.image_content,
+        mime_type=req.mime_type,
+        operator_name=req.operator_name,
+    )
+    return proposal
+
+
+@app.post("/api/erp/stock/confirm-entry", tags=["ERP & Estoque Nativo"], summary="Confirmar e Efetivar Entrada de Estoque")
+async def confirm_stock_entry_endpoint(req: ConfirmStockEntryRequest, request: Request):
+    check_dashboard_auth(request)
+    use_case = CognitiveStockEntryUseCase(
+        inventory_provider=product_repo,
+        ai_client=getattr(ai_service, "_client", None),
+        audit_repo=sqlite_repo,
+    )
+    result = await use_case.confirm_stock_entry(
+        proposal=req.proposal,
+        operator_name=req.operator_name,
+    )
+    return result
+
+
+@app.get("/api/erp/stock/movements", tags=["ERP & Estoque Nativo"], summary="Histórico de Movimentações Fiscais")
+async def list_stock_movements(request: Request, sku: Optional[str] = None, limit: int = 50):
+    check_dashboard_auth(request)
+    movements = await product_repo.list_movements(sku=sku, limit=limit)
+    return [m.to_dict() if hasattr(m, "to_dict") else m for m in movements]
+
+
+@app.get("/api/erp/suppliers", tags=["ERP & Fornecedores"], summary="Listar Fornecedores com Mascaramento LGPD")
+async def list_suppliers(request: Request):
+    check_dashboard_auth(request)
+    suppliers = await product_repo.list_suppliers()
+    return [s.to_dict() if hasattr(s, "to_dict") else s for s in suppliers]
+
+
+@app.post("/api/erp/suppliers", tags=["ERP & Fornecedores"], summary="Cadastrar Fornecedor")
+async def create_supplier(req: SupplierCreateRequest, request: Request):
+    check_dashboard_auth(request)
+    from domain.entities import Supplier
+    sup = Supplier(
+        name=req.name,
+        document=req.document,
+        phone=req.phone,
+        email=req.email,
+        notes=req.notes,
+    )
+    success = await product_repo.save_supplier(sup)
+    return {"status": "SUCCESS" if success else "ERROR", "supplier": sup.to_dict()}
+
+
+@app.get("/api/erp/stock/summary", tags=["ERP & Estoque Nativo"], summary="Métricas de Inventário e Balanço")
+async def erp_stock_summary(request: Request):
+    check_dashboard_auth(request)
+    metrics = await product_repo.get_inventory_metrics()
+    return metrics

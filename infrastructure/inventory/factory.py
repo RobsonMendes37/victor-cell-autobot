@@ -1,3 +1,5 @@
+from infrastructure.inventory.native_erp_adapter import NativeErpInventoryAdapter
+
 """
 Inventory Provider Factory.
 Instantiates and configures the appropriate inventory provider based on application settings.
@@ -48,6 +50,8 @@ def create_inventory_provider(
             refresh_token=refresh_token,
         )
 
+    elif target in ("NATIVE_ERP", "ERP_NATIVO", "ERP", "SQLITE", "POSTGRES"):
+        provider = NativeErpInventoryAdapter()
     elif target == "MEMORY" or target == "TEST":
         provider = MemoryInventoryAdapter()
 

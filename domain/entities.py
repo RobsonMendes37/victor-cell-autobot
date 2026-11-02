@@ -50,6 +50,90 @@ class OrderStatus(str, Enum):
     EXPIRED = "EXPIRED"
 
 
+
+
+class MovementType(str, Enum):
+    ENTRADA_COMPRA = "ENTRADA_COMPRA"
+    SAIDA_VENDA = "SAIDA_VENDA"
+    SAIDA_AVARIA = "SAIDA_AVARIA"
+    AJUSTE_BALANCO = "AJUSTE_BALANCO"
+    ENTRADA_DEVOLUCAO = "ENTRADA_DEVOLUCAO"
+
+
+@dataclass
+class Supplier:
+    """
+    Entidade de Fornecedor em conformidade com padrões e-Gov e LGPD (Lei 13.709/2018).
+    """
+    name: str
+    id: str = field(default_factory=lambda: f"sup_{uuid.uuid4().hex[:8]}")
+    document: Optional[str] = None  # CNPJ ou CPF
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @property
+    def masked_document(self) -> str:
+        """Retorna o documento mascarado em conformidade com o princípio de minimização da LGPD."""
+        if not self.document:
+            return ""
+        clean = "".join(c for c in self.document if c.isdigit())
+        if len(clean) == 11:
+            return f"***.{clean[3:6]}.{clean[6:9]}-**"
+        elif len(clean) == 14:
+            return f"{clean[:2]}.***.***/{clean[8:12]}-**"
+        return "***"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "document": self.document,
+            "masked_document": self.masked_document,
+            "phone": self.phone,
+            "email": self.email,
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+@dataclass
+class StockMovement:
+    """
+    Registro estruturado de movimentação de estoque para rastreabilidade fiscal e operacional.
+    """
+    sku: str
+    movement_type: MovementType
+    quantity: int
+    id: str = field(default_factory=lambda: f"mov_{uuid.uuid4().hex[:10]}")
+    unit_cost: Optional[float] = None
+    unit_price: Optional[float] = None
+    supplier_id: Optional[str] = None
+    batch_number: Optional[str] = None
+    invoice_number: Optional[str] = None
+    label_image_url: Optional[str] = None
+    operator_name: str = "BALCAO"
+    notes: Optional[str] = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "sku": self.sku,
+            "movement_type": self.movement_type.value,
+            "quantity": self.quantity,
+            "unit_cost": self.unit_cost,
+            "unit_price": self.unit_price,
+            "supplier_id": self.supplier_id,
+            "batch_number": self.batch_number,
+            "invoice_number": self.invoice_number,
+            "label_image_url": self.label_image_url,
+            "operator_name": self.operator_name,
+            "notes": self.notes,
+            "timestamp": self.timestamp.isoformat(),
+        }
+
 class CustomerRole(str, Enum):
     TECHNICIAN = "TECHNICIAN"
     END_CONSUMER = "END_CONSUMER"
