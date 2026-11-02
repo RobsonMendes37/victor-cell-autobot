@@ -44,6 +44,7 @@ class AIServiceInterface(ABC):
         media_bytes: Optional[bytes] = None,
         mime_type: Optional[str] = None,
         customer_orders_context: Optional[str] = None,
+        store_profile: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
         Processes inbound message with context, multi-turn history, and optional media.

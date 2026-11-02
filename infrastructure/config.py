@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     STAFF_PHONES: str = "5585999999999"
 
     DATABASE_PATH: str = "data/pecasbot.db"
+    DATABASE_URL: Optional[str] = None
 
     STORE_TIMEZONE: str = "America/Fortaleza"
     STORE_OPENING_TIME: str = "08:30"

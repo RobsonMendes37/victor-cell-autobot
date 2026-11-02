@@ -154,6 +154,42 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 INSERT OR IGNORE INTO system_settings (key, value) VALUES ('global_ai_enabled', '1');
             """)
             await db.commit()
+            # 8. Tabela de Perfil da Loja / Tenant (Commercial Whitelabel)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS store_profile (
+                    store_id TEXT PRIMARY KEY,
+                    store_name TEXT NOT NULL,
+                    city TEXT NOT NULL,
+                    niche_description TEXT NOT NULL,
+                    out_of_scope_keywords TEXT NOT NULL,
+                    rejection_message TEXT NOT NULL,
+                    delivery_methods TEXT NOT NULL,
+                    tone_guidelines TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+            await db.commit()
+            # 9. Tabela de Logs de Auditoria e Observabilidade Técnica
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id TEXT PRIMARY KEY,
+                    timestamp TEXT NOT NULL,
+                    level TEXT NOT NULL,
+                    component TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    actor TEXT NOT NULL,
+                    details TEXT NOT NULL,
+                    duration_ms REAL,
+                    status TEXT NOT NULL
+                )
+            """)
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_ts ON audit_logs(timestamp DESC);
+            """)
+            await db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_comp ON audit_logs(component, level);
+            """)
+            await db.commit()
 
     # --- Conversas e Histórico Multi-Turn ---
 
@@ -229,6 +265,8 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 ),
             )
             await db.commit()
+
+    save_conversation = save
 
     async def save_message(self, customer_phone: str, role: str, content: str) -> None:
         """Saves a message turn to history."""
@@ -529,3 +567,144 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 (val,)
             )
             await db.commit()
+
+
+    # --- Perfil Comercial da Loja (Domain-Agnostic Engine) ---
+
+    async def get_store_profile(self, store_id: str = "default"):
+        """Recupera o perfil comercial da loja (ou inicializa com o padrão)."""
+        await self.init_db()
+        from domain.entities import StoreProfile
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute("SELECT * FROM store_profile WHERE store_id = ?", (store_id,))
+            row = await cursor.fetchone()
+            if row:
+                return StoreProfile(
+                    store_id=row["store_id"],
+                    store_name=row["store_name"],
+                    city=row["city"],
+                    niche_description=row["niche_description"],
+                    out_of_scope_keywords=[k.strip().lower() for k in row["out_of_scope_keywords"].split(",") if k.strip()],
+                    rejection_message=row["rejection_message"],
+                    delivery_methods=[d.strip() for d in row["delivery_methods"].split(",") if d.strip()],
+                    tone_guidelines=row["tone_guidelines"],
+                    updated_at=datetime.fromisoformat(row["updated_at"]),
+                )
+            default_profile = StoreProfile(store_id=store_id)
+            await self.save_store_profile(default_profile)
+            return default_profile
+
+    async def save_store_profile(self, profile) -> None:
+        """Salva ou atualiza o perfil comercial da loja."""
+        await self.init_db()
+        now_str = profile.updated_at.isoformat()
+        keywords_str = ", ".join(profile.out_of_scope_keywords)
+        delivery_str = ", ".join(profile.delivery_methods)
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO store_profile (
+                    store_id, store_name, city, niche_description,
+                    out_of_scope_keywords, rejection_message, delivery_methods,
+                    tone_guidelines, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(store_id) DO UPDATE SET
+                    store_name = excluded.store_name,
+                    city = excluded.city,
+                    niche_description = excluded.niche_description,
+                    out_of_scope_keywords = excluded.out_of_scope_keywords,
+                    rejection_message = excluded.rejection_message,
+                    delivery_methods = excluded.delivery_methods,
+                    tone_guidelines = excluded.tone_guidelines,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    profile.store_id,
+                    profile.store_name,
+                    profile.city,
+                    profile.niche_description,
+                    keywords_str,
+                    profile.rejection_message,
+                    delivery_str,
+                    profile.tone_guidelines,
+                    now_str,
+                ),
+            )
+            await db.commit()
+
+
+    # --- Auditoria e Observabilidade Técnica ---
+
+    async def record_audit_log(self, entry) -> None:
+        """Persiste uma entrada estruturada de auditoria."""
+        await self.init_db()
+        import json
+        now_str = entry.timestamp.isoformat()
+        details_str = json.dumps(entry.details, ensure_ascii=False) if isinstance(entry.details, dict) else str(entry.details)
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO audit_logs (
+                    id, timestamp, level, component, action, actor, details, duration_ms, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    entry.id,
+                    now_str,
+                    entry.level,
+                    entry.component,
+                    entry.action,
+                    entry.actor,
+                    details_str,
+                    entry.duration_ms,
+                    entry.status,
+                ),
+            )
+            await db.commit()
+
+    async def list_audit_logs(
+        self,
+        limit: int = 100,
+        level = None,
+        component = None,
+    ):
+        """Lista entradas de auditoria com filtros opcionais por nível e componente."""
+        await self.init_db()
+        import json
+        from domain.entities import AuditLogEntry
+        query = "SELECT * FROM audit_logs WHERE 1=1"
+        params = []
+        if level:
+            query += " AND level = ?"
+            params.append(level.upper())
+        if component:
+            query += " AND component = ?"
+            params.append(component.upper())
+        query += " ORDER BY timestamp DESC LIMIT ?"
+        params.append(limit)
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, tuple(params))
+            rows = await cursor.fetchall()
+            logs = []
+            for r in rows:
+                try:
+                    det = json.loads(r["details"]) if r["details"] else {}
+                except Exception:
+                    det = {"raw": r["details"]}
+                logs.append(
+                    AuditLogEntry(
+                        id=r["id"],
+                        timestamp=datetime.fromisoformat(r["timestamp"]),
+                        level=r["level"],
+                        component=r["component"],
+                        action=r["action"],
+                        actor=r["actor"],
+                        details=det,
+                        duration_ms=r["duration_ms"],
+                        status=r["status"],
+                    )
+                )
+            return logs

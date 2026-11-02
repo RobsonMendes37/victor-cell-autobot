@@ -39,6 +39,7 @@ class ProcessIncomingMessageUseCase:
         messaging_gateway: MessagingGatewayInterface,
         ai_service: AIServiceInterface,
         sqlite_repo=None,
+        staff_dispatcher=None,
     ):
         self.conversation_repo = conversation_repo
         self.product_repo = product_repo
@@ -46,6 +47,7 @@ class ProcessIncomingMessageUseCase:
         self.messaging_gateway = messaging_gateway
         self.ai_service = ai_service
         self.sqlite_repo = sqlite_repo
+        self.staff_dispatcher = staff_dispatcher
 
     async def execute(
         self,
@@ -143,6 +145,14 @@ class ProcessIncomingMessageUseCase:
                 )
             customer_orders_context = chr(10).join(order_lines)
 
+        # 6.2 Recupera StoreProfile dinâmico para Whitelabel / Multi-tenant
+        store_profile = None
+        if self.sqlite_repo and hasattr(self.sqlite_repo, "get_store_profile"):
+            try:
+                store_profile = await self.sqlite_repo.get_store_profile("default")
+            except Exception:
+                pass
+
         # 7. Processamento Cognitivo via Gemini
         ai_decision = await self.ai_service.process_and_reply(
             conversation=conversation,
@@ -152,6 +162,7 @@ class ProcessIncomingMessageUseCase:
             media_bytes=media_bytes,
             mime_type=mime_type,
             customer_orders_context=customer_orders_context,
+            store_profile=store_profile,
         )
 
         reply_text = ai_decision.get("reply_text", "")
@@ -242,6 +253,16 @@ class ProcessIncomingMessageUseCase:
                     priority="urgent",
                     tags="package,person,bell",
                 )
+                if self.staff_dispatcher:
+                    try:
+                        await self.staff_dispatcher.notify_handoff(
+                            customer_phone=clean_phone,
+                            reason="Separação no Balcão Solicitada",
+                            raw_message=message_text,
+                            customer_name=push_name,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Erro no staff_dispatcher balcão: {e}")
 
         # 11. Se o cliente CONFIRMOU explicitamente e fechou o pedido de separação
         elif intent == "ORDER_DISPATCH":
@@ -293,6 +314,17 @@ class ProcessIncomingMessageUseCase:
                 priority="urgent",
                 tags="package,rotating_light,motorcycle",
             )
+            if self.staff_dispatcher:
+                try:
+                    await self.staff_dispatcher.notify_dispatch_order(
+                        order_id=order.id,
+                        customer_phone=clean_phone,
+                        product_desc=f"{prod_name} (R$ {prod_price:.2f})",
+                        destination_address=final_address,
+                        customer_name=order.customer_name,
+                    )
+                except Exception as e:
+                    logger.warning(f"Erro no staff_dispatcher dispatch: {e}")
             conversation.state = ConversationState.WAITING_DISPATCH
             conversation.notes = None
 
@@ -312,6 +344,16 @@ class ProcessIncomingMessageUseCase:
                 priority="urgent",
                 tags="warning,phone,person",
             )
+            if self.staff_dispatcher:
+                try:
+                    await self.staff_dispatcher.notify_handoff(
+                        customer_phone=clean_phone,
+                        reason=ai_decision.get("handoff_reason", "Negociação ou Dúvida Técnica"),
+                        raw_message=message_text,
+                        customer_name=push_name,
+                    )
+                except Exception as e:
+                    logger.warning(f"Erro no staff_dispatcher handoff: {e}")
 
         await self.conversation_repo.save(conversation)
 

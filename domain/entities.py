@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class ConversationState(str, Enum):
@@ -164,4 +164,125 @@ class ReservationOrder:
         return (
             datetime.now(timezone.utc) > self.expires_at
             and self.status == OrderStatus.PENDING_SEPARATION
+        )
+
+
+@dataclass
+class StoreProfile:
+    """
+    Perfil Comercial e Configuração do Estabelecimento (Domain-Agnostic Tenant).
+    Permite comercializar a solução para autopeças, farmácias, oficinas ou outros varejos especializados.
+    """
+    store_id: str = "default"
+    store_name: str = "Victor Cell"
+    city: str = "Fortaleza/CE"
+    niche_description: str = "peças e manutenção de tablets (telas, touch, display, baterias, conectores)"
+    out_of_scope_keywords: List[str] = field(
+        default_factory=lambda: ["iphone", "celular", "smartphone", "capa", "capinha", "pelicula", "película"]
+    )
+    rejection_message: str = "Só peças de tablet"
+    delivery_methods: List[str] = field(default_factory=lambda: ["Uber Flash", "Balcão"])
+    tone_guidelines: str = "ultra-curto, direto, objetivo, 1 a 6 palavras no máximo, zero emojis"
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    def is_out_of_scope(self, text: str) -> bool:
+        t = text.lower()
+        return any(k.lower() in t for k in self.out_of_scope_keywords)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "store_id": self.store_id,
+            "store_name": self.store_name,
+            "city": self.city,
+            "niche_description": self.niche_description,
+            "out_of_scope_keywords": self.out_of_scope_keywords,
+            "rejection_message": self.rejection_message,
+            "delivery_methods": self.delivery_methods,
+            "tone_guidelines": self.tone_guidelines,
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "StoreProfile":
+        keywords = data.get("out_of_scope_keywords", [])
+        if isinstance(keywords, str):
+            keywords = [k.strip().lower() for k in keywords.split(",") if k.strip()]
+
+        delivery = data.get("delivery_methods", [])
+        if isinstance(delivery, str):
+            delivery = [d.strip() for d in delivery.split(",") if d.strip()]
+
+        updated = datetime.now(timezone.utc)
+        if "updated_at" in data and isinstance(data["updated_at"], str):
+            try:
+                updated = datetime.fromisoformat(data["updated_at"])
+            except Exception:
+                pass
+
+        return cls(
+            store_id=data.get("store_id", "default"),
+            store_name=data.get("store_name", "Victor Cell"),
+            city=data.get("city", "Fortaleza/CE"),
+            niche_description=data.get(
+                "niche_description",
+                "peças e manutenção de tablets (telas, touch, display, baterias, conectores)",
+            ),
+            out_of_scope_keywords=keywords or ["iphone", "celular", "smartphone", "capa", "capinha", "pelicula", "película"],
+            rejection_message=data.get("rejection_message", "Só peças de tablet"),
+            delivery_methods=delivery or ["Uber Flash", "Balcão"],
+            tone_guidelines=data.get(
+                "tone_guidelines",
+                "ultra-curto, direto, objetivo, 1 a 6 palavras no máximo, zero emojis",
+            ),
+            updated_at=updated,
+        )
+
+
+@dataclass
+class AuditLogEntry:
+    """
+    Entrada estruturada de auditoria e observabilidade técnica.
+    Registra detalhadamente cada ação crítica do sistema.
+    """
+    action: str
+    id: str = field(default_factory=lambda: f"log_{uuid.uuid4().hex[:10]}")
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    level: str = "INFO"  # INFO, WARN, ERROR, CRITICAL
+    component: str = "SYSTEM"  # AI, WEBHOOK, INVENTORY, ORDER, AUTH, DISPATCH, NOTIFIER
+    actor: str = "SYSTEM"  # Telefone do cliente, staff, bot, api
+    details: Dict[str, Any] = field(default_factory=dict)
+    duration_ms: Optional[float] = None
+    status: str = "SUCCESS"  # SUCCESS, FAILURE
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat(),
+            "level": self.level,
+            "component": self.component,
+            "action": self.action,
+            "actor": self.actor,
+            "details": self.details,
+            "duration_ms": self.duration_ms,
+            "status": self.status,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AuditLogEntry":
+        ts = datetime.now(timezone.utc)
+        if "timestamp" in data and isinstance(data["timestamp"], str):
+            try:
+                ts = datetime.fromisoformat(data["timestamp"])
+            except Exception:
+                pass
+        return cls(
+            action=data.get("action", ""),
+            id=data.get("id", f"log_{uuid.uuid4().hex[:10]}"),
+            timestamp=ts,
+            level=data.get("level", "INFO"),
+            component=data.get("component", "SYSTEM"),
+            actor=data.get("actor", "SYSTEM"),
+            details=data.get("details", {}) or {},
+            duration_ms=data.get("duration_ms"),
+            status=data.get("status", "SUCCESS"),
         )

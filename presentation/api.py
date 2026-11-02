@@ -40,6 +40,10 @@ from infrastructure.repositories.memory_product_repository import MemoryProductR
 from infrastructure.inventory import create_inventory_provider
 from infrastructure.repositories.sheets_exporter import SheetsExporter
 from infrastructure.repositories.sqlite_repository import SqliteRepository
+from infrastructure.repositories.database_factory import create_database_repository
+from infrastructure.notifiers.dispatcher import StaffNotificationDispatcher
+from infrastructure.notifiers.ntfy_channel import NtfyNotificationChannel
+from infrastructure.notifiers.call_channel import PhoneCallNotificationChannel
 from infrastructure.services.agent_service import AIAgentService
 import hashlib
 import hmac
@@ -101,11 +105,23 @@ product_repo = create_inventory_provider(
 )
 logger.info(f"Usando Provedor de Estoque: {product_repo.get_provider_name()} (Cache TTL: {settings.INVENTORY_CACHE_TTL}s)")
 
-sqlite_repo = SqliteRepository(settings.DATABASE_PATH)
+sqlite_repo = create_database_repository(settings.DATABASE_URL, settings.DATABASE_PATH)
 gateway = EvolutionGateway(message_recorder=sqlite_repo.record_sent_message)
 ai_service = AIAgentService()
 debounce_buffer = DebounceBuffer(wait_seconds=settings.DEBOUNCE_WAIT_SECONDS)
 exporter = SheetsExporter()
+
+staff_dispatcher = StaffNotificationDispatcher(
+    channels=[
+        NtfyNotificationChannel(
+            enabled=settings.NTFY_ENABLED,
+            topic=settings.NTFY_TOPIC,
+            server_url=settings.NTFY_SERVER,
+        ),
+        PhoneCallNotificationChannel(enabled=False),
+    ],
+    repository=sqlite_repo,
+)
 
 use_case = ProcessIncomingMessageUseCase(
     conversation_repo=sqlite_repo,
@@ -114,6 +130,7 @@ use_case = ProcessIncomingMessageUseCase(
     messaging_gateway=gateway,
     ai_service=ai_service,
     sqlite_repo=sqlite_repo,
+    staff_dispatcher=staff_dispatcher,
 )
 
 
@@ -1188,3 +1205,140 @@ async def get_filtered_analytics(
         "top_products": top_prods[:10],
         "timeline": timeline_sorted
     }
+
+
+
+# ==============================================================================
+# AUDITORIA, OBSERVABILIDADE TÉCNICA E CONFIGURAÇÃO COMERCIAL (WHITELABEL)
+# ==============================================================================
+
+class StoreProfilePayload(BaseModel):
+    store_name: str
+    city: str
+    niche_description: str
+    out_of_scope_keywords: Any
+    rejection_message: str
+    delivery_methods: Any
+    tone_guidelines: str
+
+
+@app.get("/api/audit/logs")
+async def get_audit_logs(
+    request: Request,
+    limit: int = 100,
+    level: Optional[str] = None,
+    component: Optional[str] = None,
+):
+    """
+    Retorna a trilha de auditoria e observabilidade técnica completa do sistema.
+    Permite auditar decisões da IA, transbordos, disparos e atualizações cadastrais.
+    """
+    check_dashboard_auth(request)
+    if hasattr(sqlite_repo, "list_audit_logs"):
+        logs = await sqlite_repo.list_audit_logs(limit=limit, level=level, component=component)
+        return {
+            "status": "success",
+            "count": len(logs),
+            "logs": [
+                {
+                    "id": log.id,
+                    "timestamp": log.timestamp.isoformat(),
+                    "level": log.level,
+                    "component": log.component,
+                    "action": log.action,
+                    "actor": log.actor,
+                    "details": log.details,
+                    "duration_ms": log.duration_ms,
+                    "status": log.status,
+                }
+                for log in logs
+            ],
+        }
+    return {"status": "success", "count": 0, "logs": []}
+
+
+@app.get("/api/system/profile")
+async def get_store_profile_endpoint(request: Request):
+    """
+    Recupera os dados de identidade comercial do tenant (White-label).
+    """
+    check_dashboard_auth(request)
+    if hasattr(sqlite_repo, "get_store_profile"):
+        profile = await sqlite_repo.get_store_profile("default")
+        return {
+            "status": "success",
+            "profile": {
+                "store_id": profile.store_id,
+                "store_name": profile.store_name,
+                "city": profile.city,
+                "niche_description": profile.niche_description,
+                "out_of_scope_keywords": profile.out_of_scope_keywords,
+                "rejection_message": profile.rejection_message,
+                "delivery_methods": profile.delivery_methods,
+                "tone_guidelines": profile.tone_guidelines,
+                "updated_at": profile.updated_at.isoformat(),
+            },
+        }
+    return {"status": "error", "message": "Store profile não suportado neste repositório"}
+
+
+@app.post("/api/system/profile")
+async def update_store_profile_endpoint(payload: StoreProfilePayload, request: Request):
+    """
+    Atualiza os parâmetros de identidade e nicho comercial da loja sem reiniciar a API.
+    Emite log de auditoria imediato para rastreabilidade de mudanças operacionais.
+    """
+    check_dashboard_auth(request)
+    from domain.entities import StoreProfile, AuditLogEntry
+    if hasattr(sqlite_repo, "save_store_profile"):
+        keywords = payload.out_of_scope_keywords
+        if isinstance(keywords, str):
+            keywords = [k.strip().lower() for k in keywords.split(",") if k.strip()]
+        elif not isinstance(keywords, list):
+            keywords = []
+
+        delivery = payload.delivery_methods
+        if isinstance(delivery, str):
+            delivery = [d.strip() for d in delivery.split(",") if d.strip()]
+        elif not isinstance(delivery, list):
+            delivery = []
+
+        profile = StoreProfile(
+            store_id="default",
+            store_name=payload.store_name.strip(),
+            city=payload.city.strip(),
+            niche_description=payload.niche_description.strip(),
+            out_of_scope_keywords=keywords,
+            rejection_message=payload.rejection_message.strip(),
+            delivery_methods=delivery,
+            tone_guidelines=payload.tone_guidelines.strip(),
+            updated_at=datetime.now(timezone.utc),
+        )
+        await sqlite_repo.save_store_profile(profile)
+
+        # Trilha de Auditoria
+        if hasattr(sqlite_repo, "record_audit_log"):
+            entry = AuditLogEntry(
+                action="STORE_PROFILE_UPDATED",
+                component="ADMIN",
+                level="INFO",
+                actor="dashboard_admin",
+                details={
+                    "store_name": profile.store_name,
+                    "city": profile.city,
+                    "niche_description": profile.niche_description,
+                    "keywords_count": len(profile.out_of_scope_keywords),
+                },
+                status="SUCCESS",
+            )
+            await sqlite_repo.record_audit_log(entry)
+
+        return {
+            "status": "success",
+            "message": "Configurações comerciais salvas com sucesso!",
+            "profile": {
+                "store_name": profile.store_name,
+                "city": profile.city,
+            },
+        }
+    return {"status": "error", "message": "Store profile não suportado"}

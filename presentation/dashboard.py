@@ -168,6 +168,39 @@ def render_dashboard_html() -> str:
     }
     .nav-tab.active .tab-badge { background: var(--primary); color: #fff; }
 
+    .nav-tab svg {
+      flex-shrink: 0;
+      color: currentColor;
+    }
+    .pill-btn {
+      padding: 0.35rem 0.8rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600;
+      background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle);
+      color: var(--text-muted); cursor: pointer; transition: all 0.2s ease;
+    }
+    .pill-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+    .pill-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .pill-btn.pill-info.active { background: #0EA5E9; border-color: #0EA5E9; }
+    .pill-btn.pill-warn.active { background: #F59E0B; border-color: #F59E0B; }
+    .pill-btn.pill-error.active { background: #EF4444; border-color: #EF4444; }
+
+    .audit-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .badge-info { background: rgba(14, 165, 233, 0.15); color: #38BDF8; border: 1px solid rgba(14, 165, 233, 0.3); }
+    .badge-warn { background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-error { background: rgba(239, 68, 68, 0.15); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-comp { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+    .audit-table th, .audit-table td {
+      padding: 0.75rem 0.85rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .audit-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
     /* Container Principal */
     main {
       flex: 1; padding: 1.25rem; max-width: 1400px; width: 100%; margin: 0 auto;
@@ -814,7 +847,7 @@ def render_dashboard_html() -> str:
         <span id="wa-status">WhatsApp Conectado</span>
       </div>
       <a href="https://ntfy.sh/victor-cell-balcao-alertas" target="_blank" class="btn btn-secondary btn-sm" style="color: #60A5FA; border-color: rgba(96, 165, 250, 0.3); text-decoration: none; font-weight: 500;" title="Receber alertas com alarme e nome do cliente no celular">
-        🔔 Alertas no Celular
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:4px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>Alertas Push
       </a>
       <button class="btn btn-secondary btn-sm" onclick="refreshAll()" title="Recarregar dados">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar
@@ -829,25 +862,40 @@ def render_dashboard_html() -> str:
   <div class="nav-bar-wrapper">
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="switchTab('conversations')">
-        💬 Atendimentos no WhatsApp
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Atendimentos</span>
         <span class="tab-badge" id="badge-convs-count">0</span>
       </button>
       <button class="nav-tab" onclick="switchTab('orders')">
-        📦 Separação & Balcão de Saída
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        <span>Separação & Balcão de Saída</span>
         <span class="tab-badge" id="badge-orders-count">0</span>
       </button>
       <button class="nav-tab" onclick="switchTab('overview')">
-        📊 Relatórios & Desempenho
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>Métricas & Relatórios</span>
       </button>
       <button class="nav-tab" onclick="switchTab('catalog')">
-        🏷️ Catálogo & Estoque de Bancada
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span>Catálogo de Peças</span>
         <span class="tab-badge" id="badge-catalog-count">0</span>
       </button>
       <button class="nav-tab" onclick="switchTab('copilot')">
-        💡 Copiloto de Vendas & Estoque
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>Copiloto Técnico</span>
+      </button>
+      <button class="nav-tab" onclick="switchTab('audit')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        <span>Auditoria & Logs</span>
+        <span class="tab-badge" id="badge-audit-count">0</span>
+      </button>
+      <button class="nav-tab" onclick="switchTab('profile')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Perfil da Loja</span>
       </button>
       <button class="nav-tab" onclick="switchTab('gemini')">
-        ⚙️ WhatsApp & Conexão
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <span>Conexão WhatsApp</span>
       </button>
     </div>
   </div>
@@ -876,7 +924,7 @@ def render_dashboard_html() -> str:
           </div>
         </div>
         <div class="kpi-val" id="kpi-active-chats" style="color: #A5B4FC;">0</div>
-        <div class="kpi-sub" id="kpi-ai-status">🟢 Atendimento Automático Ativo</div>
+        <div class="kpi-sub" id="kpi-ai-status">Atendimento Automático Ativo</div>
       </div>
 
       <div class="kpi-card">
@@ -907,7 +955,7 @@ def render_dashboard_html() -> str:
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">💬 Atendimento ao Vivo • Controle de IA & Balcão</h2>
+            <h2 class="section-title">Atendimento ao Vivo • Controle de IA & Balcão</h2>
             <span class="badge-count" id="convs-counter">0 contatos</span>
           </div>
           <div class="toolbar-actions">
@@ -946,15 +994,15 @@ def render_dashboard_html() -> str:
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">📦 Fila de Separação de Peças & Balcão de Saída</h2>
+            <h2 class="section-title">Fila de Separação de Peças & Balcão de Saída</h2>
             <span class="badge-count" id="orders-counter">0 pedidos</span>
           </div>
           <div class="toolbar-actions">
             <!-- Filtro de Modalidade (Balcão vs Uber Flash) -->
             <div class="filter-pill-group" style="display: flex; gap: 4px; margin-right: 6px;">
               <button class="filter-btn active" data-order-filter="all" onclick="filterOrdersMode('all', this)">Todos</button>
-              <button class="filter-btn" data-order-filter="balcao" onclick="filterOrdersMode('balcao', this)">🏢 Retirada Balcão</button>
-              <button class="filter-btn" data-order-filter="uber" onclick="filterOrdersMode('uber', this)">🛵 Uber Flash</button>
+              <button class="filter-btn" data-order-filter="balcao" onclick="filterOrdersMode('balcao', this)">Retirada Balcão</button>
+              <button class="filter-btn" data-order-filter="uber" onclick="filterOrdersMode('uber', this)">Uber Flash</button>
             </div>
             <a href="/api/reports/orders/csv" class="btn btn-emerald btn-sm" download="Pedidos_VictorCell_PowerBI.csv">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Exportar CSV
@@ -1133,7 +1181,7 @@ def render_dashboard_html() -> str:
           <canvas id="chartQuality" height="200"></canvas>
         </div>
         <div class="chart-card">
-          <h3>📱 Distribuição por Categoria</h3>
+          <h3>Distribuição por Categoria</h3>
           <canvas id="chartCategory" height="200"></canvas>
         </div>
       </div>
@@ -1141,7 +1189,7 @@ def render_dashboard_html() -> str:
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">🏆 Peças Mais Procuradas na Bancada</h2>
+            <h2 class="section-title">Peças Mais Demandadas na Bancada</h2>
           </div>
         </div>
         <div class="table-container">
@@ -1170,12 +1218,12 @@ def render_dashboard_html() -> str:
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 0.25rem;">
           <div style="display: flex; align-items: center; gap: 0.85rem;">
             <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
-              📊
+              
             </div>
             <div>
               <h3 style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                 Planilha do Google Sheets • Estoque & Preços
-                <span style="font-size: 0.7rem; background: rgba(16, 185, 129, 0.2); color: #34D399; padding: 2px 8px; border-radius: 999px; font-weight: 600;">🟢 Conectada ao Robô</span>
+                <span style="font-size: 0.7rem; background: rgba(16, 185, 129, 0.2); color: #34D399; padding: 2px 8px; border-radius: 999px; font-weight: 600;">Conectada ao Robô</span>
               </h3>
               <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
                 Esta planilha é a fonte oficial do estoque. Qualquer peça, valor ou quantidade que você alterar nela é lida pelo robô do WhatsApp em tempo real.
@@ -1184,13 +1232,13 @@ def render_dashboard_html() -> str:
           </div>
           <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
             <a href="https://docs.google.com/spreadsheets/d/1N2gigR8MmuiBRSbtO1TDLnS9AFQS3dJYhxYEEUs7kZY/edit" target="_blank" class="btn btn-primary btn-sm" style="text-decoration: none; font-weight: 700; background: #10B981; color: #042F2E;">
-              🔗 Abrir Planilha no Google Sheets ↗
+              Abrir no Google Sheets ↗
             </a>
             <button class="btn btn-secondary btn-sm" onclick="syncGoogleSheets()">
               ⚡ Sincronizar Agora
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-toggle-sheet-view" onclick="toggleSheetView()">
-              👁️ Visualizar Planilha ao Vivo
+              Visualizar Planilha
             </button>
           </div>
         </div>
@@ -1208,7 +1256,7 @@ def render_dashboard_html() -> str:
       <!-- KPIS RÁPIDOS DO INVENTÁRIO -->
       <div class="kpi-grid" style="margin-bottom: 1.25rem;">
         <div class="kpi-card">
-          <div class="kpi-icon-wrapper" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">📦</div>
+          <div class="kpi-icon-wrapper" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
           <div class="kpi-body">
             <div class="kpi-label">Total de Peças Ativas</div>
             <div class="kpi-value" id="kpi-catalog-total">0</div>
@@ -1246,11 +1294,11 @@ def render_dashboard_html() -> str:
         <div class="section-toolbar" style="flex-direction: column; align-items: stretch; gap: 1rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
             <div class="section-title-group">
-              <h2 class="section-title">🏷️ Catálogo de Peças Sincronizadas</h2>
+              <h2 class="section-title">Catálogo de Peças</h2>
               <span class="badge-count" id="catalog-counter">0 peças</span>
             </div>
             <div class="toolbar-actions" style="gap: 0.5rem;">
-              <input type="text" id="catalog-search" placeholder="🔍 Buscar por nome, modelo (ex: P615, A15), SKU..." class="search-input" oninput="filterCatalogTable()" style="min-width: 260px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.45rem 0.75rem; color: #fff; font-size: 0.85rem;">
+              <input type="text" id="catalog-search" placeholder="Buscar por nome, modelo (ex: P615, A15), SKU..." class="search-input" oninput="filterCatalogTable()" style="min-width: 260px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.45rem 0.75rem; color: #fff; font-size: 0.85rem;">
               <button class="btn btn-secondary btn-sm" onclick="fetchCatalog()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
             </div>
           </div>
@@ -1303,7 +1351,7 @@ def render_dashboard_html() -> str:
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">💡 Consultor Executivo de Negócios • Inteligência Victor Cell</h2>
+            <h2 class="section-title">Consultor Executivo • Inteligência Victor Cell</h2>
             <p class="section-subtitle">Inteligência analítica em tempo real integrada a vendas, estoque e movimentação do balcão.</p>
           </div>
           <div class="toolbar-actions">
@@ -1311,7 +1359,7 @@ def render_dashboard_html() -> str:
               <span class="pill-dot"></span>
               <span>Análise Operacional Conectada</span>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="clearCopilotChat()">🗑️ Limpar Conversa</button>
+            <button class="btn btn-secondary btn-sm" onclick="clearCopilotChat()">Limpar Conversa</button>
           </div>
         </div>
 
@@ -1394,7 +1442,7 @@ def render_dashboard_html() -> str:
           </div>
 
           <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.25rem;">
-            <h3 style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 0.85rem;">🔑 Chave de API Google AI Studio</h3>
+            <h3 style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 0.85rem;">Chave de Acesso API Google AI Studio</h3>
             <div style="display: flex; gap: 0.5rem; max-width: 600px; flex-wrap: wrap;">
               <input type="password" id="gemini-key-input" class="search-input" style="flex: 1; min-width: 260px;" placeholder="Cole sua nova chave AIzaSy...">
               <button class="btn btn-primary" onclick="saveGeminiKey()">Salvar Chave</button>
@@ -1409,10 +1457,10 @@ def render_dashboard_html() -> str:
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">🧪 Laboratório de Testes de Atendimento</h2>
+            <h2 class="section-title">Simulador de Atendimento WhatsApp</h2>
           </div>
           <div class="toolbar-actions">
-            <button class="btn btn-secondary btn-sm" onclick="clearChat()">🗑️ Limpar Conversa</button>
+            <button class="btn btn-secondary btn-sm" onclick="clearChat()">Limpar Conversa</button>
           </div>
         </div>
 
@@ -1426,13 +1474,13 @@ def render_dashboard_html() -> str:
               </div>
               <div class="chat-input-bar">
                 <input type="text" id="chat-input" class="search-input" style="flex: 1;" placeholder="Digite como cliente (ex: 'Tem a tela do A15 original?')..." onkeydown="if(event.key==='Enter') sendChatMessage()">
-                <button class="btn btn-emerald" onclick="sendChatMessage()">Enviar 📤</button>
+                <button class="btn btn-emerald" onclick="sendChatMessage()">Enviar</button>
               </div>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
               <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1rem;">
-                <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 0.5rem;">💡 Dicas de Testes de Balcão:</h4>
+                <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 0.5rem;">Cenários de Teste de Balcão:</h4>
                 <ul style="font-size: 0.775rem; color: var(--text-muted); padding-left: 1.1rem; line-height: 1.6;">
                   <li><strong>Cotação:</strong> "Quanto tá a tela do A15 com aro?"</li>
                   <li><strong>Pós-Venda / Rastreio:</strong> "E aí amigo, o Uber já saiu com a minha peça?"</li>
@@ -1443,7 +1491,7 @@ def render_dashboard_html() -> str:
 
               <!-- Conexão WhatsApp Card -->
               <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1rem;">
-                <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 0.5rem;">📲 Conexão WhatsApp Web</h4>
+                <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 0.5rem;">Conexão WhatsApp (Evolution API)</h4>
                 <div id="wa-qr-container" style="text-align: center; padding: 0.5rem;">
                   <div style="font-size: 0.8rem; color: var(--text-muted);">Verificando instância...</div>
                 </div>
@@ -1454,6 +1502,146 @@ def render_dashboard_html() -> str:
       </div>
       </div>
 
+    </div>
+
+
+    <!-- TAB 7: AUDITORIA & OBSERVABILIDADE TÉCNICA -->
+    <div class="tab-pane" id="tab-audit">
+      <div class="card" style="margin-bottom: 1.25rem;">
+        <div class="card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <div class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+              <span>Trilha de Auditoria & Observabilidade de Sistema</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Registro imutável de todas as decisões cognitivas, alertas de equipe, despachos e alterações cadastrais.
+            </p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="btn-refresh" onclick="fetchAuditLogs()" title="Atualizar Logs">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Atualizar
+            </button>
+          </div>
+        </div>
+
+        <!-- FILTROS DE AUDITORIA -->
+        <div class="audit-toolbar" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); margin-top: 0.5rem;">
+          <div class="level-pills" style="display: flex; gap: 0.4rem;">
+            <button class="pill-btn active" data-level="" onclick="filterAuditLevel('', this)">Todos</button>
+            <button class="pill-btn pill-info" data-level="INFO" onclick="filterAuditLevel('INFO', this)">INFO</button>
+            <button class="pill-btn pill-warn" data-level="WARN" onclick="filterAuditLevel('WARN', this)">WARN</button>
+            <button class="pill-btn pill-error" data-level="ERROR" onclick="filterAuditLevel('ERROR', this)">ERROR</button>
+          </div>
+
+          <div style="flex: 1; min-width: 180px;">
+            <input type="text" id="search-audit" class="search-input" placeholder="Buscar por ação, ator ou detalhe..." oninput="debounceAuditSearch()" style="width: 100%; padding: 0.45rem 0.8rem; font-size: 0.8rem; border-radius: 6px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+          </div>
+
+          <div>
+            <select id="select-audit-component" onchange="fetchAuditLogs()" style="padding: 0.45rem 0.8rem; font-size: 0.8rem; border-radius: 6px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+              <option value="">Todos os Componentes</option>
+              <option value="AI_ENGINE">AI_ENGINE</option>
+              <option value="ROUTER">ROUTER</option>
+              <option value="NOTIFIER">NOTIFIER</option>
+              <option value="REPO">REPO</option>
+              <option value="ADMIN">ADMIN</option>
+              <option value="ERP_SYNC">ERP_SYNC</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- TABELA DE LOGS (DESKTOP) -->
+        <div class="table-container" style="margin-top: 1rem;">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th style="width: 140px;">Timestamp</th>
+                <th style="width: 80px;">Nível</th>
+                <th style="width: 110px;">Componente</th>
+                <th style="width: 190px;">Ação</th>
+                <th style="width: 130px;">Ator</th>
+                <th style="width: 80px;">Latência</th>
+                <th>Detalhes & Payload</th>
+              </tr>
+            </thead>
+            <tbody id="audit-table-body">
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                  Carregando trilha de auditoria...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- LISTA EM CARDS PARA MOBILE -->
+        <div class="mobile-cards-container" id="audit-cards-body" style="margin-top: 1rem;">
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 8: PERFIL DA LOJA & DIRETRIZES COMERCIAIS (WHITELABEL) -->
+    <div class="tab-pane" id="tab-profile">
+      <div class="card" style="margin-bottom: 1.25rem;">
+        <div class="card-header">
+          <div>
+            <div class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Diretrizes Comerciais & Identidade da Loja</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Personalize o nome da empresa, polo regional, regras de escopo e mensagens da IA sem reiniciar a API.
+            </p>
+          </div>
+        </div>
+
+        <form id="profile-form" onsubmit="saveStoreProfile(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; margin-top: 1rem;">
+          <div class="form-group">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Nome da Loja / Tenant</label>
+            <input type="text" id="prof-store-name" required class="input-styled" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+          </div>
+
+          <div class="form-group">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Cidade e Estado (Polo Regional)</label>
+            <input type="text" id="prof-city" required class="input-styled" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Nicho de Atuação da Loja</label>
+            <input type="text" id="prof-niche" required class="input-styled" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Palavras-Chave Fora de Escopo (separadas por vírgula)</label>
+            <input type="text" id="prof-keywords" required class="input-styled" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+            <span style="font-size: 0.725rem; color: var(--text-dim); margin-top: 0.25rem; display: block;">Exemplo: iphone, celular, smartphone, capinha, película</span>
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Mensagem Padrão de Recusa Polida (1 a 6 palavras)</label>
+            <input type="text" id="prof-rejection" required class="input-styled" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Modalidades de Despacho Aceitas (separadas por vírgula)</label>
+            <input type="text" id="prof-delivery" required class="input-styled" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Diretrizes de Tom e Postura da IA</label>
+            <textarea id="prof-tone" rows="3" class="input-styled" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: inherit; font-size: 0.85rem; resize: vertical;"></textarea>
+          </div>
+
+          <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="submit" class="btn-refresh" style="background: var(--primary); color: white; padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 600;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Salvar Diretrizes Comerciais
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
   </main>
@@ -1567,7 +1755,7 @@ def render_dashboard_html() -> str:
       const userMsg = document.createElement('div');
       userMsg.className = 'copilot-msg user';
       userMsg.innerHTML = `
-        <div class="copilot-user-avatar">👤</div>
+        <div class="copilot-user-avatar">Atendente</div>
         <div class="copilot-bubble">
           <p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
         </div>
@@ -1635,7 +1823,7 @@ def render_dashboard_html() -> str:
         btn.innerText = '✕ Fechar Visualização da Planilha';
       } else {
         container.style.display = 'none';
-        btn.innerText = '👁️ Visualizar Planilha ao Vivo';
+        btn.innerText = 'Visualizar Planilha';
       }
     }
 
@@ -1677,7 +1865,9 @@ def render_dashboard_html() -> str:
       if (tabId === 'catalog') fetchCatalog();
     checkMasterAISwitch();
       if (tabId === 'orders' || tabId === 'overview') fetchStats();
-      if (tabId === 'simulator') fetchWhatsAppQR();
+      if (tabId === 'audit') fetchAuditLogs();
+      if (tabId === 'profile') fetchStoreProfile();
+      if (tabId === 'simulator' || tabId === 'gemini') fetchWhatsAppQR();
     }
 
     // 1. ATENDIMENTOS AO VIVO (IA VS HUMANO)
@@ -1738,20 +1928,20 @@ def render_dashboard_html() -> str:
                 <div class="user-info">
                   <span class="user-name">${escapeHtml(c.customer_name || 'Cliente WhatsApp')}</span>
                   <a href="${waLink}" target="_blank" class="user-phone" title="Abrir no WhatsApp">
-                    📱 ${c.formatted_phone || c.phone} ↗
+                    ${c.formatted_phone || c.phone} ↗
                   </a>
                 </div>
               </div>
             </td>
             <td>
               <span class="part-pill" title="${escapeHtml(c.active_sku_name)}">
-                📦 ${escapeHtml(c.active_sku_name)}
+                ${escapeHtml(c.active_sku_name)}
               </span>
             </td>
             <td>
               ${isActive
-                ? `<span class="status-pill status-robot">🟢 Atendimento Automático</span>`
-                : `<span class="status-pill status-human">🟡 Balcão (${c.paused_until ? 'até ' + c.paused_until : 'Pausado'})</span>`
+                ? `<span class="status-pill status-robot">IA Ativa</span>`
+                : `<span class="status-pill status-human">Balcão Manual (${c.paused_until ? 'até ' + c.paused_until : 'Pausado'})</span>`
               }
             </td>
             <td style="font-size: 0.775rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;">
@@ -1782,21 +1972,21 @@ def render_dashboard_html() -> str:
                 <div class="user-info">
                   <span class="user-name">${escapeHtml(c.customer_name || 'Cliente WhatsApp')}</span>
                   <a href="${waLink}" target="_blank" class="user-phone">
-                    📱 ${c.formatted_phone || c.phone} ↗
+                    ${c.formatted_phone || c.phone} ↗
                   </a>
                 </div>
               </div>
               <div>
                 ${isActive
-                  ? `<span class="status-pill status-robot">🟢 Automático</span>`
-                  : `<span class="status-pill status-human">🟡 Balcão</span>`
+                  ? `<span class="status-pill status-robot">IA Ativa</span>`
+                  : `<span class="status-pill status-human">Balcão Manual</span>`
                 }
               </div>
             </div>
 
             <div class="card-mobile-body">
               <div style="font-size: 0.725rem; color: var(--text-dim);">Peça Sendo Cotada:</div>
-              <span class="part-pill">📦 ${escapeHtml(c.active_sku_name)}</span>
+              <span class="part-pill">${escapeHtml(c.active_sku_name)}</span>
               <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem;">Último contato: ${c.last_activity || '--'}</div>
             </div>
 
@@ -1853,10 +2043,10 @@ def render_dashboard_html() -> str:
           storeStatus.innerText = data.store_schedule.badge_text;
           document.getElementById('pill-store').className = data.store_schedule.is_open ? 'pill pill-emerald' : (data.store_schedule.is_sunday ? 'pill pill-rose' : 'pill pill-amber');
         } else if (data.is_store_open) {
-          storeStatus.innerText = '🟢 Balcão Aberto';
+          storeStatus.innerText = 'Loja Aberta';
           document.getElementById('pill-store').className = 'pill pill-emerald';
         } else {
-          storeStatus.innerText = '🌙 Balcão Fechado';
+          storeStatus.innerText = 'Loja Fechada';
           document.getElementById('pill-store').className = 'pill pill-amber';
         }
 
@@ -1905,7 +2095,7 @@ def render_dashboard_html() -> str:
       if (counter) counter.innerText = `${filtered.length} de ${orders.length} pedidos`;
 
       if (!filtered || filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);"><div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📦</div>Nenhum pedido encontrado para o filtro selecionado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);"><div style="font-size: 1.5rem; margin-bottom: 0.5rem;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>Nenhum pedido encontrado para o filtro selecionado.</td></tr>';
         mobileDeck.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum pedido encontrado.</div>';
         return;
       }
@@ -1913,8 +2103,8 @@ def render_dashboard_html() -> str:
       tbody.innerHTML = filtered.map(o => {
         const isBalcao = !o.destination_address || o.destination_address.toLowerCase().includes('balc') || o.destination_address.toLowerCase().includes('retirada');
         const modalPill = isBalcao
-          ? `<span class="pill pill-cyan" style="font-weight: 700;">🏢 Retirada no Balcão</span>`
-          : `<span class="pill pill-amber" style="font-weight: 700;" title="${escapeHtml(o.destination_address)}">🛵 Uber Flash: ${escapeHtml(o.destination_address.length > 25 ? o.destination_address.slice(0, 25) + '...' : o.destination_address)}</span>`;
+          ? `<span class="pill pill-cyan" style="font-weight: 700;">Retirada no Balcão</span>`
+          : `<span class="pill pill-amber" style="font-weight: 700;" title="${escapeHtml(o.destination_address)}">Uber Flash: ${escapeHtml(o.destination_address.length > 25 ? o.destination_address.slice(0, 25) + '...' : o.destination_address)}</span>`;
 
         const waLink = `https://wa.me/${(o.customer_phone || '').replace(/\D/g, '')}`;
 
@@ -1930,7 +2120,7 @@ def render_dashboard_html() -> str:
                 ${o.customer_phone} ↗
               </a>
             </td>
-            <td><span class="part-pill" style="font-weight: 700;">📦 ${escapeHtml(o.product_sku)}</span></td>
+            <td><span class="part-pill" style="font-weight: 700;">${escapeHtml(o.product_sku)}</span></td>
             <td style="font-weight: 800; color: #34D399; font-size: 0.95rem;">R$ ${(o.product_price || 0).toFixed(2)}</td>
             <td>${modalPill}</td>
             <td>
@@ -1944,8 +2134,8 @@ def render_dashboard_html() -> str:
       mobileDeck.innerHTML = filtered.map(o => {
         const isBalcao = !o.destination_address || o.destination_address.toLowerCase().includes('balc') || o.destination_address.toLowerCase().includes('retirada');
         const modalPill = isBalcao
-          ? `<span class="pill pill-cyan" style="font-weight: 700;">🏢 Balcão</span>`
-          : `<span class="pill pill-amber" style="font-weight: 700;">🛵 Uber</span>`;
+          ? `<span class="pill pill-cyan" style="font-weight: 700;">Balcão</span>`
+          : `<span class="pill pill-amber" style="font-weight: 700;">Uber Flash</span>`;
         const waLink = `https://wa.me/${(o.customer_phone || '').replace(/\D/g, '')}`;
 
         return `
@@ -2058,9 +2248,9 @@ def render_dashboard_html() -> str:
     function renderQualityBadge(q) {
       const qUp = (q || '').toUpperCase();
       if (qUp.includes('ORIGINAL_NACIONAL') || qUp.includes('ORIGINAL NACIONAL')) {
-        return '<span style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#34D399; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">🛡️ Original Nacional (90d)</span>';
+        return '<span style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#34D399; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">Original Nacional (90d)</span>';
       } else if (qUp.includes('ORIGINAL_CHINA') || qUp.includes('ORIGINAL CHINA')) {
-        return '<span style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); color:#38BDF8; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">💎 Original China</span>';
+        return '<span style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); color:#38BDF8; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">Original China</span>';
       } else if (qUp.includes('PRIMEIRA') || qUp.includes('1ª')) {
         return '<span style="background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.3); color:#C084FC; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">⭐ 1ª Linha Premium</span>';
       } else {
@@ -2359,6 +2549,151 @@ def render_dashboard_html() -> str:
       }
     }
 
+    let currentAuditLevel = '';
+    let allAuditLogs = [];
+    let auditSearchDebounceTimer = null;
+
+    function filterAuditLevel(level, btn) {
+      currentAuditLevel = level;
+      document.querySelectorAll('.level-pills .pill-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderAuditLogs(allAuditLogs);
+    }
+
+    function debounceAuditSearch() {
+      clearTimeout(auditSearchDebounceTimer);
+      auditSearchDebounceTimer = setTimeout(() => {
+        renderAuditLogs(allAuditLogs);
+      }, 250);
+    }
+
+    async function fetchAuditLogs() {
+      try {
+        const compElem = document.getElementById('select-audit-component');
+        const comp = compElem ? compElem.value : '';
+        let url = '/api/audit/logs?limit=100';
+        if (comp) url += '&component=' + encodeURIComponent(comp);
+        const res = await fetch(url);
+        const data = await res.json();
+        allAuditLogs = data.logs || [];
+        const badge = document.getElementById('badge-audit-count');
+        if (badge) badge.innerText = allAuditLogs.length;
+        renderAuditLogs(allAuditLogs);
+      } catch (err) {
+        console.error('Erro ao carregar logs de auditoria:', err);
+      }
+    }
+
+    function renderAuditLogs(logs) {
+      const tbody = document.getElementById('audit-table-body');
+      const cardsBody = document.getElementById('audit-cards-body');
+      if (!tbody) return;
+
+      const qElem = document.getElementById('search-audit');
+      const q = (qElem ? qElem.value : '').toLowerCase().trim();
+      const filtered = logs.filter(l => {
+        if (currentAuditLevel && l.level !== currentAuditLevel) return false;
+        if (q) {
+          const hay = (l.action + ' ' + (l.actor || '') + ' ' + (l.component || '') + ' ' + JSON.stringify(l.details || {})).toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum registro de auditoria encontrado para os filtros aplicados.</td></tr>';
+        if (cardsBody) cardsBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum log encontrado.</div>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(l => {
+        const badgeClass = l.level === 'ERROR' ? 'badge-error' : (l.level === 'WARN' ? 'badge-warn' : 'badge-info');
+        const d = new Date(l.timestamp);
+        const tsFormatted = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + d.toLocaleDateString('pt-BR');
+        const detStr = typeof l.details === 'object' ? JSON.stringify(l.details) : String(l.details || '');
+        const lat = (l.duration_ms !== null && l.duration_ms !== undefined) ? `${Number(l.duration_ms).toFixed(0)} ms` : '-';
+        return `
+          <tr>
+            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted);">${tsFormatted}</td>
+            <td><span class="audit-badge ${badgeClass}">${l.level}</span></td>
+            <td><span class="audit-badge badge-comp">${l.component}</span></td>
+            <td style="font-weight: 600; font-size: 0.8rem; color: #fff;">${l.action}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.775rem; color: var(--text-muted);">${l.actor || '-'}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--emerald);">${lat}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.725rem; color: #CBD5E1; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${detStr.replace(/"/g, '&quot;')}">${detStr}</td>
+          </tr>
+        `;
+      }).join('');
+
+      if (cardsBody) {
+        cardsBody.innerHTML = filtered.map(l => {
+          const badgeClass = l.level === 'ERROR' ? 'badge-error' : (l.level === 'WARN' ? 'badge-warn' : 'badge-info');
+          const d = new Date(l.timestamp);
+          const tsFormatted = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          const detStr = typeof l.details === 'object' ? JSON.stringify(l.details) : String(l.details || '');
+          return `
+            <div class="mobile-card" style="padding: 0.85rem; margin-bottom: 0.6rem; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                <span class="audit-badge ${badgeClass}">${l.level}</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.725rem; color: var(--text-muted);">${tsFormatted}</span>
+              </div>
+              <div style="font-weight: 600; font-size: 0.85rem; color: #fff; margin-bottom: 0.25rem;">${l.action}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem;">Componente: <span class="audit-badge badge-comp">${l.component}</span> | Ator: ${l.actor || '-'}</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #94A3B8; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px; word-break: break-all;">${detStr}</div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    async function fetchStoreProfile() {
+      try {
+        const res = await fetch('/api/system/profile');
+        const data = await res.json();
+        if (data.status === 'success' && data.profile) {
+          const p = data.profile;
+          if (document.getElementById('prof-store-name')) document.getElementById('prof-store-name').value = p.store_name || '';
+          if (document.getElementById('prof-city')) document.getElementById('prof-city').value = p.city || '';
+          if (document.getElementById('prof-niche')) document.getElementById('prof-niche').value = p.niche_description || '';
+          if (document.getElementById('prof-keywords')) document.getElementById('prof-keywords').value = (p.out_of_scope_keywords || []).join(', ');
+          if (document.getElementById('prof-rejection')) document.getElementById('prof-rejection').value = p.rejection_message || '';
+          if (document.getElementById('prof-delivery')) document.getElementById('prof-delivery').value = (p.delivery_methods || []).join(', ');
+          if (document.getElementById('prof-tone')) document.getElementById('prof-tone').value = p.tone_guidelines || '';
+        }
+      } catch (err) {
+        console.error('Erro ao carregar perfil da loja:', err);
+      }
+    }
+
+    async function saveStoreProfile(e) {
+      if (e) e.preventDefault();
+      try {
+        const payload = {
+          store_name: document.getElementById('prof-store-name').value,
+          city: document.getElementById('prof-city').value,
+          niche_description: document.getElementById('prof-niche').value,
+          out_of_scope_keywords: document.getElementById('prof-keywords').value,
+          rejection_message: document.getElementById('prof-rejection').value,
+          delivery_methods: document.getElementById('prof-delivery').value,
+          tone_guidelines: document.getElementById('prof-tone').value,
+        };
+        const res = await fetch('/api/system/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          showToast('Diretrizes comerciais salvas com sucesso!', 'success');
+          fetchAuditLogs();
+        } else {
+          showToast('Erro ao salvar: ' + (data.message || 'Falha'), 'error');
+        }
+      } catch (err) {
+        showToast('Erro de conexão ao salvar diretrizes: ' + err, 'error');
+      }
+    }
+
     function refreshAll() {
       showToast('Atualizando dados...', 'success');
       fetchConversations();
@@ -2372,6 +2707,7 @@ def render_dashboard_html() -> str:
     fetchConversations();
     fetchStats();
     fetchCatalog();
+    fetchAuditLogs();
     checkMasterAISwitch();
     fetchWhatsAppQR();
 
@@ -2667,7 +3003,7 @@ def render_login_html(error_message: Optional[str] = None) -> str:
       </form>
 
       <div class="login-footer">
-        <p>🔒 Autenticação HMAC Criptografada</p>
+        <p>Autenticação HMAC SHA-256 Criptografada</p>
         <p>Victor Cell • Todos os direitos reservados</p>
       </div>
     </div>

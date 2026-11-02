@@ -18,18 +18,18 @@ from infrastructure.config import settings
 logger = logging.getLogger("AIAgentService")
 
 SYSTEM_PROMPT = """
-Você é o atendente de balcão da Victor Cell no WhatsApp (Fortaleza/CE).
+Você é o atendente de balcão da {store_name} no WhatsApp ({store_city}).
 Você responde EXATAMENTE como um atendente humano de balcão de assistência técnica responde no WhatsApp: ultra-curto, direto, objetivo, sem enrolação e com ZERO cara de inteligência artificial.
 
 PROIBIÇÃO TOTAL DE CARA DE IA E PROLIXIDADE:
-- NUNCA use saudações formais longas ("Olá! Seja bem-vindo à Victor Cell", "Opa, tudo bem? Como posso te ajudar hoje?", "Agradecemos o contato").
+- NUNCA use saudações formais longas ("Olá! Seja bem-vindo à {store_name}", "Opa, tudo bem? Como posso te ajudar hoje?", "Agradecemos o contato").
 - NUNCA use frases de telemarketing ou entusiasmo falso ("Show de bola!", "Maravilha!", "A peça está aqui reservadinha").
 - NUNCA use emojis decorativos no texto.
 - EXTENSÃO DA RESPOSTA: 1 a 6 palavras no máximo (estilo rápido e seco de balcão). Quando a loja estiver fechada, adicione apenas o aviso curto de fechado e quando reabre.
 
-PRODUTOS FORA DO FOCO (CELULAR, IPHONE, CAPINHAS, PELÍCULAS):
-- A Victor Cell trabalha EXCLUSIVAMENTE com peças e manutenção de TABLETS (telas, touch, display, baterias, conectores).
-- Se o cliente perguntar de celular, iPhone, capinha ou película: responda de imediato e direto: "Só peças de tablet" ou "Celular não mexemos, só tablet". ZERO desculpas, ZERO justificativas prolixas.
+PRODUTOS FORA DO FOCO ({out_of_scope_policy}):
+- A {store_name} trabalha com {niche_description}.
+- Se o cliente perguntar de produtos fora do foco ({out_of_scope_policy}): responda de imediato e direto: "{rejection_message}". ZERO desculpas, ZERO justificativas prolixas.
 
 ESTADO DA LOJA E HORÁRIO DE ATENDIMENTO (REGRA CRÍTICA DE DOMINGO E FORA DO EXPEDIENTE):
 - Status atual da loja física: {store_status_desc}
@@ -172,13 +172,23 @@ class AIAgentService(AIServiceInterface):
         media_bytes: Optional[bytes] = None,
         mime_type: Optional[str] = None,
         customer_orders_context: Optional[str] = None,
+        store_profile: Optional[Any] = None,
     ) -> Dict[str, Any]:
+        if store_profile is None:
+            from domain.entities import StoreProfile
+            store_profile = StoreProfile()
+
         schedule = settings.get_store_schedule_status()
         is_open = schedule["is_open"]
 
         # Chamada assíncrona ao Gemini com tentativa de modelos flash suportados
         if self._client:
             prompt = SYSTEM_PROMPT.format(
+                store_name=store_profile.store_name,
+                store_city=store_profile.city,
+                niche_description=store_profile.niche_description,
+                out_of_scope_policy=", ".join(store_profile.out_of_scope_keywords),
+                rejection_message=store_profile.rejection_message,
                 catalog_context=catalog_context,
                 customer_orders_context=customer_orders_context or "Nenhum pedido recente registrado neste número.",
                 active_sku=conversation.active_sku or "Nenhuma até o momento",
@@ -267,7 +277,13 @@ class AIAgentService(AIServiceInterface):
                     )
 
         # Fallback Semântico Seguro
-        return self._semantic_fallback(user_message, conversation, schedule, customer_orders_context=customer_orders_context)
+        return self._semantic_fallback(
+            user_message,
+            conversation,
+            schedule,
+            customer_orders_context=customer_orders_context,
+            store_profile=store_profile,
+        )
 
     def _extract_real_address(self, text: str) -> str | None:
         pattern = r"(?i)(?:\b(?:rua|avenida|travessa|alameda|bairro|praça)\b|\b(?:r\.|av\.|trav\.))\s+[^,\n]+(?:,\s*\d+)?(?:\s*-\s*[^,\n]+)?"
@@ -283,18 +299,23 @@ class AIAgentService(AIServiceInterface):
         conversation: Conversation,
         schedule: Optional[Dict[str, Any]] = None,
         customer_orders_context: Optional[str] = None,
+        store_profile: Optional[Any] = None,
     ) -> Dict[str, Any]:
+        if store_profile is None:
+            from domain.entities import StoreProfile
+            store_profile = StoreProfile()
+
         if schedule is None:
             schedule = settings.get_store_schedule_status()
         is_open = schedule['is_open']
         closed_suffix = f". {schedule['short_notice']}." if not is_open else ""
         msg = user_msg.lower().strip()
 
-        # 0. Produtos fora do foco (celular, iphone, capinha, pelicula)
-        if any(w in msg for w in ["iphone", "celular", "capa", "capinha", "pelicula", "película"]):
+        # 0. Produtos fora do foco definidos no perfil da loja
+        if any(w in msg for w in store_profile.out_of_scope_keywords):
             return {
                 "intent": "GENERAL_QUESTION",
-                "reply_text": f"Só peças de tablet{closed_suffix}".strip(),
+                "reply_text": f"{store_profile.rejection_message}{closed_suffix}".strip(),
                 "target_sku": None,
                 "requires_staff_alert": False,
                 "destination_address": None,
