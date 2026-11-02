@@ -1,55 +1,60 @@
-# PecasBot: Plano Mestre de Engenharia & Documentação Técnica
-## Sistema Autônomo de Vendas, Cotação e Expedição de Peças via WhatsApp
+# Plano Mestre de Engenharia e Documentação Técnica
+## Sistema Autônomo de Vendas, Cotação e Expedição de Peças via WhatsApp (Victor Cell)
 
 ---
 
-## 📑 Índice da Suíte de Documentação (Google-Grade RFCs)
+### Metadados da Suíte de Engenharia
 
-Para estruturar este projeto com o rigor de engenharia das grandes empresas de tecnologia, o plano foi dividido em 4 documentos arquiteturais complementares:
-
-1. 📘 [PRD-001: Especificação de Requisitos de Produto](file:///home/robson/.gemini/antigravity-ide/brain/8854bd0d-40f1-4d41-a962-8ec416442d98/01_product_requirements_document.md)
-   * Visão do negócio, dores do proprietário e personas.
-   * Regras para o **despacho via Uber Flash operado pelos meninos do caixa**.
-   * Resolução proativa de ambiguidades técnicas (com aro vs. sem aro, original vs. paralela).
-   * Matriz de transbordo humano silencioso (handoff).
-
-2. 🏗️ [RFC-002: Arquitetura de Software & Design Técnico](file:///home/robson/.gemini/antigravity-ide/brain/8854bd0d-40f1-4d41-a962-8ec416442d98/02_technical_architecture_design.md)
-   * Princípios de **Clean Architecture** e **DDD** (Entidades puras desacopladas de frameworks).
-   * Máquina de estados da conversação (`AI_ACTIVE`, `HUMAN_ACTIVE`, `WAITING_DISPATCH`).
-   * Diagrama de sequência de ponta a ponta (Áudio $\rightarrow$ Gemini $\rightarrow$ Sheets $\rightarrow$ Alerta Caixa).
-   * Padrões de resiliência e in-memory cache para o Google Sheets.
-
-3. 📊 [RFC-003: Esquema de Dados, Integrações & Prompts](file:///home/robson/.gemini/antigravity-ide/brain/8854bd0d-40f1-4d41-a962-8ec416442d98/03_data_schema_and_integrations.md)
-   * Schemas das 3 abas da planilha compatíveis com **Power BI** e **Looker Studio**.
-   * Contratos de payload da **Evolution API** (mensagens de texto, áudio e interceptação do dono).
-   * Engenharia de prompts para o **Google Gemini Flash** com tom de balcão amigo.
-   * Declaração de Function Calling / Tools para consulta de estoque e alerta de separação.
-
-4. 🚀 [RFC-004: Guia de Infraestrutura, DevOps & Implantação](file:///home/robson/.gemini/antigravity-ide/brain/8854bd0d-40f1-4d41-a962-8ec416442d98/04_infrastructure_and_deployment.md)
-   * Topologia de rede na **Oracle Cloud Always Free (12GB RAM)** a custo R$ 0,00.
-   * `docker-compose.yml` pronto orquestrando Evolution API v2, Redis e FastAPI.
-   * Runbook operacional de emparelhamento do WhatsApp e rotinas de logs.
+| Atributo | Definição |
+| :--- | :--- |
+| **Identificador** | ENG-MASTER-PLAN-001 |
+| **Organização** | Victor Cell (Fortaleza/CE) |
+| **Padrão de Documentação** | Google Engineering Documentation Standard (RFC / PRD / UCS) |
+| **Versão** | 2.1.0 |
+| **Status** | Aprovado |
 
 ---
 
-## 🗺️ Roadmap de Execução por Fases
+## 1. Índice da Suíte de Documentação Técnica
 
-```mermaid
-gantt
-    title Cronograma de Implementação do PecasBot
-    dateFormat  YYYY-MM-DD
-    section Fase 1: Fundação & Dados
-    Criação da Planilha & Contas Service Account :2026-11-01, 2d
-    Subida da Evolution API na Oracle Cloud      :2026-11-03, 1d
-    section Fase 2: Backend Core (Python)
-    Setup Clean Architecture & Entidades Pydantic :2026-11-04, 2d
-    Implementação Gemini Service + Audio / Visão  :2026-11-06, 2d
-    Repository Google Sheets com Cache em Memória :2026-11-08, 1d
-    section Fase 3: Regras & Operação
-    Debounce de Mensagens & Máquina de Estados    :2026-11-09, 2d
-    Webhook de Transbordo (Dono assumindo no WA)  :2026-11-11, 1d
-    Disparo de Alerta de Uber para o Caixa        :2026-11-12, 1d
-    section Fase 4: BI & Piloto
-    Dashboard de Vendas no Power BI               :2026-11-13, 2d
-    Testes Reais de Balcão e Ajuste Fino          :2026-11-15, 3d
-```
+A documentação técnica do sistema é estruturada sob padrões rigorosos de engenharia de software e gestão de produto:
+
+1. [PRD-001: Especificação de Requisitos de Produto](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/docs/01_product_requirements_document.md)
+   - Declaração do problema, objetivos estratégicos e métricas de sucesso (OKRs/KPIs).
+   - Análise de personas (Técnico de Bancada, Operador de Caixa, Gestor).
+   - Invariantes não-negociáveis: especialização exclusiva em tablets, concisão estrita de 1 a 6 palavras, doutrina do transbordo silencioso e protocolo de despacho em duas fases.
+   - Requisitos Funcionais (FR-01 a FR-15) e Requisitos Não-Funcionais (NFR-01 a NFR-08).
+   - Máquina de Estados Finitos (FSM) e limites do sistema.
+
+2. [UCS-001: Especificação Formal de Casos de Uso](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/docs/02_use_case_specifications.md)
+   - Matriz de rastreabilidade completa entre Requisitos Funcionais e Casos de Uso.
+   - Especificação detalhada segundo padrão Cockburn/IEEE 830:
+     - UC-01: Cotação Direta de Peça de Tablet em Horário Comercial
+     - UC-02: Cotação Fora do Expediente Comercial e Aos Domingos
+     - UC-03: Rejeição Determinística de Telefonia Móvel (Não-Tablets)
+     - UC-04: Protocolo Multimodal e Triagem Visual de Imagens
+     - UC-05: Fechamento de Pedido e Despacho Uber Flash em Duas Fases
+     - UC-06: Reserva de Peça para Retirada no Balcão Físico
+     - UC-07: Transbordo Silencioso para Atendimento Humano
+     - UC-08: Intervenção Manual de Operador e Filtro Anti-Eco
+     - UC-09: Consulta de Status Operacional e Rastreio Pós-Venda
+     - UC-10: Consulta Analítica e Auditoria via Copilot do Gestor
+   - Análise de Modos de Falha e Efeitos (FMEA).
+
+3. [RFC-002: Arquitetura de Software e Design Técnico](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/docs/02_technical_architecture_design.md)
+   - Arquitetura Limpa (Clean Architecture) e Portas & Adaptadores (Hexagonal).
+   - Provedor Pluggable de Estoque com suporte a Bling ERP v3, Google Sheets e Memória.
+   - Cache Proxy com latência de consulta inferior a 2 milissegundos e Circuit Breaker.
+
+4. [RFC-003: Esquema de Dados, Integrações e Contratos de API](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/docs/03_data_schema_and_integrations.md)
+   - Esquema relacional SQLite e modelos Pydantic v2.
+   - Contratos de webhooks da Evolution API v2 (Baileys) e endpoints REST do FastAPI.
+   - Protocolos de notificação sonora via ntfy.
+
+5. [RFC-004: Infraestrutura, Implantação e DevOps](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/docs/04_infrastructure_and_deployment.md)
+   - Topologia de containers Docker Compose na nuvem Oracle Cloud Infrastructure (OCI).
+   - Configurações de rede, proxies reversos Nginx e procedimentos de rollback.
+
+6. [Relatório de Cobertura de Testes e Gaps de Infraestrutura](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/docs/relatorio_cobertura_testes_e_gaps_infra.md)
+   - Validação automatizada de 81 testes (100% aprovados, 84% de cobertura global).
+   - Mapeamento detalhado dos 4 gaps de infraestrutura física/externa pendentes de validação ao vivo.
