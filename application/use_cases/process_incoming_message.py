@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional
 import pytz
 
 from application.use_cases.catalog_search_service import CatalogSearchService
+from application.use_cases.fast_faq_cache import FastFaqCacheService
 from domain.entities import (
     ConversationState,
     QualityTier,
@@ -159,6 +160,27 @@ class ProcessIncomingMessageUseCase:
             except Exception:
                 pass
 
+        # 6.3 Respostas Rápidas Sub-milissegundo para Dúvidas Frequentes (FastFaqCache)
+        faq_fast = FastFaqCacheService.match_faq(message_text, store_profile=store_profile)
+        if faq_fast:
+            reply_text = faq_fast["reply_text"]
+            intent = faq_fast["intent"]
+            if hasattr(self.conversation_repo, "save_message"):
+                await self.conversation_repo.save_message(clean_phone, "user", message_text)
+                await self.conversation_repo.save_message(clean_phone, "model", reply_text)
+            await self.messaging_gateway.send_text(clean_phone, reply_text)
+            await self.conversation_repo.save(conversation)
+            exec_duration = time.time() - exec_start_time
+            metrics_collector.record_processed(exec_duration, replied_by_ai=False)
+            return {
+                "status": "SUCCESS",
+                "intent": intent,
+                "replied": True,
+                "reply": reply_text,
+                "order_created": False,
+                "target_sku": conversation.active_sku,
+            }
+
         # 7. Processamento Cognitivo via Gemini
         ai_decision = await self.ai_service.process_and_reply(
             conversation=conversation,
@@ -285,6 +307,22 @@ class ProcessIncomingMessageUseCase:
             # Baixa atômica no estoque com proteção contra overbooking (Atomic Reservation Guard)
             stock_reserved = await self.product_repo.decrement_stock(final_sku, quantity=1)
             if not stock_reserved:
+                metrics_collector.record_overbooking_blocked(final_sku)
+                if self.sqlite_repo and hasattr(self.sqlite_repo, "record_audit_event"):
+                    try:
+                        from domain.entities import AuditLogEntry
+                        audit_entry = AuditLogEntry(
+                            action="OVERBOOKING_BLOCKED",
+                            level="WARN",
+                            component="ORDER",
+                            actor=clean_phone,
+                            details={"sku": final_sku, "phone": clean_phone, "reason": "out_of_stock"},
+                            status="FAILURE",
+                        )
+                        await self.sqlite_repo.record_audit_event(audit_entry)
+                    except Exception as e:
+                        logger.warning(f"Erro ao registrar auditoria de overbooking: {e}")
+
                 logger.warning(
                     f"Tentativa de reserva para {final_sku} por {clean_phone} falhou: estoque esgotado durante confirmação."
                 )

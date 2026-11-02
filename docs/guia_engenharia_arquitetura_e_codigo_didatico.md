@@ -334,7 +334,7 @@ Conforme demandado pelas melhores práticas do Google, VTEX e TOTVS, nenhum cód
 flowchart LR
     Dev[Código Fonte] --> Step1[Passo 1: Ruff Linting]
     Step1 --> Step2[Passo 2: Mypy Typecheck]
-    Step2 --> Step3[Passo 3: Pytest 110 Testes]
+    Step2 --> Step3[Passo 3: Pytest 118 Testes]
     Step3 --> Step4[Passo 4: Hot Backup DB]
     Step4 --> Commit[Git Commit Aprovado]
 ```
@@ -347,7 +347,7 @@ flowchart LR
 
 # Ou utilizando os atalhos do Makefile:
 make check       # Roda o Quality Gate completo
-make test        # Executa os 110 testes automatizados
+make test        # Executa os 118 testes automatizados
 make lint        # Verifica o código com Ruff
 make typecheck   # Valida tipagem de todos os arquivos com Mypy
 make backup      # Gera backup compactado .db.gz com retenção de 7 dias
@@ -537,3 +537,39 @@ sequenceDiagram
 ```
 
 A dedução atômica no estoque ocorre **antes** da persistência do pedido. Se a peça esgotar no milissegundo anterior, nenhum registro falso de pedido é gravado e o cliente é notificado com honestidade e rapidez ("*Essa peça acabou de esgotar aqui no estoque.*").
+
+
+---
+
+## 10. Reabertura Inteligente de Sessões, Cache Rápido de FAQ e Gestão de Ruptura de Estoque
+
+### 10.1 Reabertura Inteligente de Sessões Pós-Atendimento Humano (`domain/entities.py`)
+
+No atendimento via WhatsApp, quando o atendente físico ou o dono da loja assume uma conversa, o sistema tradicional silencia o robô por 3 horas (`HUMAN_ACTIVE`). Entretanto, dois problemas operacionais comuns ocorrem:
+1. **Loja Fecha:** O atendente atendeu às 16h50 e foi embora às 17h. Às 21h, um cliente manda mensagem querendo cotação, mas o robô continuaria silenciado porque as 3 horas não expiraram.
+2. **Nova Cotação após Resolução:** O atendente tirou uma dúvida rápida às 10h. Às 10h40 (40 minutos depois), o cliente pergunta o preço de outra peça ("*quanto tá a tela do a8?*"), mas o atendente já está ocupado na bancada.
+
+O método [Conversation.is_ai_allowed](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/domain/entities.py#L115-L165) resolve isso com **Reabertura Inteligente**:
+* **Gatilho 1 (Loja Fechada):** Se a loja física estiver fechada (`is_store_open == False`), a IA assume automaticamente para passar preços e aviso de reabertura, mesmo que pausada anteriormente por um humano.
+* **Gatilho 2 (Janela de Tolerância de 30 Minutos):** Se passaram mais de 30 minutos desde a última mensagem do operador humano e a mensagem do cliente for uma **nova cotação de peça** (*"quanto"*, *"valor"*, *"tela"*, *"touch"*, *"display"*), o robô auto-reativa suavemente a sessão para `AI_ACTIVE` e atende o cliente sem deixá-lo no vácuo.
+
+---
+
+### 10.2 Cache Rápido de FAQ com Latência Zero (`application/use_cases/fast_faq_cache.py`)
+
+Dúvidas frequentes de alta repetição (*"qual o endereço da loja?"*, *"passa o pix"*, *"que horas abre?"*) não precisam ser processadas por um modelo de linguagem generativo na nuvem.
+
+O [FastFaqCacheService](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/application/use_cases/fast_faq_cache.py) intercepta essas perguntas antes da chamada ao Gemini:
+* **Tempo de Resposta:** Menos de **0,05 milissegundos** (em memória RAM local).
+* **Consumo de Tokens:** **Zero tokens** consumidos, economizando a cota gratuita ou paga da API.
+* **Proteção de Cotação:** Se a mensagem contiver termos de peças (*"qual o pix da tela do a7?"*), o cache **NÃO** intercepta a mensagem, permitindo que a cotação siga para o pipeline de vendas.
+
+---
+
+### 10.3 Auditoria Visual de Ruptura e Vendas Perdidas no Dashboard
+
+Quando dois clientes tentam comprar a última unidade de uma peça simultaneamente, a proteção anti-overbooking bloqueia o segundo pedido. Para dar visibilidade tática e financeira à gerência da loja:
+
+1. **Trilha de Auditoria Técnica:** É gerado um evento `OVERBOOKING_BLOCKED` gravado com integridade no banco de dados com nível `WARN`.
+2. **Telemetria Prometheus:** O contador `pecasbot_overbooking_blocked_total` é incrementado em tempo real.
+3. **Card SVG no Dashboard:** O painel executivo em `/dashboard` exibe o KPI com ícone SVG de escudo protetor, permitindo ao gestor identificar quais peças estão gerando ruptura e demandam reposição urgente com os fornecedores.

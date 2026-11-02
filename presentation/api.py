@@ -35,7 +35,7 @@ from pydantic import BaseModel
 
 from application.use_cases.debounce_buffer import DebounceBuffer
 from application.use_cases.process_incoming_message import ProcessIncomingMessageUseCase
-from domain.entities import QualityTier
+from domain.entities import ConversationState, QualityTier
 from infrastructure.config import settings
 from infrastructure.gateways.evolution_gateway import EvolutionGateway
 from infrastructure.inventory import create_inventory_provider
@@ -513,6 +513,7 @@ async def get_report_stats(request: Request):
         "quality_breakdown": quality_counts,
         "category_breakdown": category_counts,
         "recent_orders": recent_orders,
+        "overbooking_blocked_total": metrics_collector.overbooking_blocked_total,
         "chat_funnel_stats": get_chat_funnel_stats(),
     }
 
@@ -989,10 +990,15 @@ async def evolution_webhook(
             await sqlite_repo.save_message(clean_phone, "user", text)
         return {"status": "ignored", "reason": "Global AI Master Switch is OFF", "phone": clean_phone}
 
-    # Verificar se a conversa está com IA silenciada por atendimento humano
-    if not conv.is_ai_allowed():
+    # Verificar se a conversa está com IA silenciada por atendimento humano (com reabertura inteligente)
+    is_open = settings.is_store_open()
+    if not conv.is_ai_allowed(is_store_open=is_open, incoming_message=text):
         logger.info(f"Mensagem de {clean_phone} recebida, mas IA está silenciada (atendente humano no controle).")
         return {"status": "ignored", "reason": "AI paused for human intervention", "phone": clean_phone}
+    else:
+        # Se foi reaberta de forma inteligente (loja fechada ou tolerância expirada com nova cotação), persiste
+        if conv.state == ConversationState.AI_ACTIVE and conv.human_resumed_at is None:
+            await sqlite_repo.save(conv)
 
     async def run_use_case_aggregated(full_text: str, m_bytes: Optional[bytes] = None, m_type: Optional[str] = None):
         if not await sqlite_repo.get_global_ai_status():

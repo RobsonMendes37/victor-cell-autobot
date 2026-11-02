@@ -4,7 +4,7 @@ Collects runtime metrics, latency statistics, intent breakdowns, and exposes Pro
 """
 
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class MetricsCollector:
@@ -22,6 +22,7 @@ class MetricsCollector:
         self.handoffs_total: int = 0
         self.orders_created_total: int = 0
         self.rate_limited_total: int = 0
+        self.overbooking_blocked_total: int = 0
         self.errors_total: int = 0
         self._latencies: List[float] = []
         self._max_latencies_stored: int = 1000
@@ -48,6 +49,9 @@ class MetricsCollector:
 
     def record_rate_limit(self) -> None:
         self.rate_limited_total += 1
+
+    def record_overbooking_blocked(self, sku: Optional[str] = None) -> None:
+        self.overbooking_blocked_total += 1
 
     def record_error(self) -> None:
         self.errors_total += 1
@@ -89,6 +93,7 @@ class MetricsCollector:
             "handoffs_total": self.handoffs_total,
             "orders_created_total": self.orders_created_total,
             "rate_limited_total": self.rate_limited_total,
+            "overbooking_blocked_total": self.overbooking_blocked_total,
             "errors_total": self.errors_total,
             "latency": lat,
         }
@@ -130,6 +135,10 @@ class MetricsCollector:
             "# HELP pecasbot_rate_limited_total Requests blocked by rate limiting",
             "# TYPE pecasbot_rate_limited_total counter",
             f"pecasbot_rate_limited_total {self.rate_limited_total}",
+            "",
+            "# HELP pecasbot_overbooking_blocked_total Orders blocked due to zero stock",
+            "# TYPE pecasbot_overbooking_blocked_total counter",
+            f"pecasbot_overbooking_blocked_total {self.overbooking_blocked_total}",
             "",
             "# HELP pecasbot_errors_total Total unhandled pipeline exceptions",
             "# TYPE pecasbot_errors_total counter",

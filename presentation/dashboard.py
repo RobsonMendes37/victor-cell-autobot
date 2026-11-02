@@ -1265,7 +1265,7 @@ def render_dashboard_html() -> str:
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon-wrapper" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">✅</div>
+          <div class="kpi-icon-wrapper" style="background: rgba(16, 185, 129, 0.15); color: #34D399;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div class="kpi-body">
             <div class="kpi-label">Disponíveis em Balcão</div>
             <div class="kpi-value" id="kpi-catalog-healthy" style="color: #34D399;">0</div>
@@ -1273,19 +1273,19 @@ def render_dashboard_html() -> str:
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon-wrapper" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;">⚠️</div>
-          <div class="kpi-body">
-            <div class="kpi-label">Taxa de Disponibilidade</div>
-            <div class="kpi-value" id="kpi-catalog-critical" style="color: #60A5FA;">100%</div>
-            <div class="kpi-sub">Índice de atendimento</div>
-          </div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-icon-wrapper" style="background: rgba(239, 68, 68, 0.15); color: #F87171;">⛔</div>
+          <div class="kpi-icon-wrapper" style="background: rgba(239, 68, 68, 0.15); color: #F87171;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
           <div class="kpi-body">
             <div class="kpi-label">Esgotadas em Loja</div>
             <div class="kpi-value" id="kpi-catalog-out">0</div>
-            <div class="kpi-sub">Ruptura imediata de estoque</div>
+            <div class="kpi-sub">Ruptura física de estoque</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon-wrapper" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Overbooking Bloqueado</div>
+            <div class="kpi-value" id="kpi-overbooking-blocked" style="color: #FBBF24;">0</div>
+            <div class="kpi-sub">Proteção transacional ativa</div>
           </div>
         </div>
       </div>
@@ -2035,6 +2035,8 @@ def render_dashboard_html() -> str:
         document.getElementById('kpi-uber').innerText = Math.round(data.uber_percentage || 0) + '%';
         document.getElementById('kpi-uber-count').innerText = `${data.uber_orders || 0} de ${data.total_orders || 0} pedidos`;
         document.getElementById('kpi-stock-items').innerText = data.total_products || 0;
+        const obElem = document.getElementById('kpi-overbooking-blocked');
+        if (obElem) obElem.innerText = data.overbooking_blocked_total || 0;
         document.getElementById('badge-orders-count').innerText = (data.recent_orders || []).length;
         document.getElementById('orders-counter').innerText = `${(data.recent_orders || []).length} pedidos`;
 

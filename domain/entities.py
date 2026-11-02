@@ -110,17 +110,49 @@ class Conversation:
     active_sku: Optional[str] = None  # SKU da última peça cotada/discutida
     notes: Optional[str] = None
 
-    def is_ai_allowed(self) -> bool:
-        """Determines if the AI is currently authorized to reply."""
+    def is_ai_allowed(
+        self,
+        is_store_open: bool = True,
+        incoming_message: Optional[str] = None,
+        grace_period_minutes: int = 30,
+    ) -> bool:
+        """
+        Determines if the AI is currently authorized to reply.
+        Enterprise features:
+        - If physical store is closed, AI auto-resumes to quote and notify schedule.
+        - If grace_period_minutes (default 30m) elapsed since operator typed and customer
+          submits a new quote request, AI auto-resumes.
+        """
         if self.state == ConversationState.CLOSED:
             return False
 
         if self.state == ConversationState.HUMAN_ACTIVE:
+            # 1. Se a loja física estiver fechada, a equipe não está presente: IA assume
+            if not is_store_open:
+                self.state = ConversationState.AI_ACTIVE
+                self.human_resumed_at = None
+                return True
+
             if self.human_resumed_at:
+                now = datetime.now(timezone.utc)
+                elapsed_minutes = (now - self.human_resumed_at).total_seconds() / 60.0
+
+                # 2. Reabertura inteligente após janela de tolerância de 30m se for cotação
+                if elapsed_minutes >= grace_period_minutes and incoming_message:
+                    msg = incoming_message.lower()
+                    quote_triggers = [
+                        "quanto", "valor", "preço", "preco", "tem a tela", "tem tela",
+                        "tem o touch", "tem touch", "tem display", "display", "bateria",
+                        "t220", "t295", "x200", "m10a", "m7"
+                    ]
+                    if any(t in msg for t in quote_triggers):
+                        self.state = ConversationState.AI_ACTIVE
+                        self.human_resumed_at = None
+                        return True
+
                 timeout_threshold = self.human_resumed_at + timedelta(
                     hours=self.human_silence_duration_hours
                 )
-                now = datetime.now(timezone.utc)
                 if now < timeout_threshold:
                     return False  # Still inside human silence window
                 else:
@@ -183,6 +215,8 @@ class StoreProfile:
     rejection_message: str = "Só peças de tablet"
     delivery_methods: List[str] = field(default_factory=lambda: ["Uber Flash", "Balcão"])
     tone_guidelines: str = "ultra-curto, direto, objetivo, 1 a 6 palavras no máximo, zero emojis"
+    address: str = "Rua Barão do Rio Branco 1102, Centro"
+    pix_key: str = "85999990001 (Celular / Victor Cell)"
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def is_out_of_scope(self, text: str) -> bool:
