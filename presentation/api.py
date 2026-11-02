@@ -32,6 +32,7 @@ import httpx
 import pytz
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from application.use_cases.cognitive_stock_entry import CognitiveStockEntryUseCase
@@ -198,6 +199,79 @@ app = FastAPI(
     openapi_tags=tags_metadata,
 )
 
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(STATIC_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+# --- CONFIGURAÇÃO MULTI-TENANT & WHITE-LABEL ---
+
+TENANT_CONFIG_FILE = "data/tenant_config.json"
+
+
+class TenantTheme(BaseModel):
+    primary_color: str = "#F71963"
+    primary_hover: str = "#E00E54"
+    primary_glow: str = "rgba(247, 25, 99, 0.25)"
+    bg_canvas: str = "#090D14"
+    bg_surface: str = "#121826"
+    logo_icon: str = "⚡"
+    logo_url: Optional[str] = ""
+
+
+class TenantModules(BaseModel):
+    whatsapp: bool = True
+    orders: bool = True
+    metrics: bool = True
+    catalog: bool = True
+    erp: bool = True
+    copilot: bool = True
+    audit: bool = True
+    profile: bool = True
+    simulator: bool = True
+
+
+class TenantConfig(BaseModel):
+    tenant_id: str = "victor_cell"
+    brand_name: str = "Victor Cell"
+    brand_slogan: str = "ERP & Balcão Inteligente"
+    brand_badge: str = "PRO"
+    theme: TenantTheme = TenantTheme()
+    modules: TenantModules = TenantModules()
+
+
+def load_tenant_config() -> TenantConfig:
+    if os.path.exists(TENANT_CONFIG_FILE):
+        try:
+            with open(TENANT_CONFIG_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return TenantConfig(**data)
+        except Exception as e:
+            logger.warning(f"Erro ao carregar tenant_config.json: {e}")
+    return TenantConfig()
+
+
+def save_tenant_config(cfg: TenantConfig):
+    os.makedirs(os.path.dirname(TENANT_CONFIG_FILE), exist_ok=True)
+    with open(TENANT_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(cfg.model_dump(), f, indent=2, ensure_ascii=False)
+
+
+@app.get("/api/tenant/config", tags=["White-Label & Multi-Tenancy"], summary="Obtém configuração visual e módulos do inquilino")
+async def get_tenant_config():
+    """Retorna dados de personalização visual (cores, branding e módulos ativos) do tenant."""
+    cfg = load_tenant_config()
+    return cfg.model_dump()
+
+
+@app.post("/api/tenant/config", tags=["White-Label & Multi-Tenancy"], summary="Atualiza personalização e identidade visual da loja")
+async def update_tenant_config(cfg: TenantConfig, request: Request):
+    """Permite alterar nome, cores, tema e módulos ativos do tenant."""
+    check_dashboard_auth(request)
+    save_tenant_config(cfg)
+    logger.info(f"Tenant config atualizado com sucesso: {cfg.brand_name} (ID: {cfg.tenant_id})")
+    return {"status": "success", "message": "Configuração da marca salva com sucesso!", "config": cfg.model_dump()}
+
 
 # --- ROTAS DO DASHBOARD & ANALYTICS ---
 
@@ -291,7 +365,11 @@ async def get_dashboard(request: Request):
     token = request.cookies.get(SESSION_COOKIE_NAME)
     if not verify_session_token(token, settings.DASHBOARD_SECRET_KEY):
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-    return HTMLResponse(content=render_dashboard_html(), status_code=200)
+    return HTMLResponse(
+        content=render_dashboard_html(),
+        status_code=200,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+    )
 
 
 
@@ -1591,7 +1669,7 @@ async def get_ai_pipeline_status(request: Request):
     check_dashboard_auth(request)
     daily_calls = await sqlite_repo.get_ai_daily_usage()
     daily_quota = 1500
-    used_pct = round((daily_calls / daily_quota) * 100, 1) if daily_quota else 0.0
+    used_pct = round((daily_calls / daily_quota) * 100, 1)
     remaining = max(0, daily_quota - daily_calls)
 
     return {
@@ -1668,7 +1746,7 @@ async def create_native_product(payload: CreateNativeProductRequest, request: Re
         quality=quality_enum,
         has_frame=False,
         price=float(payload.price),
-        stock_quantity=int(payload.stock_quantity),
+        stock_quantity=payload.stock_quantity,
         has_stock=(payload.stock_quantity > 0),
         location=payload.location,
         cost_price=float(payload.cost_price),

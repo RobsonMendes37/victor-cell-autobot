@@ -3,23 +3,28 @@
 # Standard DevOps & Engineering Quality Commands
 # ==============================================================================
 
-.PHONY: help check test lint format typecheck run docker-up docker-down backup seed hooks
+.PHONY: help check test lint format typecheck run docker-up docker-down backup seed hooks ts-typecheck ts-lint ts-test
 
 PYTHON ?= .venv/bin/python3
+NODE_BIN_DIR := $(dir $(shell which npm 2>/dev/null || ls -d $(HOME)/.nvm/versions/node/v*/bin/npm 2>/dev/null | sort -V | tail -n 1))
+export PATH := $(NODE_BIN_DIR):$(PATH)
 
 help:
 	@echo "Comandos disponíveis no PecasBot Enterprise:"
-	@echo "  make check      - Roda todo o Quality Gate (Lint, Mypy, Pytest, Backup)"
-	@echo "  make test       - Roda a suite de testes automatizados"
-	@echo "  make lint       - Executa análise estática de código com Ruff"
-	@echo "  make format     - Formata o código com Ruff"
-	@echo "  make typecheck  - Executa verificação de tipos com Mypy"
-	@echo "  make run        - Inicia o servidor FastAPI localmente na porta 8000"
-	@echo "  make backup     - Executa backup a quente do banco de dados com compressão"
-	@echo "  make seed       - Popula dados de demonstração (pedidos, logs, perfil)"
-	@echo "  make hooks      - Instala o Git Pre-Commit Hook local"
-	@echo "  make docker-up  - Sobe todos os containers (API, Evolution, Postgres, Redis)"
-	@echo "  make docker-down- Para e desce todos os containers"
+	@echo "  make check        - Roda todo o Quality Gate (Python + TypeScript + Backup)"
+	@echo "  make test         - Roda a suite de testes automatizados (Pytest)"
+	@echo "  make lint         - Executa análise estática Python com Ruff"
+	@echo "  make format       - Formata o código Python com Ruff"
+	@echo "  make typecheck    - Executa verificação de tipos Python com Mypy"
+	@echo "  make ts-typecheck - Executa checagem de tipos TypeScript (tsc)"
+	@echo "  make ts-lint      - Executa linter de boas práticas Front-End (ESLint)"
+	@echo "  make ts-test      - Executa testes unitários de interface (Vitest)"
+	@echo "  make run          - Inicia o servidor FastAPI localmente na porta 8000"
+	@echo "  make backup       - Executa backup a quente do banco de dados com compressão"
+	@echo "  make seed         - Popula dados de demonstração (pedidos, logs, perfil)"
+	@echo "  make hooks        - Instala o Git Pre-Commit Hook local"
+	@echo "  make docker-up    - Sobe todos os containers (API, Evolution, Postgres, Redis)"
+	@echo "  make docker-down  - Para e desce todos os containers"
 
 check:
 	@./scripts/quality_gate.sh
@@ -35,6 +40,16 @@ format:
 
 typecheck:
 	@$(PYTHON) -m mypy --config-file pyproject.toml domain application infrastructure presentation
+
+ts-typecheck:
+	@npm run typecheck
+
+ts-lint:
+	@npm run lint
+
+ts-test:
+	@npm run test
+
 
 run:
 	@$(PYTHON) -m uvicorn presentation.api:app --host 0.0.0.0 --port 8000 --reload

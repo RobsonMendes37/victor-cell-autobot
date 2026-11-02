@@ -1,0 +1,28 @@
+{
+  "name": "pecasbot-api",
+  "version": "1.0.0",
+  "description": "<p align=\"center\">   <img src=\"https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white\" alt=\"Python 3.13\" />   <img src=\"https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white\" alt=\"FastAPI\" />   <img src=\"https://img.shields.io/badge/Google_Gemini-2.0_Flash-4285F4?style=for-the-badge&logo=google&logoColor=white\" alt=\"Google Gemini\" />   <img src=\"https://img.shields.io/badge/Evolution_API-v2.3.7-25D366?style=for-the-badge&logo=whatsapp&logoColor=white\" alt=\"Evolution API v2\" />   <img src=\"https://img.shields.io/badge/Bling_ERP-v3_REST-green?style=for-the-badge\" alt=\"Bling ERP v3\" />   <img src=\"https://img.shields.io/badge/Prometheus-OpenMetrics-E6522C?style=for-the-badge&logo=prometheus&logoColor=white\" alt=\"Prometheus\" />   <img src=\"https://img.shields.io/badge/Tests-118_Passed-success?style=for-the-badge\" alt=\"Tests 118 Passed\" />   <img src=\"https://img.shields.io/badge/Clean_Architecture-DDD-purple?style=for-the-badge\" alt=\"Clean Architecture\" /> </p>",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint frontend/src",
+    "test": "vitest run"
+  },
+  "bugs": {
+    "url": "https://github.com/RobsonMendes37/victor-cell-autobot/issues"
+  },
+  "homepage": "https://github.com/RobsonMendes37/victor-cell-autobot#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.14.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
+  }
+}

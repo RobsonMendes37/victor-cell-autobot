@@ -32,3 +32,8 @@ htmlcov/
 .vscode/
 .idea/
 .DS_Store
+
+# Node.js e TypeScript Front-End
+node_modules/
+dist/
+

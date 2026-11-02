@@ -12,1060 +12,7 @@ def render_dashboard_html() -> str:
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    :root {
-      --bg-canvas: #090D14;
-      --bg-sidebar: #0D121D;
-      --bg-surface: #121826;
-      --bg-surface-elevated: #172033;
-      --bg-surface-hover: #1C273E;
-      --border-subtle: rgba(255, 255, 255, 0.07);
-      --border-medium: rgba(255, 255, 255, 0.12);
-      --vtex-pink: #F71963;
-      --vtex-pink-hover: #E00E54;
-      --vtex-pink-glow: rgba(247, 25, 99, 0.25);
-      --vtex-pink-bg: rgba(247, 25, 99, 0.09);
-      --primary: #6366F1;
-      --primary-hover: #4F46E5;
-      --primary-glow: rgba(99, 102, 241, 0.22);
-      --emerald: #10B981;
-      --emerald-glow: rgba(16, 185, 129, 0.2);
-      --amber: #F59E0B;
-      --amber-glow: rgba(245, 158, 11, 0.2);
-      --rose: #EF4444;
-      --text-main: #F8FAFC;
-      --text-muted: #94A3B8;
-      --text-dim: #64748B;
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 14px;
-      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    html, body {
-      background-color: var(--bg-canvas);
-      color: var(--text-main);
-      font-family: var(--font-sans);
-      min-height: 100vh;
-      font-size: 13.5px;
-      line-height: 1.5;
-      overflow-x: hidden;
-    }
-
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg-canvas); }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 999px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); }
-
-    /* LAYOUT PRINCIPAL (VTEX ADMIN 2-COLUMN) */
-    .app-layout {
-      display: flex;
-      min-height: 100vh;
-      width: 100vw;
-      background: var(--bg-canvas);
-    }
-
-    /* SIDEBAR LATERAL RETRÁTIL */
-    .app-sidebar {
-      width: 270px;
-      background: var(--bg-sidebar);
-      border-right: 1px solid var(--border-subtle);
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      overflow-y: auto;
-      z-index: 100;
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .sidebar-brand {
-      padding: 1.25rem 1.25rem 1.1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      border-bottom: 1px solid var(--border-subtle);
-      background: rgba(0, 0, 0, 0.12);
-    }
-
-    .brand-logo {
-      width: 36px;
-      height: 36px;
-      border-radius: 9px;
-      background: linear-gradient(135deg, var(--vtex-pink), #BD0043);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 14px var(--vtex-pink-glow);
-      flex-shrink: 0;
-    }
-
-    .brand-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .brand-name {
-      font-size: 0.95rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      color: var(--text-main);
-    }
-
-    .brand-badge-vtex {
-      font-size: 0.65rem;
-      font-weight: 800;
-      background: var(--vtex-pink-bg);
-      color: #FF5A8D;
-      padding: 1px 6px;
-      border-radius: 4px;
-      border: 1px solid rgba(247, 25, 99, 0.3);
-      letter-spacing: 0.05em;
-    }
-
-    .brand-sub {
-      font-size: 0.72rem;
-      color: var(--text-dim);
-      font-weight: 500;
-      margin-top: 1px;
-    }
-
-    .sidebar-close-btn {
-      display: none;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 4px;
-    }
-
-    .sidebar-nav {
-      padding: 0.85rem 0.65rem 1.5rem;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-    }
-
-    .nav-section-label {
-      font-size: 0.68rem;
-      font-weight: 700;
-      color: var(--text-dim);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 0.85rem 0.6rem 0.35rem;
-    }
-
-    .sidebar-nav .nav-tab {
-      display: flex;
-      align-items: center;
-      gap: 0.7rem;
-      padding: 0.6rem 0.75rem;
-      border-radius: var(--radius-sm);
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 0.84rem;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      text-align: left;
-      width: 100%;
-      position: relative;
-    }
-
-    .sidebar-nav .nav-tab:hover {
-      background: var(--bg-surface);
-      color: var(--text-main);
-    }
-
-    .sidebar-nav .nav-tab.active {
-      background: var(--vtex-pink-bg);
-      color: #FFF;
-      font-weight: 600;
-      box-shadow: inset 3px 0 0 var(--vtex-pink);
-    }
-
-    .sidebar-nav .nav-tab.active svg {
-      color: var(--vtex-pink);
-    }
-
-    .sidebar-nav .nav-tab svg {
-      flex-shrink: 0;
-      color: var(--text-dim);
-      transition: color 0.15s;
-    }
-
-    .sidebar-nav .nav-tab:hover svg {
-      color: var(--text-main);
-    }
-
-    .sidebar-nav .tab-badge {
-      margin-left: auto;
-      font-size: 0.7rem;
-      font-weight: 700;
-      font-family: var(--font-mono);
-      padding: 1px 6px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.07);
-      color: var(--text-dim);
-    }
-
-    .sidebar-nav .nav-tab.active .tab-badge {
-      background: rgba(247, 25, 99, 0.2);
-      color: #FF5A8D;
-    }
-
-    .sidebar-footer {
-      padding: 0.9rem 1.1rem;
-      border-top: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(0, 0, 0, 0.15);
-    }
-
-    .user-profile {
-      display: flex;
-      align-items: center;
-      gap: 0.65rem;
-    }
-
-    .user-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: var(--bg-surface-elevated);
-      border: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75rem;
-      font-weight: 800;
-      color: var(--text-muted);
-    }
-
-    .user-meta .user-name {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .user-meta .user-role {
-      font-size: 0.7rem;
-      color: var(--text-dim);
-    }
-
-    .sidebar-logout {
-      color: var(--text-dim);
-      transition: all 0.15s;
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-      padding: 6px;
-      border-radius: 6px;
-    }
-
-    .sidebar-logout:hover {
-      color: #EF4444;
-      background: rgba(239, 68, 68, 0.12);
-    }
-
-    /* BACKDROP OVERLAY */
-    .sidebar-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.65);
-      backdrop-filter: blur(4px);
-      z-index: 90;
-    }
-
-    /* CONTENT VIEWPORT */
-    .content-viewport {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      background: var(--bg-canvas);
-    }
-
-    /* TOP HEADER EXECUTIVO */
-    .top-header {
-      height: 58px;
-      background: rgba(14, 19, 31, 0.85);
-      backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border-subtle);
-      padding: 0 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 40;
-      gap: 1rem;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 0.9rem;
-    }
-
-    .sidebar-toggle {
-      display: none;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 6px;
-      border-radius: 6px;
-    }
-
-    .breadcrumb {
-      display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      font-size: 0.85rem;
-    }
-
-    .bc-root {
-      color: var(--text-dim);
-      font-weight: 500;
-    }
-
-    .bc-sep {
-      color: var(--border-medium);
-      font-size: 0.8rem;
-    }
-
-    .bc-active {
-      color: var(--text-main);
-      font-weight: 600;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      flex-wrap: wrap;
-    }
-
-    .btn-top-action {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.4rem 0.75rem;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-surface);
-      color: var(--text-muted);
-      font-size: 0.78rem;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.15s;
-    }
-
-    .btn-top-action:hover {
-      background: var(--bg-surface-elevated);
-      color: var(--text-main);
-      border-color: rgba(255, 255, 255, 0.15);
-    }
-
-    .main-body {
-      flex: 1;
-      padding: 1.5rem 1.75rem 3rem;
-      max-width: 1600px;
-      width: 100%;
-      margin: 0 auto;
-    }
-
-    /* TOAST & BANNERS */
-    #toast {
-      position: fixed;
-      bottom: 1.5rem;
-      right: 1.5rem;
-      background: #111827;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
-      border-radius: 8px;
-      padding: 0.75rem 1.1rem;
-      display: none;
-      align-items: center;
-      gap: 0.6rem;
-      z-index: 9999;
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
-
-    #banner-ai-emergency {
-      display: none;
-      background: rgba(239, 68, 68, 0.12);
-      border-bottom: 1px solid rgba(239, 68, 68, 0.3);
-      color: #FCA5A5;
-      padding: 0.6rem 1rem;
-      text-align: center;
-      font-size: 0.8rem;
-    }
-
-    .btn-emergency-resume {
-      background: #EF4444;
-      color: white;
-      border: none;
-      padding: 0.2rem 0.6rem;
-      border-radius: 4px;
-      font-weight: 600;
-      font-size: 0.75rem;
-      cursor: pointer;
-      margin-left: 0.5rem;
-    }
-
-    /* HARDWARE SWITCH */
-    .master-switch-wrapper {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 999px;
-      padding: 0.3rem 0.7rem;
-      cursor: pointer;
-      user-select: none;
-      transition: all 0.2s;
-    }
-    .hardware-track {
-      width: 28px;
-      height: 16px;
-      background: #374151;
-      border-radius: 999px;
-      position: relative;
-      transition: background 0.2s;
-    }
-    .hardware-thumb {
-      width: 12px;
-      height: 12px;
-      background: #fff;
-      border-radius: 50%;
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      transition: transform 0.2s;
-    }
-    .master-switch-on .hardware-track { background: var(--emerald); }
-    .master-switch-on .hardware-thumb { transform: translateX(12px); }
-    .master-switch-label { font-size: 0.75rem; font-weight: 600; color: var(--text-main); }
-
-    /* STATUS PILLS */
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.35rem 0.7rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    .pill-emerald {
-      background: rgba(16, 185, 129, 0.1);
-      color: #34D399;
-      border: 1px solid rgba(16, 185, 129, 0.2);
-    }
-    .pill-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-
-    /* KPI GRID */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .kpi-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 1.15rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: transform 0.15s, border-color 0.15s;
-    }
-    .kpi-card:hover {
-      border-color: var(--border-medium);
-      transform: translateY(-2px);
-    }
-
-    .kpi-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 0.5rem;
-    }
-    .kpi-title {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-    .kpi-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .kpi-val {
-      font-size: 1.6rem;
-      font-weight: 800;
-      font-family: var(--font-mono);
-      font-feature-settings: 'tnum';
-      font-variant-numeric: tabular-nums;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.3rem;
-    }
-    .kpi-sub {
-      font-size: 0.72rem;
-      color: var(--text-dim);
-    }
-
-    /* CARDS & CONTAINERS */
-    .card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 1.25rem;
-      margin-bottom: 1.25rem;
-      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
-    }
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid var(--border-subtle);
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-    .card-title-group {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    .card-icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 8px;
-      background: var(--bg-surface-elevated);
-      border: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--vtex-pink);
-    }
-    .card-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-    .card-subtitle {
-      font-size: 0.75rem;
-      color: var(--text-dim);
-    }
-
-
-    /* CHAT DRAWER LATERAL (WHATSAPP AO VIVO) */
-    .drawer-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(4px);
-      z-index: 9998;
-      display: none;
-      opacity: 0;
-      transition: opacity 0.25s ease;
-    }
-    .drawer-overlay.active {
-      display: block;
-      opacity: 1;
-    }
-    .chat-drawer {
-      position: fixed;
-      top: 0;
-      right: -480px;
-      width: 460px;
-      max-width: 95vw;
-      height: 100vh;
-      background: #0E1422;
-      border-left: 1px solid var(--border-subtle);
-      box-shadow: -8px 0 32px rgba(0, 0, 0, 0.7);
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      transition: right 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .chat-drawer.active {
-      right: 0;
-    }
-    .chat-drawer-header {
-      padding: 1rem 1.25rem;
-      border-bottom: 1px solid var(--border-subtle);
-      background: rgba(0, 0, 0, 0.35);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .drawer-close-btn {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      color: var(--text-muted);
-      cursor: pointer;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.9rem;
-      transition: all 0.15s;
-    }
-    .drawer-close-btn:hover {
-      background: rgba(239, 68, 68, 0.2);
-      color: #F87171;
-    }
-    .chat-drawer-body {
-      flex: 1;
-      padding: 1.25rem;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      background: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.7), #07090E);
-    }
-    .chat-bubble-drawer {
-      max-width: 82%;
-      padding: 0.65rem 0.85rem;
-      border-radius: 12px;
-      font-size: 0.825rem;
-      line-height: 1.45;
-      position: relative;
-      word-break: break-word;
-    }
-    .chat-bubble-drawer.incoming {
-      align-self: flex-start;
-      background: #1E293B;
-      color: #E2E8F0;
-      border-bottom-left-radius: 3px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .chat-bubble-drawer.outgoing {
-      align-self: flex-end;
-      background: linear-gradient(135deg, #10593B, #0E4830);
-      color: #F0FDF4;
-      border-bottom-right-radius: 3px;
-      border: 1px solid rgba(16, 185, 129, 0.25);
-    }
-    .chat-bubble-meta {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 4px;
-      margin-top: 4px;
-      font-size: 0.675rem;
-      color: rgba(255, 255, 255, 0.5);
-      font-family: var(--font-mono);
-    }
-    .chat-drawer-footer {
-      padding: 0.9rem 1.25rem;
-      border-top: 1px solid var(--border-subtle);
-      background: rgba(0, 0, 0, 0.25);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-    }
-
-    /* VTEX MODALS (PRODUTO ERP & JSON VIEWER) */
-    .vtex-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(5px);
-      z-index: 10000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    }
-    .vtex-modal-overlay.active {
-      display: flex;
-      opacity: 1;
-    }
-    .vtex-modal {
-      background: #0E1422;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
-      width: 100%;
-      max-width: 620px;
-      max-height: 90vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      animation: modalZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    @keyframes modalZoomIn {
-      from { transform: scale(0.96); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
-    }
-    .vtex-modal-header {
-      padding: 1.1rem 1.25rem;
-      border-bottom: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(0, 0, 0, 0.25);
-    }
-    .vtex-modal-title {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .vtex-modal-body {
-      padding: 1.25rem;
-      overflow-y: auto;
-      flex: 1;
-    }
-    .vtex-modal-footer {
-      padding: 0.9rem 1.25rem;
-      border-top: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 0.75rem;
-      background: rgba(0, 0, 0, 0.25);
-    }
-    .vtex-form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-    .vtex-form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-    }
-    .vtex-form-group.col-span-2 {
-      grid-column: span 2;
-    }
-    .vtex-form-group label {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: #94A3B8;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .vtex-form-group input, .vtex-form-group select {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      padding: 0.55rem 0.75rem;
-      color: #fff;
-      font-size: 0.85rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .vtex-form-group input:focus, .vtex-form-group select:focus {
-      border-color: var(--vtex-pink);
-      box-shadow: 0 0 0 2px rgba(247, 25, 99, 0.2);
-    }
-
-    /* CARDS DE CATEGORIZAÇÃO WHATSAPP */
-    .wa-cat-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-subtle);
-      border-radius: 10px;
-      padding: 0.85rem 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.3rem;
-      transition: transform 0.15s, border-color 0.15s;
-    }
-    .wa-cat-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-    .wa-cat-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
-    .wa-cat-card-val {
-      font-size: 1.45rem;
-      font-weight: 800;
-      font-family: var(--font-mono);
-    }
-    .wa-cat-card-sub {
-      font-size: 0.72rem;
-      color: var(--text-dim);
-    }
-
-    /* CARDS DA PIPELINE DE IA */
-    .pipeline-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      padding: 1.15rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
-    }
-    .pipeline-card-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
-    .pipeline-endpoint {
-      font-family: var(--font-mono);
-      font-size: 0.725rem;
-      color: #94A3B8;
-      background: rgba(0, 0, 0, 0.35);
-      padding: 0.35rem 0.6rem;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      word-break: break-all;
-    }
-    .pipeline-fallback {
-      font-size: 0.735rem;
-      color: #64748B;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* TAB PANES */
-    .tab-pane {
-      display: none;
-      animation: fadeIn 0.15s ease;
-    }
-    .tab-pane.active {
-      display: block;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* DATA TABLES */
-    .table-responsive {
-      overflow-x: auto;
-      border-radius: var(--radius-sm);
-    }
-    .data-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      font-size: 0.84rem;
-    }
-    .data-table th {
-      background: #0E1422;
-      color: var(--text-dim);
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0.75rem 0.9rem;
-      border-bottom: 1px solid var(--border-subtle);
-      text-align: left;
-    }
-    .data-table td {
-      padding: 0.85rem 0.9rem;
-      border-bottom: 1px solid var(--border-subtle);
-      vertical-align: middle;
-      font-feature-settings: 'tnum';
-      font-variant-numeric: tabular-nums;
-    }
-    .data-table tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    /* BUTTONS */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.55rem 1rem;
-      border-radius: var(--radius-sm);
-      font-size: 0.82rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      border: none;
-      transition: all 0.15s;
-      text-decoration: none;
-    }
-    .btn-primary {
-      background: var(--vtex-pink);
-      color: #fff;
-    }
-    .btn-primary:hover {
-      background: var(--vtex-pink-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px var(--vtex-pink-glow);
-    }
-    .btn-secondary {
-      background: var(--bg-surface-elevated);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-main);
-    }
-    .btn-secondary:hover {
-      background: var(--bg-surface-hover);
-      border-color: var(--border-medium);
-    }
-    .btn-sm {
-      padding: 0.35rem 0.65rem;
-      font-size: 0.75rem;
-    }
-
-    /* INPUTS & FORMS */
-    .search-input, .input-styled {
-      background: var(--bg-surface-elevated);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      color: var(--text-main);
-      padding: 0.5rem 0.8rem;
-      font-size: 0.85rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .search-input:focus, .input-styled:focus {
-      border-color: var(--vtex-pink);
-    }
-
-    /* STAT CARDS */
-    .stat-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 1rem 1.15rem;
-    }
-    .stat-label {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-bottom: 0.3rem;
-    }
-    .stat-value {
-      font-size: 1.35rem;
-      font-weight: 800;
-      font-family: var(--font-mono);
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* COPILOT CHAT & SIMULATOR */
-    .copilot-container {
-      display: flex;
-      flex-direction: column;
-      height: calc(100vh - 280px);
-      min-height: 450px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      overflow: hidden;
-    }
-    .copilot-messages, .chat-messages {
-      flex: 1;
-      padding: 1.25rem;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 0.85rem;
-    }
-    .copilot-input-bar {
-      padding: 0.85rem 1.25rem;
-      background: var(--bg-surface-elevated);
-      border-top: 1px solid var(--border-subtle);
-      display: flex;
-      gap: 0.75rem;
-      align-items: center;
-    }
-    .copilot-input-field {
-      flex: 1;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 0.65rem 1rem;
-      color: var(--text-main);
-      font-family: inherit;
-      font-size: 0.85rem;
-      outline: none;
-    }
-    .copilot-input-field:focus {
-      border-color: var(--vtex-pink);
-    }
-
-    /* RESPONSIVE */
-    @media (max-width: 1024px) {
-      .app-sidebar {
-        position: fixed;
-        left: 0;
-        top: 0;
-        transform: translateX(-100%);
-      }
-      .app-sidebar.sidebar-open {
-        transform: translateX(0);
-      }
-      .sidebar-overlay.active {
-        display: block;
-      }
-      .sidebar-toggle {
-        display: inline-flex;
-      }
-      .sidebar-close-btn {
-        display: inline-flex;
-      }
-      .main-body {
-        padding: 1rem;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/static/css/dashboard.css?v=20261102_05">
 </head>
 <body>
 
@@ -1116,9 +63,13 @@ def render_dashboard_html() -> str:
 
         <!-- GRUPO 2: ESTOQUE & ERP NATIVO -->
         <div class="nav-section-label">Estoque & ERP Nativo</div>
-        <button class="nav-tab" onclick="switchTab('overview')" title="Métricas & Relatórios">
+        <button class="nav-tab" onclick="switchTab('overview')" title="Métricas Operacionais">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          <span>Métricas & Relatórios</span>
+          <span>Métricas Operacionais</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('reports')" title="Relatórios & Demanda">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span>Relatórios & Demanda</span>
         </button>
         <button class="nav-tab" onclick="switchTab('catalog')" title="Catálogo de Peças">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
@@ -1205,6 +156,10 @@ def render_dashboard_html() -> str:
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
             Alertas Push
           </a>
+          <button class="btn-top-action" id="btn-theme-toggle" onclick="toggleTheme()" title="Alternar Modo Claro / Escuro">
+            <span id="theme-toggle-icon">☀️</span>
+            <span id="theme-toggle-label">Modo Claro</span>
+          </button>
           <button class="btn-top-action" onclick="refreshAll()" title="Recarregar dados">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
             Atualizar
@@ -1242,14 +197,16 @@ def render_dashboard_html() -> str:
               </tr>
             </thead>
             <tbody id="convs-tbody-desktop">
-              <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando atendimentos...</td></tr>
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 85%;"></div></td><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td></tr>
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 45%;"></div></td><td><div class="skeleton-table-cell" style="width: 80%;"></div></td><td><div class="skeleton-table-cell" style="width: 75%;"></div></td><td><div class="skeleton-table-cell" style="width: 55%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td></tr>
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 55%;"></div></td><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td></tr>
             </tbody>
           </table>
         </div>
 
         <!-- Visualização Mobile (Cards Touch Fáceis de Clicar) -->
         <div class="mobile-card-deck" id="convs-cards-mobile">
-          <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando atendimentos no celular...</div>
+          <div style="text-align: center; padding: 2rem; color: var(--text-muted);"><span class="skeleton-box" style="width: 80%; height: 20px;"></span></div>
         </div>
       </div>
     </div>
@@ -1290,7 +247,9 @@ def render_dashboard_html() -> str:
               </tr>
             </thead>
             <tbody id="orders-tbody">
-              <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando pedidos de separação...</td></tr>
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 40%;"></div></td><td><div class="skeleton-table-cell" style="width: 75%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td><td><div class="skeleton-table-cell" style="width: 55%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td></tr>
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 45%;"></div></td><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td><td><div class="skeleton-table-cell" style="width: 55%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td></tr>
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 38%;"></div></td><td><div class="skeleton-table-cell" style="width: 80%;"></div></td><td><div class="skeleton-table-cell" style="width: 55%;"></div></td><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 55%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -1403,15 +362,89 @@ def render_dashboard_html() -> str:
         </div>
       </div>
 
-      <!-- SEÇÃO DE INTELIGÊNCIA COMERCIAL DE WHATSAPP -->
-      <div class="section-card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(14, 20, 34, 0.95), rgba(99, 102, 241, 0.05)); border-color: rgba(99, 102, 241, 0.25);">
-        <div class="section-toolbar">
+      <!-- 4 KPIS DO FUNIL DE WHATSAPP -->
+      <div class="kpis-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+        <div class="kpi-card" style="padding: 1.35rem 1.4rem;">
+          <div class="kpi-label">Pedidos que Saíram (Fechados)</div>
+          <div class="kpi-value" style="color: #10B981;" id="kpi-chat-closed">58</div>
+          <div class="kpi-subtext" style="color: #34D399;">Taxa de conversão: <strong id="kpi-chat-conv-rate">34.3%</strong></div>
+        </div>
+        <div class="kpi-card" style="padding: 1.35rem 1.4rem;">
+          <div class="kpi-label">Perdidos por Falta de Estoque</div>
+          <div class="kpi-value" style="color: #EF4444;" id="kpi-chat-lost">111</div>
+          <div class="kpi-subtext" style="color: #F87171;">Demanda reprimida (Ruptura no balcão)</div>
+        </div>
+        <div class="kpi-card" style="padding: 1.35rem 1.4rem;">
+          <div class="kpi-label">Taxa de Recorrência (Recompra)</div>
+          <div class="kpi-value" style="color: #818CF8;" id="kpi-chat-recurrence">81.1%</div>
+          <div class="kpi-subtext" style="color: #A5B4FC;"><strong id="kpi-chat-workshops">30 de 37</strong> oficinas voltam a pedir</div>
+        </div>
+        <div class="kpi-card" style="padding: 1.35rem 1.4rem;">
+          <div class="kpi-label">Cotações Mineradas no Zap</div>
+          <div class="kpi-value" style="color: #F59E0B;" id="kpi-chat-volume">984</div>
+          <div class="kpi-subtext" style="color: #FCD34D;">58 modelos de tablet monitorados</div>
+        </div>
+      </div>
+
+      <!-- GRID DE 4 CARDS (3 GRÁFICOS + LISTAGEM DE TOP ASSISTÊNCIAS) -->
+      <div class="charts-grid" style="margin-bottom: 1.25rem;">
+        <div class="chart-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #F59E0B;"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 10 10"></path></svg>
+            Original vs. Paralela
+          </h3>
+          <div class="chart-canvas-wrapper">
+            <canvas id="chartQuality"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366F1;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            Distribuição de Vendas por Categoria
+          </h3>
+          <div class="chart-canvas-wrapper">
+            <canvas id="chartCategory"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #10B981;"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+            Resultados do Funil de Vendas
+          </h3>
+          <div class="chart-canvas-wrapper">
+            <canvas id="chartChatFunnel"></canvas>
+          </div>
+        </div>
+        <div class="chart-card" style="display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h3 style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #818CF8;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              Top Assistências por Recorrência
+            </h3>
+            <span class="badge-count" style="font-size: 0.75rem;">Fidelidade & Recompra</span>
+          </div>
+          <div id="top-assistencias-list" style="flex: 1; display: flex; flex-direction: column; gap: 0.55rem; justify-content: center;">
+          </div>
+        </div>
+      </div>
+    </div> <!-- /tab-overview -->
+
+    <!-- TAB: RELATÓRIOS & DEMANDA (VENDAS, RUPTURAS E RANKING) -->
+    <div class="tab-pane" id="tab-reports">
+      <div class="section-card" style="margin-bottom: 1.5rem;">
+        <div class="section-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
           <div class="section-title-group">
             <h2 class="section-title" style="display: flex; align-items: center; gap: 8px;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366F1;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-              Inteligência de Vendas no WhatsApp (37 Assistências / 3.752 Mensagens)
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366F1;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              Relatórios de Demanda & Vendas (WhatsApp)
             </h2>
-            <span style="font-size: 0.82rem; color: var(--text-muted);">Filtre por produto, período (dia/histórico) e analise saídas e rupturas</span>
+            <span style="font-size: 0.82rem; color: var(--text-muted);">Filtre por período e analise saídas, rupturas de estoque e comportamento das assistências técnicas</span>
+          </div>
+          <div class="toolbar-actions">
+            <button class="btn btn-secondary btn-sm" onclick="exportReportsCsv()" style="display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exportar Relatório CSV
+            </button>
           </div>
         </div>
 
@@ -1420,7 +453,7 @@ def render_dashboard_html() -> str:
           <!-- Filtro de Período -->
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
             <span style="font-size: 0.75rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">Período:</span>
-            <div class="filter-pill-group" style="display: flex; gap: 4px;">
+            <div class="filter-pill-group">
               <button class="filter-btn" data-period="today" onclick="setAnalyticsPeriod('today', this)">Hoje</button>
               <button class="filter-btn" data-period="7d" onclick="setAnalyticsPeriod('7d', this)">7 Dias</button>
               <button class="filter-btn" data-period="30d" onclick="setAnalyticsPeriod('30d', this)">30 Dias</button>
@@ -1431,7 +464,7 @@ def render_dashboard_html() -> str:
           <!-- Filtro de Categoria -->
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
             <span style="font-size: 0.75rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">Peça:</span>
-            <div class="filter-pill-group" style="display: flex; gap: 4px;">
+            <div class="filter-pill-group">
               <button class="filter-btn active" data-cat="all" onclick="setAnalyticsCategory('all', this)">Todas</button>
               <button class="filter-btn" data-cat="tela" onclick="setAnalyticsCategory('tela', this)">Telas</button>
               <button class="filter-btn" data-cat="touch" onclick="setAnalyticsCategory('touch', this)">Touch</button>
@@ -1441,7 +474,7 @@ def render_dashboard_html() -> str:
 
           <!-- Busca por Modelo -->
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; min-width: 200px; max-width: 320px;">
-            <input type="text" id="analytics-search-input" placeholder="Filtrar por modelo (ex: M8, T295, A15)..." oninput="debounceAnalyticsSearch()" style="width: 100%; padding: 0.42rem 0.75rem; font-size: 0.82rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; color: #fff;">
+            <input type="text" id="analytics-search-input" placeholder="Filtrar por modelo (ex: M8, T295, A15)..." oninput="debounceAnalyticsSearch()" style="width: 100%; padding: 0.45rem 0.75rem; font-size: 0.82rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; color: #fff;">
           </div>
         </div>
 
@@ -1456,66 +489,6 @@ def render_dashboard_html() -> str:
           <button class="quick-chip-btn" onclick="quickFilterModel('VISION TAB 7')">Positivo Vision Tab 7</button>
           <button class="quick-chip-btn" onclick="quickFilterModel('A15')">Samsung A15</button>
           <button class="quick-chip-btn" onclick="quickFilterModel('')" style="color: #F87171; border-color: rgba(239, 68, 68, 0.3);">Limpar Filtro</button>
-        </div>
-
-        <!-- 4 KPIS DO FUNIL DE WHATSAPP -->
-        <div class="kpis-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 1.25rem;">
-          <div class="kpi-card">
-            <div class="kpi-label">Pedidos que Saíram (Fechados)</div>
-            <div class="kpi-value" style="color: #10B981;" id="kpi-chat-closed">58</div>
-            <div class="kpi-subtext" style="color: #34D399;">Taxa de conversão: <strong id="kpi-chat-conv-rate">34.3%</strong></div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Perdidos por Falta de Estoque</div>
-            <div class="kpi-value" style="color: #EF4444;" id="kpi-chat-lost">111</div>
-            <div class="kpi-subtext" style="color: #F87171;">Demanda reprimida (Ruptura no balcão)</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Taxa de Recorrência (Recompra)</div>
-            <div class="kpi-value" style="color: #818CF8;" id="kpi-chat-recurrence">81.1%</div>
-            <div class="kpi-subtext" style="color: #A5B4FC;"><strong id="kpi-chat-workshops">30 de 37</strong> oficinas voltam a pedir</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Cotações Mineradas no Zap</div>
-            <div class="kpi-value" style="color: #F59E0B;" id="kpi-chat-volume">984</div>
-            <div class="kpi-subtext" style="color: #FCD34D;">58 modelos de tablet monitorados</div>
-          </div>
-        </div>
-
-        <!-- GRÁFICOS 1 & 2: PRODUTOS MAIS SAÍDOS E LINHA DO TEMPO POR DIA -->
-        <div class="charts-grid" style="margin-bottom: 1.25rem;">
-          <div class="chart-card">
-            <h3 style="display: flex; align-items: center; gap: 6px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #38BDF8;"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
-              Produtos que Mais Saíram no Período Selecionado
-            </h3>
-            <canvas id="chartTopProductsPeriod" height="200"></canvas>
-          </div>
-          <div class="chart-card">
-            <h3 style="display: flex; align-items: center; gap: 6px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #F59E0B;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-              Evolução das Saídas por Dia (Linha do Tempo)
-            </h3>
-            <canvas id="chartDailyTimeline" height="200"></canvas>
-          </div>
-        </div>
-
-        <!-- GRÁFICOS 3 & 4: FUNIL E RECORRÊNCIA -->
-        <div class="charts-grid" style="margin-bottom: 1.25rem;">
-          <div class="chart-card">
-            <h3 style="display: flex; align-items: center; gap: 6px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #10B981;"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
-              Desfecho das Cotações (Pedidos que Saíram vs Perdidos)
-            </h3>
-            <canvas id="chartChatFunnel" height="200"></canvas>
-          </div>
-          <div class="chart-card">
-            <h3 style="display: flex; align-items: center; gap: 6px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #818CF8;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              Top Assistências por Recorrência de Pedidos
-            </h3>
-            <canvas id="chartRecurrence" height="200"></canvas>
-          </div>
         </div>
 
         <!-- TABELA DE RUPTURAS CRÍTICAS -->
@@ -1539,17 +512,6 @@ def render_dashboard_html() -> str:
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-
-      <div class="charts-grid">
-        <div class="chart-card">
-          <h3>⚖️ Mix de Vendas: Original vs. Paralela</h3>
-          <canvas id="chartQuality" height="200"></canvas>
-        </div>
-        <div class="chart-card">
-          <h3>Distribuição por Categoria</h3>
-          <canvas id="chartCategory" height="200"></canvas>
         </div>
       </div>
 
@@ -1942,7 +904,7 @@ def render_dashboard_html() -> str:
               </div>
               <div class="pipeline-endpoint" id="ai-endpoint-convo">/v1beta/models/gemini-2.5-flash:generateContent</div>
               <div class="pipeline-fallback">
-                <span>Fallback:</span> <strong style="color: #A5B4FC;" id="ai-fallback-convo">Gemini 1.5 Pro + Fast FAQ Cache</strong>
+                <span>Fallback:</span> <strong style="color: #A5B4FC;" id="ai-fallback-convo">Fast FAQ In-Memory Cache (0ms)</strong>
               </div>
             </div>
 
@@ -1986,8 +948,9 @@ def render_dashboard_html() -> str:
           <div class="simulator-wrapper">
             <div class="chat-box">
               <div class="chat-messages" id="chat-messages">
-                <div class="chat-msg bot">
-                  Opa meu patrão! Tudo beleza? Aqui é da Victor Cell Peças. Pode mandar sua dúvida ou cotação de tela/peça que já vejo no estoque pra você!
+                <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 0.875rem;" id="chat-empty-hint">
+                  <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">💬</div>
+                  Digite uma mensagem abaixo para simular o atendimento do balcão em tempo real.
                 </div>
               </div>
               <div class="chat-input-bar">
@@ -2046,11 +1009,11 @@ def render_dashboard_html() -> str:
 
         <!-- FILTROS DE AUDITORIA -->
         <div class="audit-toolbar" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); margin-top: 0.5rem;">
-          <div class="level-pills" style="display: flex; gap: 0.4rem;">
+          <div class="level-pills">
             <button class="pill-btn active" data-level="" onclick="filterAuditLevel('', this)">Todos</button>
-            <button class="pill-btn pill-info" data-level="INFO" onclick="filterAuditLevel('INFO', this)">INFO</button>
-            <button class="pill-btn pill-warn" data-level="WARN" onclick="filterAuditLevel('WARN', this)">WARN</button>
-            <button class="pill-btn pill-error" data-level="ERROR" onclick="filterAuditLevel('ERROR', this)">ERROR</button>
+            <button class="pill-btn pill-info" data-level="INFO" onclick="filterAuditLevel('INFO', this)">Informativo</button>
+            <button class="pill-btn pill-warn" data-level="WARN" onclick="filterAuditLevel('WARN', this)">Avisos</button>
+            <button class="pill-btn pill-error" data-level="ERROR" onclick="filterAuditLevel('ERROR', this)">Erros</button>
           </div>
 
           <div style="flex: 1; min-width: 180px;">
@@ -2058,14 +1021,14 @@ def render_dashboard_html() -> str:
           </div>
 
           <div>
-            <select id="select-audit-component" onchange="fetchAuditLogs()" style="padding: 0.45rem 0.8rem; font-size: 0.8rem; border-radius: 6px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+            <select id="select-audit-component" onchange="fetchAuditLogs()" class="select-styled">
               <option value="">Todos os Componentes</option>
-              <option value="AI_ENGINE">AI_ENGINE</option>
-              <option value="ROUTER">ROUTER</option>
-              <option value="NOTIFIER">NOTIFIER</option>
-              <option value="REPO">REPO</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="ERP_SYNC">ERP_SYNC</option>
+              <option value="AI_ENGINE">Motor de IA (Gemini)</option>
+              <option value="ROUTER">Roteador WhatsApp</option>
+              <option value="NOTIFIER">Notificador & Alertas</option>
+              <option value="REPO">Banco de Dados</option>
+              <option value="ADMIN">Painel Administrativo</option>
+              <option value="ERP_SYNC">Sincronização ERP</option>
             </select>
           </div>
         </div>
@@ -2076,8 +1039,8 @@ def render_dashboard_html() -> str:
             <thead>
               <tr>
                 <th style="width: 140px;">Timestamp</th>
-                <th style="width: 80px;">Nível</th>
-                <th style="width: 110px;">Componente</th>
+                <th style="width: 90px;">Nível</th>
+                <th style="width: 130px;">Componente</th>
                 <th style="width: 190px;">Ação</th>
                 <th style="width: 130px;">Ator</th>
                 <th style="width: 80px;">Latência</th>
@@ -2085,13 +1048,27 @@ def render_dashboard_html() -> str:
               </tr>
             </thead>
             <tbody id="audit-table-body">
-              <tr>
-                <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                  Carregando trilha de auditoria...
-                </td>
-              </tr>
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td><td><div class="skeleton-table-cell" style="width: 80%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td><td><div class="skeleton-table-cell" style="width: 45%;"></div></td><td><div class="skeleton-table-cell" style="width: 85%;"></div></td></tr>
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 65%;"></div></td><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td><td><div class="skeleton-table-cell" style="width: 75%;"></div></td><td><div class="skeleton-table-cell" style="width: 55%;"></div></td><td><div class="skeleton-table-cell" style="width: 40%;"></div></td><td><div class="skeleton-table-cell" style="width: 90%;"></div></td></tr>
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 75%;"></div></td><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 45%;"></div></td><td><div class="skeleton-table-cell" style="width: 75%;"></div></td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- PAGINAÇÃO DE AUDITORIA (MÁXIMO 10 POR PÁGINA) -->
+        <div class="pagination-bar" id="audit-pagination-bar">
+          <div style="font-size: 0.8rem; color: var(--text-muted);" id="audit-pagination-info">
+            Mostrando 1 a 10 de 0 registros
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="pagination-btn" id="btn-audit-prev" onclick="changeAuditPage(-1)" disabled>
+              ← Anterior
+            </button>
+            <span style="font-size: 0.8rem; font-weight: 600; color: #fff; padding: 0 0.5rem;" id="audit-page-number">1 / 1</span>
+            <button class="pagination-btn" id="btn-audit-next" onclick="changeAuditPage(1)" disabled>
+              Próxima →
+            </button>
+          </div>
         </div>
 
         <!-- LISTA EM CARDS PARA MOBILE -->
@@ -2159,1820 +1136,215 @@ def render_dashboard_html() -> str:
             </button>
           </div>
         </form>
+      </div>
 
-        <!-- EXEMPLOS CANÔNICOS DE TOM DE BALCÃO (GOLDEN DIALOGUES - 36 CONVERSAS MINERADAS) -->
-        <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle);">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
-            <div>
-              <h4 style="font-size: 0.92rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #F59E0B;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                Padrões Canônicos de Tom de Balcão (Golden Dialogues das 36 Conversas Reais)
-              </h4>
-              <p style="font-size: 0.775rem; color: var(--text-muted); margin-top: 2px;">
-                A IA é calibrada estritamente com estes diálogos reais de assistências técnicas do Centro de Fortaleza.
-              </p>
+      <!-- PERSONALIZAÇÃO VISUAL & WHITE-LABEL (MULTI-TENANCY) -->
+      <div class="card" style="margin-bottom: 1.25rem;">
+        <div class="card-header">
+          <div>
+            <div class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--tenant-brand);"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 10 10 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+              <span>Personalização Visual & White-Label (Multi-Tenant)</span>
             </div>
-            <span class="badge-count">Calibrado com 36 chats</span>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Configure a marca, logo e paleta de cores para customizar a plataforma para novos clientes sem alterar código.
+            </p>
+          </div>
+        </div>
+
+        <form id="tenant-form" onsubmit="saveTenantBranding(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 1rem;">
+          <div class="form-group">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Nome da Marca / Cliente</label>
+            <input type="text" id="tenant-brand-name" required class="input-styled" placeholder="Ex: Victor Cell" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
           </div>
 
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-            <!-- Exemplo 1: Cotação Direta -->
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 1rem;">
-              <div style="font-size: 0.75rem; font-weight: 700; color: #34D399; text-transform: uppercase; margin-bottom: 0.5rem;">Cenário 1: Cotação com Preço e Aro</div>
-              <div style="font-size: 0.775rem; color: #94A3B8; margin-bottom: 0.35rem;"><strong>Cliente:</strong> "bom dia amigo tem tela do moto g22?"</div>
-              <div style="font-size: 0.775rem; color: #F0FDF4; background: rgba(16, 185, 129, 0.1); padding: 0.5rem 0.65rem; border-radius: 6px; border-left: 2px solid #10B981;">
-                <strong>Victor Cell:</strong> "Bom dia amigo! Temos sim, primeira linha com aro por R$ 130 à vista no Pix. Quer que separe pro motoboy buscar ou você vem retirar no balcão?"
+          <div class="form-group">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Slogan / Subtítulo</label>
+            <input type="text" id="tenant-brand-slogan" required class="input-styled" placeholder="Ex: ERP & Balcão Inteligente" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+          </div>
+
+          <div class="form-group">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Badge de Versão</label>
+            <input type="text" id="tenant-brand-badge" required class="input-styled" placeholder="Ex: PRO ou ENTERPRISE" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+          </div>
+
+          <div class="form-group">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Cor Primária de Destaque</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="color" id="tenant-primary-color" value="#F71963" onchange="document.getElementById('tenant-primary-color-text').value = this.value" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+              <input type="text" id="tenant-primary-color-text" value="#F71963" onchange="document.getElementById('tenant-primary-color').value = this.value" class="input-styled" style="flex: 1; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono);">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Cor Hover (Botões e Foco)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="color" id="tenant-primary-hover" value="#E00E54" onchange="document.getElementById('tenant-primary-hover-text').value = this.value" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+              <input type="text" id="tenant-primary-hover-text" value="#E00E54" onchange="document.getElementById('tenant-primary-hover').value = this.value" class="input-styled" style="flex: 1; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono);">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Ícone / Emoji do Logo</label>
+            <input type="text" id="tenant-logo-icon" class="input-styled" placeholder="Ex: ⚡ ou 📱 ou 🔧" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">URL do Logo PNG/SVG (Opcional - substitui o ícone)</label>
+            <input type="text" id="tenant-logo-url" class="input-styled" placeholder="Ex: /static/brands/minha-loja.png" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+          </div>
+
+          <!-- PRÉVIA INSTANTÂNEA DA MARCA -->
+          <div style="grid-column: 1 / -1;" class="tenant-preview-box">
+            <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 5px;">
+              <span>👁️ Amostra & Pré-visualização em Tempo Real</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+              <div id="tenant-preview-badge" style="background: var(--tenant-brand); color: #fff; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px var(--tenant-brand-glow);">
+                <span id="tenant-preview-icon" style="font-size: 1.1rem;">⚡</span>
+                <span id="tenant-preview-name">Victor Cell</span>
+                <span id="tenant-preview-tag" class="brand-badge-vtex">PRO</span>
               </div>
-            </div>
-
-            <!-- Exemplo 2: Ruptura com Alternativa -->
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 1rem;">
-              <div style="font-size: 0.75rem; font-weight: 700; color: #FBBF24; text-transform: uppercase; margin-bottom: 0.5rem;">Cenário 2: Peça sem Estoque (Ruptura c/ Alternativa)</div>
-              <div style="font-size: 0.775rem; color: #94A3B8; margin-bottom: 0.35rem;"><strong>Cliente:</strong> "tem tela a15 original nacional?"</div>
-              <div style="font-size: 0.775rem; color: #FFFBEB; background: rgba(245, 158, 11, 0.1); padding: 0.5rem 0.65rem; border-radius: 6px; border-left: 2px solid #F59E0B;">
-                <strong>Victor Cell:</strong> "A original esgotou hoje cedo amigo. Mas tenho a primeira linha premium com garantia por R$ 140. Separo uma pra você?"
-              </div>
-            </div>
-
-            <!-- Exemplo 3: Domingo / Fechado (Zero Parênteses) -->
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 1rem;">
-              <div style="font-size: 0.75rem; font-weight: 700; color: #818CF8; text-transform: uppercase; margin-bottom: 0.5rem;">Cenário 3: Domingo / Fora de Horário (Zero Parênteses)</div>
-              <div style="font-size: 0.775rem; color: #94A3B8; margin-bottom: 0.35rem;"><strong>Cliente:</strong> "boa tarde tá funcionando hoje?"</div>
-              <div style="font-size: 0.775rem; color: #EEF2FF; background: rgba(99, 102, 241, 0.1); padding: 0.5rem 0.65rem; border-radius: 6px; border-left: 2px solid #6366F1;">
-                <strong>Victor Cell:</strong> "Fechado hoje domingo, abrimos amanhã às 08:00 no centro. Deixe a peça que você precisa anotada que logo cedo respondemos sua cotação!"
-              </div>
+              <button type="button" id="tenant-preview-btn" style="background: var(--tenant-brand); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease;">
+                Botão de Ação Primária
+              </button>
+              <div style="font-size: 0.75rem; color: var(--text-dim);" id="tenant-preview-slogan">ERP & Balcão Inteligente</div>
             </div>
           </div>
-        </div>
 
-      </div>
-    </div>
-
-
-    <!-- CHAT DRAWER LATERAL (ATENDIMENTO WHATSAPP AO VIVO) -->
-    <div id="drawer-chat-overlay" class="drawer-overlay" onclick="closeChatDrawer()"></div>
-    <div id="drawer-chat" class="chat-drawer">
-      <div class="chat-drawer-header">
-        <div class="user-profile">
-          <div class="user-avatar" id="drawer-avatar">CL</div>
-          <div class="user-info">
-            <span class="user-name" id="drawer-name">Cliente WhatsApp</span>
-            <span class="user-phone" id="drawer-phone">--</span>
-          </div>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="status-pill status-robot" id="drawer-status-pill">IA Ativa</span>
-          <button class="drawer-close-btn" onclick="closeChatDrawer()" aria-label="Fechar">✕</button>
-        </div>
-      </div>
-      <div class="chat-drawer-body" id="drawer-messages">
-        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando histórico...</div>
-      </div>
-      <div class="chat-drawer-footer">
-        <button class="btn btn-amber btn-sm" id="drawer-action-btn" onclick="toggleDrawerConversationMode()">⏸️ Assumir Atendimento</button>
-        <a href="#" target="_blank" id="drawer-wa-link" class="btn btn-secondary btn-sm">Abrir no Zap ↗</a>
-      </div>
-    </div>
-
-    <!-- MODAL VTEX ADMIN: CADASTRAR NOVA PEÇA NO ESTOQUE (ERP NATIVO) -->
-    <div id="modal-new-product" class="vtex-modal-overlay">
-      <div class="vtex-modal">
-        <div class="vtex-modal-header">
-          <div class="vtex-modal-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--vtex-pink);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-            <span>Cadastrar Nova Peça no Estoque (ERP Nativo)</span>
-          </div>
-          <button class="drawer-close-btn" onclick="closeNewProductModal()">✕</button>
-        </div>
-        <form id="form-new-product" onsubmit="submitNewProduct(event)" class="vtex-modal-body">
-          <div class="vtex-form-grid">
-            <div class="vtex-form-group col-span-2">
-              <label>SKU / Código Único *</label>
-              <input type="text" id="np-sku" required placeholder="Ex: TELA-MOTO-G22-PRETA" style="font-family: var(--font-mono);">
-            </div>
-            <div class="vtex-form-group col-span-2">
-              <label>Modelo Compatível & Descrição *</label>
-              <input type="text" id="np-model" required placeholder="Ex: Motorola Moto G22 (XT2231)">
-            </div>
-            <div class="vtex-form-group">
-              <label>Categoria *</label>
-              <select id="np-category" required>
-                <option value="Telas Frontais">Telas Frontais</option>
-                <option value="Baterias">Baterias</option>
-                <option value="Conectores de Carga">Conectores de Carga</option>
-                <option value="Tampas Traseiras">Tampas Traseiras</option>
-                <option value="Câmeras">Câmeras</option>
-                <option value="Outros">Outros</option>
-              </select>
-            </div>
-            <div class="vtex-form-group">
-              <label>Qualidade *</label>
-              <select id="np-quality" required>
-                <option value="PRIMEIRA_LINHA">Primeira Linha (Incell/OLED)</option>
-                <option value="ORIGINAL_NACIONAL">Original Nacional</option>
-              </select>
-            </div>
-            <div class="vtex-form-group">
-              <label>Possui Aro? *</label>
-              <select id="np-has-frame">
-                <option value="true">Sim (Com Aro)</option>
-                <option value="false">Não (Sem Aro)</option>
-              </select>
-            </div>
-            <div class="vtex-form-group">
-              <label>Quantidade Inicial *</label>
-              <input type="number" id="np-quantity" required min="1" value="5">
-            </div>
-            <div class="vtex-form-group">
-              <label>Preço de Venda Balcão (R$) *</label>
-              <input type="number" id="np-price" required step="0.01" min="0.01" placeholder="120.00">
-            </div>
-            <div class="vtex-form-group">
-              <label>Custo Unitário (R$)</label>
-              <input type="number" id="np-cost" step="0.01" min="0" placeholder="65.00">
-            </div>
-            <div class="vtex-form-group">
-              <label>Fornecedor</label>
-              <input type="text" id="np-supplier" placeholder="Ex: Distribuidora Central">
-            </div>
-            <div class="vtex-form-group">
-              <label>Localização / Gaveta</label>
-              <input type="text" id="np-location" placeholder="Ex: Gaveta G-12">
-            </div>
-          </div>
-          <div class="vtex-modal-footer" style="margin-top: 1.25rem; padding-bottom: 0;">
-            <button type="button" class="btn btn-secondary" onclick="closeNewProductModal()">Cancelar</button>
-            <button type="submit" class="btn btn-emerald" id="btn-save-product">Salvar Peça no Estoque</button>
+          <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="submit" class="btn" style="background: var(--tenant-brand); color: white; padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 600;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Salvar Personalização White-Label
+            </button>
           </div>
         </form>
       </div>
-    </div>
+    </div> <!-- /tab-profile -->
 
-    <!-- MODAL VTEX ADMIN: INSPEÇÃO DE JSON TÉCNICO (AUDITORIA) -->
-    <div id="modal-json-viewer" class="vtex-modal-overlay">
-      <div class="vtex-modal" style="max-width: 680px;">
-        <div class="vtex-modal-header">
-          <div class="vtex-modal-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #818CF8;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            <span id="json-modal-title">Payload JSON Técnico</span>
-          </div>
-          <button class="drawer-close-btn" onclick="closeJsonViewer()">✕</button>
-        </div>
-        <div class="vtex-modal-body">
-          <pre id="json-modal-content" style="background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.775rem; color: #A5B4FC; overflow-x: auto; max-height: 480px;"></pre>
-        </div>
-        <div class="vtex-modal-footer">
-          <button class="btn btn-secondary" onclick="closeJsonViewer()">Fechar</button>
-        </div>
-      </div>
-    </div>
-
-    </main>
+    </main> <!-- /main-body -->
     </div> <!-- /content-viewport -->
   </div> <!-- /app-layout -->
 
-<script>
-
-    // --- UTILITÁRIOS DE FORMATAÇÃO E USABILIDADE ---
-    function formatPhoneBR(raw) {
-      if (!raw) return '--';
-      const digits = String(raw).replace(/\D/g, '');
-      if (digits.length === 13 && digits.startsWith('55')) {
-        return `(${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
-      } else if (digits.length === 12 && digits.startsWith('55')) {
-        return `(${digits.slice(2, 4)}) ${digits.slice(4, 8)}-${digits.slice(8)}`;
-      } else if (digits.length === 11) {
-        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-      } else if (digits.length === 10) {
-        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-      }
-      return raw;
-    }
-
-    function formatOrderStatusBadge(status) {
-      const s = String(status || '').toUpperCase();
-      if (s === 'CONFIRMED') {
-        return '<span class="status-pill" style="background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3);">✓ Separando / Confirmado</span>';
-      } else if (s === 'WAITING_CONFIRMATION') {
-        return '<span class="status-pill" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3);">⏳ Aguardando Confirmação</span>';
-      } else if (s === 'DISPATCHED_UBER') {
-        return '<span class="status-pill" style="background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.3);">🚗 Em Rota Uber Flash</span>';
-      } else if (s === 'DELIVERED') {
-        return '<span class="status-pill" style="background: rgba(6, 182, 212, 0.15); color: #38BDF8; border: 1px solid rgba(6, 182, 212, 0.3);">📦 Entregue / Concluído</span>';
-      } else if (s === 'CANCELLED') {
-        return '<span class="status-pill" style="background: rgba(239, 68, 68, 0.15); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3);">✕ Cancelado</span>';
-      }
-      return `<span class="status-pill status-robot">${escapeHtml(status)}</span>`;
-    }
-
-    // --- CHAT DRAWER DE ATENDIMENTO AO VIVO (WHATSAPP) ---
-    let currentDrawerPhone = null;
-    let currentDrawerActive = true;
-
-    async function openChatDrawer(phone, name, formattedPhone, isActive) {
-      currentDrawerPhone = phone;
-      currentDrawerActive = isActive;
-      const cleanPhone = (phone || '').replace(/\D/g, '');
-      const initials = getInitials(name || 'Cliente');
-
-      document.getElementById('drawer-avatar').innerText = initials;
-      document.getElementById('drawer-name').innerText = name || 'Cliente WhatsApp';
-      document.getElementById('drawer-phone').innerText = formatPhoneBR(formattedPhone || phone);
-      document.getElementById('drawer-wa-link').href = cleanPhone ? `https://wa.me/${cleanPhone}` : '#';
-
-      const pill = document.getElementById('drawer-status-pill');
-      const actionBtn = document.getElementById('drawer-action-btn');
-      if (isActive) {
-        pill.className = 'status-pill status-robot';
-        pill.innerText = 'IA Ativa';
-        actionBtn.className = 'btn btn-amber btn-sm';
-        actionBtn.innerText = '⏸️ Assumir Atendimento';
-      } else {
-        pill.className = 'status-pill status-human';
-        pill.innerText = 'Balcão Manual';
-        actionBtn.className = 'btn btn-emerald btn-sm';
-        actionBtn.innerText = '▶️ Liberar p/ IA';
-      }
-
-      document.getElementById('drawer-chat-overlay').classList.add('active');
-      document.getElementById('drawer-chat').classList.add('active');
-
-      const msgBox = document.getElementById('drawer-messages');
-      msgBox.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Carregando histórico ao vivo...</div>';
-
-      try {
-        const res = await fetch(`/api/conversations/${cleanPhone}/messages`);
-        const data = await res.json();
-        const messages = data.messages || [];
-
-        if (messages.length === 0) {
-          msgBox.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma mensagem registrada nesta conversa ainda.</div>';
-          return;
-        }
-
-        msgBox.innerHTML = messages.map(m => {
-          const isUser = m.role === 'user';
-          const senderLabel = isUser ? 'Cliente' : (m.role === 'system' ? 'Sistema Balcão' : 'Victor Cell (IA)');
-          const bubbleClass = isUser ? 'incoming' : 'outgoing';
-          const time = m.created_at || '';
-
-          return `
-            <div class="chat-bubble-drawer ${bubbleClass}">
-              <div style="font-size: 0.68rem; font-weight: 700; opacity: 0.75; margin-bottom: 2px;">${senderLabel}</div>
-              <div style="white-space: pre-wrap;">${escapeHtml(m.content)}</div>
-              <div class="chat-bubble-meta">
-                <span>${time}</span>
-                ${!isUser ? '<span>✓✓</span>' : ''}
-              </div>
-            </div>
-          `;
-        }).join('');
-        msgBox.scrollTop = msgBox.scrollHeight;
-      } catch (err) {
-        msgBox.innerHTML = '<div style="text-align: center; padding: 2rem; color: #F87171;">Erro ao carregar mensagens: ' + escapeHtml(err.message) + '</div>';
-      }
-    }
-
-    function closeChatDrawer() {
-      document.getElementById('drawer-chat-overlay').classList.remove('active');
-      document.getElementById('drawer-chat').classList.remove('active');
-      currentDrawerPhone = null;
-    }
-
-    async function toggleDrawerConversationMode() {
-      if (!currentDrawerPhone) return;
-      if (currentDrawerActive) {
-        await pauseConversation(currentDrawerPhone);
-        currentDrawerActive = false;
-        document.getElementById('drawer-status-pill').className = 'status-pill status-human';
-        document.getElementById('drawer-status-pill').innerText = 'Balcão Manual';
-        document.getElementById('drawer-action-btn').className = 'btn btn-emerald btn-sm';
-        document.getElementById('drawer-action-btn').innerText = '▶️ Liberar p/ IA';
-      } else {
-        await resumeConversation(currentDrawerPhone);
-        currentDrawerActive = true;
-        document.getElementById('drawer-status-pill').className = 'status-pill status-robot';
-        document.getElementById('drawer-status-pill').innerText = 'IA Ativa';
-        document.getElementById('drawer-action-btn').className = 'btn btn-amber btn-sm';
-        document.getElementById('drawer-action-btn').innerText = '⏸️ Assumir Atendimento';
-      }
-    }
-
-    // --- MODAL DE CADASTRO MANUAL DE PRODUTOS NO ESTOQUE (ERP NATIVO) ---
-    function openNewProductModal() {
-      document.getElementById('modal-new-product').classList.add('active');
-      document.getElementById('np-sku').focus();
-    }
-
-    function closeNewProductModal() {
-      document.getElementById('modal-new-product').classList.remove('active');
-      document.getElementById('form-new-product').reset();
-    }
-
-    async function submitNewProduct(e) {
-      e.preventDefault();
-      const btn = document.getElementById('btn-save-product');
-      btn.disabled = true;
-      btn.innerText = 'Salvando no estoque...';
-
-      const payload = {
-        sku: document.getElementById('np-sku').value.trim().toUpperCase(),
-        model: document.getElementById('np-model').value.trim(),
-        category: document.getElementById('np-category').value,
-        quality: document.getElementById('np-quality').value,
-        has_frame: document.getElementById('np-has-frame').value === 'true',
-        price: parseFloat(document.getElementById('np-price').value),
-        cost: document.getElementById('np-cost').value ? parseFloat(document.getElementById('np-cost').value) : null,
-        initial_quantity: parseInt(document.getElementById('np-quantity').value, 10),
-        supplier: document.getElementById('np-supplier').value.trim() || null,
-        location: document.getElementById('np-location').value.trim() || null
-      };
-
-      try {
-        const res = await fetch('/api/erp/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Falha ao cadastrar peça');
-
-        showToast(`Peça ${payload.sku} cadastrada com ${payload.initial_quantity} un no estoque!`, 'success');
-        closeNewProductModal();
-        fetchCatalog();
-        loadErpSummary();
-        loadErpMovements();
-      } catch (err) {
-        showToast('Erro ao cadastrar peça: ' + err.message, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.innerText = 'Salvar Peça no Estoque';
-      }
-    }
-
-    // --- TOGGLE PLANILHA GOOGLE SHEETS ---
-    function toggleGoogleSheetsFrame() {
-      const container = document.getElementById('sheets-frame-container');
-      const textSpan = document.getElementById('toggle-sheets-btn-text');
-      if (!container) return;
-      if (container.style.display === 'none' || !container.style.display) {
-        container.style.display = 'block';
-        if (textSpan) textSpan.innerText = 'Ocultar Planilha';
-      } else {
-        container.style.display = 'none';
-        if (textSpan) textSpan.innerText = 'Exibir Planilha Google Sheets';
-      }
-    }
-
-    // --- MODAL DE INSPEÇÃO JSON TÉCNICO (AUDITORIA) ---
-    function openJsonViewer(index) {
-      const log = (window.renderedAuditLogs || [])[index];
-      if (!log) return;
-      document.getElementById('json-modal-title').innerText = `Auditoria #${log.id || index} • ${log.action}`;
-      document.getElementById('json-modal-content').innerText = JSON.stringify(log, null, 2);
-      document.getElementById('modal-json-viewer').classList.add('active');
-    }
-
-    function closeJsonViewer() {
-      document.getElementById('modal-json-viewer').classList.remove('active');
-    }
-
-    // --- STATUS DA PIPELINE COGNITIVA MULTIMODAL (IA EM TEMPO REAL) ---
-    async function fetchAIPipelineStatus() {
-      try {
-        const res = await fetch('/api/ai/pipeline-status');
-        if (!res.ok) return;
-        const data = await res.json();
-
-        // 1. Consumo Real
-        const usage = data.usage || {};
-        const reqCount = usage.real_daily_requests || 0;
-        const reqElem = document.getElementById('ai-real-requests');
-        if (reqElem) reqElem.innerText = `${reqCount} / ${usage.quota_limit || 1500} RPD`;
-
-        const pct = Math.min(100, Math.max(1, Math.round(usage.percentage || 0)));
-        const barElem = document.getElementById('ai-quota-bar');
-        if (barElem) barElem.style.width = pct + '%';
-
-        const pctElem = document.getElementById('ai-quota-pct');
-        if (pctElem) pctElem.innerText = `${pct}% da cota diária`;
-
-        // 2. Modelos & Endpoints
-        const pipe = data.pipeline || {};
-        if (pipe.conversation) {
-          const mElem = document.getElementById('ai-model-convo');
-          if (mElem) mElem.innerText = pipe.conversation.model || 'Gemini 2.5 Flash';
-          const epElem = document.getElementById('ai-endpoint-convo');
-          if (epElem) epElem.innerText = pipe.conversation.endpoint || '/v1beta/models/gemini-2.5-flash:generateContent';
-          const fbElem = document.getElementById('ai-fallback-convo');
-          if (fbElem) fbElem.innerText = (pipe.conversation.fallback || 'Gemini 1.5 Pro') + ' + Fast FAQ Cache';
-        }
-
-        // 3. Circuit Breaker
-        if (pipe.circuit_breaker) {
-          const cbElem = document.getElementById('ai-circuit-status');
-          const cb = pipe.circuit_breaker;
-          if (cbElem) {
-            cbElem.innerText = `${cb.state || 'CLOSED'} (${cb.failures || 0} falhas)`;
-            cbElem.style.color = (cb.state === 'CLOSED') ? '#34D399' : '#F87171';
-          }
-        }
-      } catch (err) {
-        console.error('Erro ao buscar status da pipeline de IA:', err);
-      }
-    }
-
-
-    // Interceptor global: Redireciona imediatamente para o login se a sessão expirar
-    const originalFetch = window.fetch;
-    window.fetch = async function(...args) {
-      try {
-        const response = await originalFetch.apply(this, args);
-        if (response.status === 401 && !window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
-        }
-        return response;
-      } catch (err) {
-        throw err;
-      }
-    };
-
-    // Variáveis Globais
-    let allConversations = [];
-    let allOrders = [];
-    let allCatalog = [];
-    let chartQuality = null;
-    let chartCategory = null;
-
-    // --- JAVASCRIPT DO CONSULTOR EXECUTIVO DE NEGÓCIOS (COPILOTO IA) ---
-    let copilotHistory = [];
-
-    function clearCopilotChat() {
-      copilotHistory = [];
-      const messagesDiv = document.getElementById('copilot-messages');
-      if (messagesDiv) {
-        messagesDiv.innerHTML = `
-          <div class="copilot-msg bot">
-            <div class="copilot-avatar">✦</div>
-            <div class="copilot-bubble">
-              <p><strong>Sessão de Análise Reiniciada</strong></p>
-              <p>Pronto para examinar novos indicadores de faturamento, pedidos e estoque da Victor Cell. Qual métrica ou diagnóstico deseja consultar?</p>
-            </div>
-          </div>
-        `;
-      }
-    }
-
-    function sendQuickPrompt(promptText) {
-      const input = document.getElementById('copilot-input');
-      if (input) {
-        input.value = promptText;
-        sendCopilotMessage();
-      }
-    }
-
-    function formatMarkdownText(rawText) {
-      if (!rawText) return '';
-      let formatted = rawText
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.1);padding:2px 5px;border-radius:4px;font-family:monospace;">$1</code>');
-
-      const lines = formatted.split('\n');
-      let htmlOut = '';
-      let inList = false;
-
-      for (let line of lines) {
-        line = line.trim();
-        if (line.startsWith('### ')) {
-          if (inList) { htmlOut += '</ul>'; inList = false; }
-          htmlOut += `<h4 style="margin: 1.15rem 0 0.45rem 0; font-size: 0.95rem; font-weight: 700; color: #93C5FD; letter-spacing: 0.03em; text-transform: uppercase;">${line.substring(4)}</h4>`;
-        } else if (line.startsWith('## ')) {
-          if (inList) { htmlOut += '</ul>'; inList = false; }
-          htmlOut += `<h3 style="margin: 1.3rem 0 0.55rem 0; font-size: 1.05rem; font-weight: 700; color: #F3F4F6;">${line.substring(3)}</h3>`;
-        } else if (line.startsWith('# ')) {
-          if (inList) { htmlOut += '</ul>'; inList = false; }
-          htmlOut += `<h2 style="margin: 1.5rem 0 0.65rem 0; font-size: 1.15rem; font-weight: 700; color: #FFFFFF;">${line.substring(2)}</h2>`;
-        } else if (line.startsWith('• ') || line.startsWith('- ') || line.startsWith('* ')) {
-          if (!inList) {
-            htmlOut += '<ul style="margin: 0.5rem 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.35rem;">';
-            inList = true;
-          }
-          htmlOut += `<li style="line-height: 1.6; color: #E5E7EB;">${line.substring(2)}</li>`;
-        } else {
-          if (inList) {
-            htmlOut += '</ul>';
-            inList = false;
-          }
-          if (line) {
-            htmlOut += `<p style="margin-bottom: 0.75rem; line-height: 1.65; color: #E5E7EB;">${line}</p>`;
-          }
-        }
-      }
-      if (inList) htmlOut += '</ul>';
-      return htmlOut;
-    }
-
-    async function sendCopilotMessage() {
-      const input = document.getElementById('copilot-input');
-      if (!input) return;
-      const text = input.value.trim();
-      if (!text) return;
-
-      input.value = '';
-
-      const messagesDiv = document.getElementById('copilot-messages');
-      if (!messagesDiv) return;
-
-      // 1. Mensagem do Gestor
-      const userMsg = document.createElement('div');
-      userMsg.className = 'copilot-msg user';
-      userMsg.innerHTML = `
-        <div class="copilot-user-avatar">Atendente</div>
-        <div class="copilot-bubble">
-          <p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+  <!-- CHAT DRAWER LATERAL (ATENDIMENTO WHATSAPP AO VIVO - NÍVEL BODY) -->
+  <div id="drawer-chat-overlay" class="drawer-overlay" onclick="closeChatDrawer()"></div>
+  <div id="drawer-chat" class="chat-drawer">
+    <div class="chat-drawer-header">
+      <div class="user-profile">
+        <div class="user-avatar" id="drawer-avatar">CL</div>
+        <div class="user-info">
+          <span class="user-name" id="drawer-name">Cliente WhatsApp</span>
+          <span class="user-phone" id="drawer-phone">--</span>
         </div>
-      `;
-      messagesDiv.appendChild(userMsg);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="status-pill status-robot" id="drawer-status-pill">IA Ativa</span>
+        <button class="drawer-close-btn" onclick="closeChatDrawer()" aria-label="Fechar">✕</button>
+      </div>
+    </div>
+    <div class="chat-drawer-body" id="drawer-messages">
+      <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Carregando histórico...</div>
+    </div>
+    <div class="chat-drawer-footer">
+      <button class="btn btn-amber btn-sm" id="drawer-action-btn" onclick="toggleDrawerConversationMode()">⏸️ Assumir Atendimento</button>
+      <a href="#" target="_blank" id="drawer-wa-link" class="btn btn-secondary btn-sm">Abrir no Zap ↗</a>
+    </div>
+  </div>
 
-      // 2. Balão de Carregando (Typing Indicator)
-      const loadingMsg = document.createElement('div');
-      loadingMsg.className = 'copilot-msg bot loading-msg';
-      loadingMsg.innerHTML = `
-        <div class="copilot-avatar">✦</div>
-        <div class="copilot-bubble">
-          <span class="copilot-loading-dot"></span> Analisando dados da loja em tempo real...
+  <!-- MODAL VTEX ADMIN: CADASTRAR NOVA PEÇA NO ESTOQUE (ERP NATIVO) -->
+  <div id="modal-new-product" class="vtex-modal-overlay">
+    <div class="vtex-modal">
+      <div class="vtex-modal-header">
+        <div class="vtex-modal-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--vtex-pink);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          <span>Cadastrar Nova Peça no Estoque (ERP Nativo)</span>
         </div>
-      `;
-      messagesDiv.appendChild(loadingMsg);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-      try {
-        const res = await fetch('/api/copilot/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, history: copilotHistory })
-        });
-        const data = await res.json();
-        loadingMsg.remove();
-
-        const botMsg = document.createElement('div');
-        botMsg.className = 'copilot-msg bot';
-        const formatted = formatMarkdownText(data.reply || 'Sem resposta do assistente.');
-        botMsg.innerHTML = `
-          <div class="copilot-avatar">✦</div>
-          <div class="copilot-bubble">${formatted}</div>
-        `;
-        messagesDiv.appendChild(botMsg);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-        copilotHistory.push({ role: 'user', content: text });
-        copilotHistory.push({ role: 'model', content: data.reply || '' });
-        if (copilotHistory.length > 8) copilotHistory = copilotHistory.slice(-8);
-
-      } catch (err) {
-        loadingMsg.remove();
-        const errorMsg = document.createElement('div');
-        errorMsg.className = 'copilot-msg bot';
-        errorMsg.innerHTML = `
-          <div class="copilot-avatar">✦</div>
-          <div class="copilot-bubble" style="border-color: rgba(239, 68, 68, 0.4);">
-            <p style="color: #F87171;">⚠️ Erro ao consultar o Consultor de Negócios. Verifique sua conexão e tente novamente.</p>
+        <button class="drawer-close-btn" onclick="closeNewProductModal()">✕</button>
+      </div>
+      <form id="form-new-product" onsubmit="submitNewProduct(event)" class="vtex-modal-body">
+        <div class="vtex-form-grid">
+          <div class="vtex-form-group col-span-2">
+            <label>SKU / Código Único *</label>
+            <input type="text" id="np-sku" required placeholder="Ex: TELA-MOTO-G22-PRETA" style="font-family: var(--font-mono);">
           </div>
-        `;
-        messagesDiv.appendChild(errorMsg);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-      }
-    }
-
-    // --- FUNÇÕES DA ABA GOOGLE SHEETS & CATÁLOGO ---
-    function toggleSheetView() {
-      const container = document.getElementById('sheet-embed-container');
-      const btn = document.getElementById('btn-toggle-sheet-view');
-      if (!container || !btn) return;
-      if (container.style.display === 'none') {
-        container.style.display = 'block';
-        btn.innerText = '✕ Fechar Visualização da Planilha';
-      } else {
-        container.style.display = 'none';
-        btn.innerText = 'Visualizar Planilha';
-      }
-    }
-
-    function filterCatalogTable() {
-      const searchEl = document.getElementById('catalog-search');
-      const query = (searchEl ? searchEl.value : '').toLowerCase().trim();
-      const rows = document.querySelectorAll('#catalog-tbody tr');
-      rows.forEach(r => {
-        const text = r.innerText.toLowerCase();
-        r.style.display = text.includes(query) ? '' : 'none';
-      });
-      const cards = document.querySelectorAll('#catalog-cards-mobile .customer-card-mobile');
-      cards.forEach(c => {
-        const text = c.innerText.toLowerCase();
-        c.style.display = text.includes(query) ? '' : 'none';
-      });
-    }
-
-
-    function showToast(msg, type = 'success') {
-      const toast = document.getElementById('toast');
-      const icon = document.getElementById('toast-icon');
-      const text = document.getElementById('toast-msg');
-      icon.innerText = type === 'success' ? '✅' : '⚠️';
-      text.innerText = msg;
-      toast.style.display = 'flex';
-      setTimeout(() => { toast.style.display = 'none'; }, 3500);
-    }
-
-
-    function toggleSidebar() {
-      const sidebar = document.getElementById('app-sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      if (sidebar) sidebar.classList.toggle('sidebar-open');
-      if (overlay) overlay.classList.toggle('active');
-    }
-    function switchTab(tabId) {
-      const tabTitles = {
-        conversations: 'Atendimentos WhatsApp',
-        orders: 'Separação & Balcão de Saída',
-        overview: 'Métricas & Relatórios',
-        catalog: 'Catálogo de Peças',
-        erp: 'ERP & Entrada de Estoque',
-        copilot: 'Copiloto de Gestão',
-        audit: 'Auditoria & Logs',
-        profile: 'Perfil da Loja',
-        gemini: 'Simulador WhatsApp Sandbox'
-      };
-      const titleElem = document.getElementById('bc-current-title');
-      if (titleElem && tabTitles[tabId]) {
-        titleElem.textContent = tabTitles[tabId];
-      }
-      const sidebar = document.getElementById('app-sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      if (sidebar && window.innerWidth < 1024) {
-        sidebar.classList.remove('sidebar-open');
-        if (overlay) overlay.classList.remove('active');
-      }
-      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      const activeBtn = Array.from(document.querySelectorAll('.nav-tab')).find(b => b.getAttribute('onclick').includes(tabId));
-      if (activeBtn) activeBtn.classList.add('active');
-      const targetPane = document.getElementById('tab-' + tabId);
-      if (targetPane) targetPane.classList.add('active');
-
-      if (tabId === 'conversations') fetchConversations();
-      if (tabId === 'catalog') fetchCatalog();
-    checkMasterAISwitch();
-      if (tabId === 'orders' || tabId === 'overview') fetchStats();
-      if (tabId === 'audit') fetchAuditLogs();
-      if (tabId === 'profile') fetchStoreProfile();
-      if (tabId === 'erp') { loadErpSummary(); loadErpMovements(); }
-      if (tabId === 'simulator' || tabId === 'gemini') {
-        fetchWhatsAppQR();
-        fetchAIPipelineStatus();
-      }
-    }
-
-    // 1. ATENDIMENTOS AO VIVO (IA VS HUMANO)
-    async function fetchConversations() {
-      try {
-        const res = await fetch('/api/conversations');
-        const data = await res.json();
-        allConversations = data.conversations || [];
-        document.getElementById('badge-convs-count').innerText = allConversations.length;
-        document.getElementById('convs-counter').innerText = `${allConversations.length} atendimentos`;
-        document.getElementById('kpi-active-chats').innerText = allConversations.length;
-
-        renderConversations(allConversations);
-      } catch (err) {
-        console.error('Erro ao carregar atendimentos:', err);
-      }
-    }
-
-    function filterConversations() {
-      const q = (document.getElementById('search-convs').value || '').toLowerCase().trim();
-      if (!q) {
-        renderConversations(allConversations);
-        return;
-      }
-      const filtered = allConversations.filter(c =>
-        (c.customer_name || '').toLowerCase().includes(q) ||
-        (c.phone || '').includes(q) ||
-        (c.formatted_phone || '').includes(q) ||
-        (c.active_sku_name || '').toLowerCase().includes(q) ||
-        (c.active_sku || '').toLowerCase().includes(q)
-      );
-      renderConversations(filtered);
-    }
-
-    function renderConversations(convs) {
-      const tbodyDesktop = document.getElementById('convs-tbody-desktop');
-      const deckMobile = document.getElementById('convs-cards-mobile');
-
-      if (!convs || convs.length === 0) {
-        const emptyHtml = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum atendimento registrado no momento.</div>';
-        tbodyDesktop.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">Nenhum atendimento registrado no momento.</td></tr>';
-        deckMobile.innerHTML = emptyHtml;
-        return;
-      }
-
-      // Render Desktop & Tablet
-      tbodyDesktop.innerHTML = convs.map(c => {
-        const cleanPhone = (c.phone || '').replace(/\D/g, '');
-        const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : '#';
-        const isActive = c.is_ai_active;
-        const initials = getInitials(c.customer_name);
-        const lastMsg = c.last_message || 'Iniciando conversa...';
-        const lastMsgRole = c.last_message_role === 'assistant' ? 'IA' : 'Cliente';
-        const snippet = lastMsg.length > 50 ? lastMsg.slice(0, 50) + '...' : lastMsg;
-        const roleBadge = c.last_message_role === 'assistant'
-          ? '<span style="color: #34D399; font-weight: 700; font-size: 0.7rem;">IA:</span>'
-          : '<span style="color: #60A5FA; font-weight: 700; font-size: 0.7rem;">Cliente:</span>';
-
-        return `
-          <tr>
-            <td>
-              <div class="user-profile">
-                <div class="user-avatar">${initials}</div>
-                <div class="user-info">
-                  <span class="user-name">${escapeHtml(c.customer_name || 'Cliente WhatsApp')}</span>
-                  <a href="${waLink}" target="_blank" class="user-phone" title="Abrir no WhatsApp">
-                    ${formatPhoneBR(c.formatted_phone || c.phone)} ↗
-                  </a>
-                </div>
-              </div>
-            </td>
-            <td>
-              <div style="font-size: 0.8rem; color: #E2E8F0; line-height: 1.35; max-width: 280px;" title="${escapeHtml(lastMsg)}">
-                ${roleBadge} ${escapeHtml(snippet)}
-              </div>
-              <div style="font-size: 0.7rem; color: var(--text-dim); font-family: var(--font-mono); margin-top: 3px;">
-                ⏰ ${c.last_activity || '--'}
-              </div>
-            </td>
-            <td>
-              <span class="part-pill" title="${escapeHtml(c.active_sku_name)}">
-                ${escapeHtml(c.active_sku_name)}
-              </span>
-            </td>
-            <td>
-              ${isActive
-                ? `<span class="status-pill status-robot">IA Ativa</span>`
-                : `<span class="status-pill status-human">Balcão Manual</span>`
-              }
-            </td>
-            <td>
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <button class="btn btn-secondary btn-sm" onclick="openChatDrawer('${c.phone}', '${escapeHtml(c.customer_name || 'Cliente')}', '${c.formatted_phone || c.phone}', ${isActive})">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 3px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Ver Chat
-                </button>
-                ${!isActive
-                  ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">▶️ Liberar</button>`
-                  : `<button class="btn btn-amber btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Assumir</button>`
-                }
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      // Render Mobile Card Deck
-      deckMobile.innerHTML = convs.map(c => {
-        const cleanPhone = (c.phone || '').replace(/\D/g, '');
-        const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : '#';
-        const isActive = c.is_ai_active;
-        const initials = getInitials(c.customer_name);
-        const lastMsg = c.last_message || 'Iniciando conversa...';
-        const snippet = lastMsg.length > 55 ? lastMsg.slice(0, 55) + '...' : lastMsg;
-
-        return `
-          <div class="customer-card-mobile">
-            <div class="card-mobile-top">
-              <div class="user-profile">
-                <div class="user-avatar">${initials}</div>
-                <div class="user-info">
-                  <span class="user-name">${escapeHtml(c.customer_name || 'Cliente WhatsApp')}</span>
-                  <a href="${waLink}" target="_blank" class="user-phone">
-                    ${formatPhoneBR(c.formatted_phone || c.phone)} ↗
-                  </a>
-                </div>
-              </div>
-              <div>
-                ${isActive
-                  ? `<span class="status-pill status-robot">IA Ativa</span>`
-                  : `<span class="status-pill status-human">Balcão Manual</span>`
-                }
-              </div>
-            </div>
-
-            <div class="card-mobile-body">
-              <div style="font-size: 0.775rem; color: #CBD5E1; background: rgba(0,0,0,0.3); padding: 0.5rem 0.65rem; border-radius: 6px; margin-bottom: 0.4rem;">
-                💬 ${escapeHtml(snippet)}
-              </div>
-              <div style="font-size: 0.725rem; color: var(--text-dim);">Peça Sendo Cotada: <span class="part-pill">${escapeHtml(c.active_sku_name)}</span></div>
-              <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem;">Último contato: ${c.last_activity || '--'}</div>
-            </div>
-
-            <div class="card-mobile-actions" style="display: flex; gap: 6px;">
-              <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="openChatDrawer('${c.phone}', '${escapeHtml(c.customer_name || 'Cliente')}', '${c.formatted_phone || c.phone}', ${isActive})">
-                💬 Abrir Chat Live
-              </button>
-              ${!isActive
-                ? `<button class="btn btn-emerald btn-sm" onclick="resumeConversation('${c.phone}')">▶️ Liberar</button>`
-                : `<button class="btn btn-amber btn-sm" onclick="pauseConversation('${c.phone}')">⏸️ Assumir</button>`
-              }
-            </div>
+          <div class="vtex-form-group col-span-2">
+            <label>Modelo Compatível & Descrição *</label>
+            <input type="text" id="np-model" required placeholder="Ex: Motorola Moto G22 (XT2231)">
           </div>
-        `;
-      }).join('');
-    }
-
-    async function resumeConversation(phone) {
-      try {
-        const res = await fetch(`/api/conversations/${phone}/resume`, { method: 'POST' });
-        const data = await res.json();
-        showToast(data.message || 'IA reativada com sucesso!', 'success');
-        fetchConversations();
-      } catch (err) {
-        showToast('Erro ao reativar IA: ' + err, 'error');
-      }
-    }
-
-    async function pauseConversation(phone) {
-      try {
-        const res = await fetch(`/api/conversations/${phone}/pause`, { method: 'POST' });
-        const data = await res.json();
-        showToast(data.message || 'IA pausada por 3 horas!', 'success');
-        fetchConversations();
-      } catch (err) {
-        showToast('Erro ao pausar IA: ' + err, 'error');
-      }
-    }
-
-    // 2. STATS, PEDIDOS & CHARTS
-    async function fetchStats() {
-      try {
-        const res = await fetch('/api/reports/stats');
-        const data = await res.json();
-
-        // KPIs
-        document.getElementById('kpi-revenue').innerText = 'R$ ' + (data.total_revenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        document.getElementById('kpi-uber').innerText = Math.round(data.uber_percentage || 0) + '%';
-        document.getElementById('kpi-uber-count').innerText = `${data.uber_orders || 0} de ${data.total_orders || 0} pedidos`;
-        document.getElementById('kpi-stock-items').innerText = data.total_products || 0;
-        const obElem = document.getElementById('kpi-overbooking-blocked');
-        if (obElem) obElem.innerText = data.overbooking_blocked_total || 0;
-        document.getElementById('badge-orders-count').innerText = (data.recent_orders || []).length;
-        document.getElementById('orders-counter').innerText = `${(data.recent_orders || []).length} pedidos`;
-
-        // Store status pill
-        const storeStatus = document.getElementById('store-status');
-        if (data.store_schedule) {
-          storeStatus.innerText = data.store_schedule.badge_text;
-          document.getElementById('pill-store').className = data.store_schedule.is_open ? 'pill pill-emerald' : (data.store_schedule.is_sunday ? 'pill pill-rose' : 'pill pill-amber');
-        } else if (data.is_store_open) {
-          storeStatus.innerText = 'Loja Aberta';
-          document.getElementById('pill-store').className = 'pill pill-emerald';
-        } else {
-          storeStatus.innerText = 'Loja Fechada';
-          document.getElementById('pill-store').className = 'pill pill-amber';
-        }
-
-        // Tabela de Pedidos
-        renderOrders(data.recent_orders || []);
-
-        // Atualizar Categorização de Mensagens do WhatsApp
-        if (data.whatsapp_categorization) {
-          const wc = data.whatsapp_categorization;
-          const qElem = document.getElementById('cat-val-quotes');
-          const oElem = document.getElementById('cat-val-orders');
-          const rElem = document.getElementById('cat-val-ruptures');
-          const hElem = document.getElementById('cat-val-handoffs');
-          const sElem = document.getElementById('cat-val-outofscope');
-          if (qElem) qElem.innerText = wc.quotations_count || 0;
-          if (oElem) oElem.innerText = wc.orders_count || 0;
-          if (rElem) rElem.innerText = wc.ruptures_count || 0;
-          if (hElem) hElem.innerText = wc.handoffs_count || 0;
-          if (sElem) sElem.innerText = wc.out_of_scope_count || 0;
-
-          const total = (wc.quotations_count || 0) + (wc.orders_count || 0) + (wc.ruptures_count || 0) + (wc.handoffs_count || 0) + (wc.out_of_scope_count || 0) || 1;
-          const qPct = Math.round(((wc.quotations_count || 0) / total) * 100);
-          const oPct = Math.round(((wc.orders_count || 0) / total) * 100);
-          const rPct = Math.round(((wc.ruptures_count || 0) / total) * 100);
-          const hPct = Math.round(((wc.handoffs_count || 0) / total) * 100);
-          const sPct = Math.max(0, 100 - (qPct + oPct + rPct + hPct));
-
-          const barElem = document.getElementById('wa-categories-bar');
-          if (barElem) {
-            barElem.innerHTML = `
-              <div style="width: ${qPct}%; background: #F59E0B;" title="Cotações: ${qPct}%"></div>
-              <div style="width: ${oPct}%; background: #10B981;" title="Pedidos: ${oPct}%"></div>
-              <div style="width: ${rPct}%; background: #EF4444;" title="Rupturas: ${rPct}%"></div>
-              <div style="width: ${hPct}%; background: #818CF8;" title="Transbordo: ${hPct}%"></div>
-              <div style="width: ${sPct}%; background: #64748B;" title="Fora de Escopo: ${sPct}%"></div>
-            `;
-          }
-        }
-
-        // Ranking
-        renderTopProducts(data.top_products || []);
-
-        // Charts
-        renderCharts(data.quality_breakdown || {}, data.category_breakdown || {});
-        renderChatFunnelCharts(data.chat_funnel_stats);
-        fetchFilteredAnalytics();
-      } catch (err) {
-        console.error('Erro ao buscar stats:', err);
-      }
-    }
-
-    let currentOrderFilter = 'all';
-
-    function filterOrdersMode(mode, btn) {
-      currentOrderFilter = mode;
-      document.querySelectorAll('[data-order-filter]').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-      renderOrdersFiltered();
-    }
-
-    function renderOrders(orders) {
-      window.allOrders = orders || [];
-      renderOrdersFiltered();
-    }
-
-    function renderOrdersFiltered() {
-      const orders = window.allOrders || [];
-      const tbody = document.getElementById('orders-tbody');
-      const mobileDeck = document.getElementById('orders-cards-mobile');
-
-      let filtered = orders;
-      if (currentOrderFilter === 'balcao') {
-        filtered = orders.filter(o => !o.destination_address || o.destination_address.toLowerCase().includes('balc') || o.destination_address.toLowerCase().includes('retirada'));
-      } else if (currentOrderFilter === 'uber') {
-        filtered = orders.filter(o => o.destination_address && !o.destination_address.toLowerCase().includes('balc') && !o.destination_address.toLowerCase().includes('retirada'));
-      }
-
-      const counter = document.getElementById('orders-counter');
-      if (counter) counter.innerText = `${filtered.length} de ${orders.length} pedidos`;
-
-      if (!filtered || filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);"><div style="font-size: 1.5rem; margin-bottom: 0.5rem;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>Nenhum pedido encontrado para o filtro selecionado.</td></tr>';
-        mobileDeck.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum pedido encontrado.</div>';
-        return;
-      }
-
-      tbody.innerHTML = filtered.map(o => {
-        const isBalcao = !o.destination_address || o.destination_address.toLowerCase().includes('balc') || o.destination_address.toLowerCase().includes('retirada');
-        const modalPill = isBalcao
-          ? `<span class="pill pill-cyan" style="font-weight: 700;">Retirada no Balcão</span>`
-          : `<span class="pill pill-amber" style="font-weight: 700;" title="${escapeHtml(o.destination_address)}">Uber Flash: ${escapeHtml(o.destination_address.length > 25 ? o.destination_address.slice(0, 25) + '...' : o.destination_address)}</span>`;
-
-        const waLink = `https://wa.me/${(o.customer_phone || '').replace(/\D/g, '')}`;
-
-        return `
-          <tr>
-            <td>
-              <div style="font-weight: 700; color: #fff;">#${o.id}</div>
-              <div style="font-size: 0.725rem; color: var(--text-dim); font-family: var(--font-mono);">${o.created_at}</div>
-            </td>
-            <td>
-              <div style="font-weight: 600; color: #E2E8F0;">${escapeHtml(o.customer_name)}</div>
-              <a href="${waLink}" target="_blank" style="font-size: 0.75rem; color: #34D399; font-family: var(--font-mono); text-decoration: none; display: inline-flex; align-items: center; gap: 3px;">
-                ${formatPhoneBR(o.customer_phone)} ↗
-              </a>
-            </td>
-            <td><span class="part-pill" style="font-weight: 700;">${escapeHtml(o.product_sku)}</span></td>
-            <td style="font-weight: 800; color: #34D399; font-size: 0.95rem;">R$ ${(o.product_price || 0).toFixed(2)}</td>
-            <td>${modalPill}</td>
-            <td>${formatOrderStatusBadge(o.status)}</td>
-            <td style="color: #FBBF24; font-weight: 600; font-size: 0.8rem;" title="Garante a peça por 30 minutos sem risco de venda duplicada">⏰ Até ${o.expires_at}</td>
-          </tr>
-        `;
-      }).join('');
-
-      mobileDeck.innerHTML = filtered.map(o => {
-        const isBalcao = !o.destination_address || o.destination_address.toLowerCase().includes('balc') || o.destination_address.toLowerCase().includes('retirada');
-        const modalPill = isBalcao
-          ? `<span class="pill pill-cyan" style="font-weight: 700;">Balcão</span>`
-          : `<span class="pill pill-amber" style="font-weight: 700;">Uber Flash</span>`;
-        const waLink = `https://wa.me/${(o.customer_phone || '').replace(/\D/g, '')}`;
-
-        return `
-          <div class="customer-card-mobile" style="border-left: 3px solid ${isBalcao ? '#38BDF8' : '#F59E0B'};">
-            <div class="card-mobile-top">
-              <div>
-                <div style="font-weight: 700; color: #fff;">#${o.id} • R$ ${(o.product_price || 0).toFixed(2)}</div>
-                <a href="${waLink}" target="_blank" style="font-size: 0.75rem; color: #34D399; text-decoration: none;">${escapeHtml(o.customer_name)} (${o.customer_phone}) ↗</a>
-              </div>
-              <div style="display: flex; gap: 4px;">
-                ${modalPill}
-                <span class="status-pill status-robot">${o.status}</span>
-              </div>
-            </div>
-            <div class="card-mobile-body">
-              <div><strong>Peça:</strong> ${escapeHtml(o.product_sku)}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(o.destination_address || 'Retirada no Balcão')}</div>
-              <div style="font-size: 0.725rem; color: #FBBF24; margin-top: 4px;">⏰ Validade: Até ${o.expires_at} (${o.created_at})</div>
-            </div>
+          <div class="vtex-form-group">
+            <label>Categoria *</label>
+            <select id="np-category" required class="select-styled">
+              <option value="Telas Frontais">Telas Frontais</option>
+              <option value="Baterias">Baterias</option>
+              <option value="Conectores de Carga">Conectores de Carga</option>
+              <option value="Tampas Traseiras">Tampas Traseiras</option>
+              <option value="Câmeras">Câmeras</option>
+              <option value="Outros">Outros</option>
+            </select>
           </div>
-        `;
-      }).join('');
-    }
-
-    function renderTopProducts(products) {
-      const tbody = document.getElementById('top-products-tbody');
-      if (!products || products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhuma venda registrada ainda.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = products.map((p, idx) => `
-        <tr>
-          <td style="font-weight: 800; color: ${idx === 0 ? '#FBBF24' : '#fff'};">#${idx + 1}</td>
-          <td><strong>${escapeHtml(p.name)}</strong> <span style="font-size: 0.725rem; color: var(--text-dim); font-family: monospace;">(${p.sku})</span></td>
-          <td><span class="part-pill">${p.quality}</span></td>
-          <td style="font-weight: 700;">${p.quantity} un.</td>
-          <td style="font-weight: 700; color: #34D399;">R$ ${(p.revenue || 0).toFixed(2)}</td>
-        </tr>
-      `).join('');
-    }
-
-    function renderCharts(qualityData, categoryData) {
-      const ctxQ = document.getElementById('chartQuality');
-      const ctxC = document.getElementById('chartCategory');
-
-      if (chartQuality) chartQuality.destroy();
-      if (chartCategory) chartCategory.destroy();
-
-      chartQuality = new Chart(ctxQ, {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(qualityData),
-          datasets: [{
-            data: Object.values(qualityData),
-            backgroundColor: ['#F59E0B', '#6366F1', '#10B981'],
-            borderColor: '#0E1422',
-            borderWidth: 3
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { position: 'bottom', labels: { color: '#94A3B8', font: { size: 11 } } } }
-        }
-      });
-
-      chartCategory = new Chart(ctxC, {
-        type: 'bar',
-        data: {
-          labels: Object.keys(categoryData),
-          datasets: [{
-            label: 'Unidades Vendidas',
-            data: Object.values(categoryData),
-            backgroundColor: '#6366F1',
-            borderRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { ticks: { color: '#94A3B8' }, grid: { display: false } },
-            y: { ticks: { color: '#94A3B8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
-          }
-        }
-      });
-    }
-
-    // 3. CATÁLOGO GOOGLE SHEETS
-    let currentBrandFilter = 'all';
-    let currentCatFilter = 'all';
-
-    function setBrandFilter(val, btn) {
-      currentBrandFilter = val;
-      document.querySelectorAll('[data-filter-type="brand"]').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-      renderCatalogRows();
-    }
-
-    function setCatFilter(val, btn) {
-      currentCatFilter = val;
-      document.querySelectorAll('[data-filter-type="cat"]').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-      renderCatalogRows();
-    }
-
-    function filterCatalogTable() {
-      renderCatalogRows();
-    }
-
-    function renderQualityBadge(q) {
-      const qUp = (q || '').toUpperCase();
-      if (qUp.includes('ORIGINAL_NACIONAL') || qUp.includes('ORIGINAL NACIONAL')) {
-        return '<span style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#34D399; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">Original Nacional (90d)</span>';
-      } else if (qUp.includes('ORIGINAL_CHINA') || qUp.includes('ORIGINAL CHINA')) {
-        return '<span style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); color:#38BDF8; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">Original China</span>';
-      } else if (qUp.includes('PRIMEIRA') || qUp.includes('1ª')) {
-        return '<span style="background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.3); color:#C084FC; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">⭐ 1ª Linha Premium</span>';
-      } else {
-        return '<span style="background:rgba(251,146,60,0.15); border:1px solid rgba(251,146,60,0.3); color:#FB923C; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:600;">⚡ Paralela Incell</span>';
-      }
-    }
-
-    function renderStockBadge(p) {
-      const isAvail = (typeof p === "object") ? (p.has_stock !== false && (p.stock_quantity > 0 || p.has_stock === true)) : (p > 0);
-      if (isAvail) {
-        return '<span style="background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:#34D399; padding:3px 9px; border-radius:6px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px;"><span style="width:7px; height:7px; border-radius:50%; background:#10B981; display:inline-block;"></span> Em Estoque</span>';
-      } else {
-        return '<span style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#F87171; padding:3px 9px; border-radius:6px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px;"><span style="width:7px; height:7px; border-radius:50%; background:#EF4444; display:inline-block;"></span> Esgotado</span>';
-      }
-    }
-
-    function renderCatalogRows() {
-      const searchEl = document.getElementById('catalog-search');
-      const query = (searchEl ? searchEl.value : '').toLowerCase().trim();
-
-      const filtered = (allCatalog || []).filter(p => {
-        // Filtro de Texto (Nome, SKU, Modelos Compatíveis, Categoria)
-        const nameMatch = (p.name || '').toLowerCase().includes(query);
-        const skuMatch = (p.sku || '').toLowerCase().includes(query);
-        const catMatch = (p.category || '').toLowerCase().includes(query);
-        const modelsMatch = (p.compatible_models || []).some(m => m.toLowerCase().includes(query));
-        const matchesQuery = !query || nameMatch || skuMatch || catMatch || modelsMatch;
-
-        // Filtro de Marca
-        let matchesBrand = true;
-        if (currentBrandFilter !== 'all') {
-          const fullStr = `${p.name} ${p.sku} ${(p.compatible_models || []).join(' ')}`.toLowerCase();
-          if (currentBrandFilter === 'samsung') matchesBrand = fullStr.includes('samsung') || fullStr.includes('galaxy') || fullStr.includes('tab') || fullStr.includes('sam');
-          else if (currentBrandFilter === 'motorola') matchesBrand = fullStr.includes('moto') || fullStr.includes('motorola');
-          else if (currentBrandFilter === 'xiaomi') matchesBrand = fullStr.includes('redmi') || fullStr.includes('xiaomi') || fullStr.includes('poco');
-          else if (currentBrandFilter === 'apple') matchesBrand = fullStr.includes('iphone') || fullStr.includes('apple') || fullStr.includes('foxconn');
-        }
-
-        // Filtro de Categoria
-        let matchesCat = true;
-        if (currentCatFilter !== 'all') {
-          const fullStr = `${p.category} ${p.name}`.toLowerCase();
-          if (currentCatFilter === 'tela') matchesCat = fullStr.includes('tela') || fullStr.includes('frontal') || fullStr.includes('touch');
-          else if (currentCatFilter === 'bateria') matchesCat = fullStr.includes('bateria');
-          else if (currentCatFilter === 'conector') matchesCat = fullStr.includes('conector') || fullStr.includes('placa sub') || fullStr.includes('carga');
-        }
-
-        return matchesQuery && matchesBrand && matchesCat;
-      });
-
-      const tbody = document.getElementById('catalog-tbody');
-      const mobileDeck = document.getElementById('catalog-cards-mobile');
-      document.getElementById('catalog-counter').innerText = `${filtered.length} de ${allCatalog.length} peças`;
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma peça corresponde aos filtros aplicados.</td></tr>';
-        mobileDeck.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma peça encontrada.</div>';
-        return;
-      }
-
-      tbody.innerHTML = filtered.map(p => `
-        <tr>
-          <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.775rem; color: var(--primary);">${p.sku}</td>
-          <td>
-            <strong>${escapeHtml(p.name)}</strong>
-            ${p.compatible_models && p.compatible_models.length ? `<div style="font-size: 0.72rem; color: #94A3B8; margin-top: 3px;">Modelos: ${escapeHtml(p.compatible_models.join(', '))}</div>` : ''}
-          </td>
-          <td><span style="font-size: 0.8rem; color: var(--text-dim);">${escapeHtml(p.category || 'Peça')}</span></td>
-          <td>${p.has_frame ? '<span style="color:#34D399; font-size: 0.8rem; font-weight: 600;">Com aro</span>' : '<span style="color:var(--text-dim); font-size: 0.8rem;">Sem aro</span>'}</td>
-          <td>${renderQualityBadge(p.quality)}</td>
-          <td style="font-weight: 700; color: #34D399; font-size: 0.95rem;">R$ ${(p.price || 0).toFixed(2)}</td>
-          <td>${renderStockBadge(p)}</td>
-        </tr>
-      `).join('');
-
-      mobileDeck.innerHTML = filtered.map(p => `
-        <div class="customer-card-mobile">
-          <div class="card-mobile-top">
-            <div>
-              <strong>${escapeHtml(p.name)}</strong>
-              <div style="font-size: 0.725rem; color: var(--primary); font-family: monospace;">${p.sku}</div>
-              ${p.compatible_models && p.compatible_models.length ? `<div style="font-size: 0.7rem; color: #94A3B8; margin-top: 2px;">Compatível: ${escapeHtml(p.compatible_models.join(', '))}</div>` : ''}
-            </div>
-            <span style="font-weight: 700; color: #34D399; font-size: 1rem;">R$ ${(p.price || 0).toFixed(2)}</span>
+          <div class="vtex-form-group">
+            <label>Qualidade *</label>
+            <select id="np-quality" required class="select-styled">
+              <option value="PRIMEIRA_LINHA">Primeira Linha (Incell/OLED)</option>
+              <option value="ORIGINAL_NACIONAL">Original Nacional</option>
+            </select>
           </div>
-          <div class="card-mobile-body" style="font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
-            <div>${renderQualityBadge(p.quality)}</div>
-            <div>${renderStockBadge(p)}</div>
+          <div class="vtex-form-group">
+            <label>Possui Aro? *</label>
+            <select id="np-has-frame" class="select-styled">
+              <option value="true">Sim (Com Aro)</option>
+              <option value="false">Não (Sem Aro)</option>
+            </select>
+          </div>
+          <div class="vtex-form-group">
+            <label>Quantidade Inicial *</label>
+            <input type="number" id="np-quantity" required min="1" value="5">
+          </div>
+          <div class="vtex-form-group">
+            <label>Preço de Venda Balcão (R$) *</label>
+            <input type="number" id="np-price" required step="0.01" min="0.01" placeholder="120.00">
+          </div>
+          <div class="vtex-form-group">
+            <label>Custo Unitário (R$)</label>
+            <input type="number" id="np-cost" step="0.01" min="0" placeholder="65.00">
+          </div>
+          <div class="vtex-form-group">
+            <label>Fornecedor</label>
+            <input type="text" id="np-supplier" placeholder="Ex: Distribuidora Central">
+          </div>
+          <div class="vtex-form-group">
+            <label>Localização / Gaveta</label>
+            <input type="text" id="np-location" placeholder="Ex: Gaveta G-12">
           </div>
         </div>
-      `).join('');
-    }
-
-    async function fetchCatalog() {
-      try {
-        const res = await fetch('/api/catalog');
-        const data = await res.json();
-        allCatalog = data.items || [];
-
-        const total = allCatalog.length;
-        const healthy = allCatalog.filter(p => p.has_stock !== false && (p.stock_quantity > 0 || p.has_stock === true)).length;
-        const outOfStock = allCatalog.filter(p => p.has_stock === false || p.stock_quantity <= 0).length;
-        const rate = total > 0 ? Math.round((healthy / total) * 100) : 100;
-
-        document.getElementById('badge-catalog-count').innerText = total;
-        document.getElementById('kpi-catalog-total').innerText = total;
-        document.getElementById('kpi-catalog-healthy').innerText = healthy;
-        document.getElementById('kpi-catalog-critical').innerText = rate + "%";
-        document.getElementById('kpi-catalog-out').innerText = outOfStock;
-
-        renderCatalogRows();
-      } catch (err) {
-        console.error('Erro ao buscar catálogo:', err);
-      }
-    }
-
-    async function syncGoogleSheets() {
-      try {
-        showToast('Sincronizando com Google Sheets...', 'success');
-        const res = await fetch('/api/sync-sheets', { method: 'POST' });
-        const data = await res.json();
-        showToast(data.message || 'Estoque sincronizado com sucesso!', 'success');
-        fetchCatalog();
-    checkMasterAISwitch();
-        fetchStats();
-      } catch (err) {
-        showToast('Erro ao sincronizar: ' + err, 'error');
-      }
-    }
-
-    // 4. SIMULADOR DE CHAT
-    async function sendChatMessage() {
-      const input = document.getElementById('chat-input');
-      const text = input.value.trim();
-      if (!text) return;
-      input.value = '';
-
-      const container = document.getElementById('chat-messages');
-      container.innerHTML += `<div class="chat-msg user">${escapeHtml(text)}</div>`;
-      container.scrollTop = container.scrollHeight;
-
-      try {
-        const res = await fetch('/api/simulator/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text })
-        });
-        const data = await res.json();
-        const reply = data.reply || 'Nenhuma resposta gerada.';
-        container.innerHTML += `<div class="chat-msg bot">${escapeHtml(reply)}</div>`;
-        container.scrollTop = container.scrollHeight;
-      } catch (err) {
-        container.innerHTML += `<div class="chat-msg bot" style="color: #F43F5E;">Erro na simulação: ${err}</div>`;
-        container.scrollTop = container.scrollHeight;
-      }
-    }
-
-    function clearChat() {
-      document.getElementById('chat-messages').innerHTML = `
-        <div class="chat-msg bot">
-          Opa meu patrão! Tudo beleza? Aqui é da Victor Cell Peças. Pode mandar sua dúvida ou cotação de tela/peça que já vejo no estoque pra você!
+        <div class="vtex-modal-footer" style="margin-top: 1.25rem; padding-bottom: 0;">
+          <button type="button" class="btn btn-secondary" onclick="closeNewProductModal()">Cancelar</button>
+          <button type="submit" class="btn btn-emerald" id="btn-save-product">Salvar Peça no Estoque</button>
         </div>
-      `;
-    }
+      </form>
+    </div>
+  </div>
 
-    // 5. WHATSAPP QR CODE
-    async function fetchWhatsAppQR() {
-      const container = document.getElementById('wa-qr-container');
-      try {
-        const res = await fetch('/api/whatsapp/qrcode');
-        const data = await res.json();
-        if (data.status === 'connected') {
-          container.innerHTML = `
-            <div style="padding: 1rem; color: #34D399; font-weight: 700;">
-              ✅ Conectado à Evolution API
-            </div>
-          `;
-          document.getElementById('wa-status').innerText = 'WhatsApp Conectado';
-          document.getElementById('pill-wa').className = 'pill pill-emerald';
-        } else if (data.qrcode) {
-          container.innerHTML = `<img src="${data.qrcode}" style="max-width: 220px; border-radius: 10px; background: white; padding: 8px;" />`;
-          document.getElementById('wa-status').innerText = 'Escanear QR Code';
-          document.getElementById('pill-wa').className = 'pill pill-amber';
-        } else {
-          container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted);">${data.message || 'Instância em inicialização...'}</div>`;
-        }
-      } catch (err) {
-        container.innerHTML = `<div style="color: #F43F5E; font-size: 0.8rem;">Erro na conexão: ${err}</div>`;
-      }
-    }
+  <!-- MODAL VTEX ADMIN: INSPEÇÃO DE JSON TÉCNICO (AUDITORIA) -->
+  <div id="modal-json-viewer" class="vtex-modal-overlay">
+    <div class="vtex-modal" style="max-width: 680px;">
+      <div class="vtex-modal-header">
+        <div class="vtex-modal-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #818CF8;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          <span id="json-modal-title">Payload JSON Técnico</span>
+        </div>
+        <button class="drawer-close-btn" onclick="closeJsonViewer()">✕</button>
+      </div>
+      <div class="vtex-modal-body">
+        <pre id="json-modal-content" style="background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.775rem; color: #A5B4FC; overflow-x: auto; max-height: 480px;"></pre>
+      </div>
+      <div class="vtex-modal-footer">
+        <button class="btn btn-secondary" onclick="closeJsonViewer()">Fechar</button>
+      </div>
+    </div>
+  </div>
 
-    // 6. CHAVE GEMINI
-    async function saveGeminiKey() {
-      const input = document.getElementById('gemini-key-input');
-      const key = input.value.trim();
-      if (!key) {
-        showToast('Digite uma chave válida do Google AI Studio!', 'error');
-        return;
-      }
-      try {
-        const res = await fetch('/api/settings/gemini-key', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: key })
-        });
-        const data = await res.json();
-        showToast(data.message || 'Chave atualizada com sucesso!', 'success');
-        input.value = '';
-      } catch (err) {
-        showToast('Erro ao atualizar chave: ' + err, 'error');
-      }
-    }
-
-    // Auxiliares
-    function getInitials(name) {
-      if (!name) return 'VC';
-      const parts = name.trim().split(/\s+/);
-      if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-
-    // --- DISJUNTOR GERAL DA IA (HARDWARE TOGGLE SWITCH - ZERO EMOJIS) ---
-    let isMasterAIActive = true;
-
-    async function checkMasterAISwitch() {
-      try {
-        const res = await fetch("/api/system/ai-switch");
-        const data = await res.json();
-        isMasterAIActive = Boolean(data.global_ai_enabled);
-        updateMasterAIUI(isMasterAIActive);
-      } catch (err) {
-        console.error("Erro ao verificar status do disjuntor da IA:", err);
-      }
-    }
-
-    function updateMasterAIUI(isActive) {
-      const btn = document.getElementById("btn-master-ai");
-      const label = document.getElementById("label-master-ai");
-      const banner = document.getElementById("banner-ai-emergency");
-
-      if (!btn) return;
-
-      if (isActive) {
-        btn.className = "master-switch-wrapper master-switch-on";
-        btn.title = "Atendimento Automático Ativo. Clique para pausar a IA e assumir no manual.";
-        if (label) label.textContent = "IA Automática Ativa";
-        if (banner) banner.style.display = "none";
-      } else {
-        btn.className = "master-switch-wrapper master-switch-off";
-        btn.title = "Atendimento Automático Pausado. Clique para reativar as respostas da IA.";
-        if (label) label.textContent = "Atendimento Pausado (Manual)";
-        if (banner) banner.style.display = "block";
-      }
-    }
-
-    async function toggleMasterAISwitch() {
-      if (isMasterAIActive) {
-        const confirmed = confirm(
-          "Pausar Atendimento Automático da IA?\n\n" +
-          "• Nenhuma resposta automática será enviada no WhatsApp.\n" +
-          "• Todas as mensagens recebidas aguardarão resposta manual da equipe.\n\n" +
-          "Deseja pausar a IA agora?"
-        );
-        if (!confirmed) return;
-      }
-
-      try {
-        showToast("Atualizando estado da IA...", "success");
-        const res = await fetch("/api/system/ai-switch/toggle", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ enabled: !isMasterAIActive })
-        });
-        const data = await res.json();
-        isMasterAIActive = Boolean(data.global_ai_enabled);
-        updateMasterAIUI(isMasterAIActive);
-
-        if (isMasterAIActive) {
-          showToast("Atendimento da IA reativado com sucesso.", "success");
-        } else {
-          showToast("Atendimento automático pausado. Modo 100% manual ativo.", "error");
-        }
-      } catch (err) {
-        showToast("Erro ao atualizar estado da IA: " + err, "error");
-      }
-    }
-
-    let currentAuditLevel = '';
-    let allAuditLogs = [];
-    let auditSearchDebounceTimer = null;
-
-    function filterAuditLevel(level, btn) {
-      currentAuditLevel = level;
-      document.querySelectorAll('.level-pills .pill-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderAuditLogs(allAuditLogs);
-    }
-
-    function debounceAuditSearch() {
-      clearTimeout(auditSearchDebounceTimer);
-      auditSearchDebounceTimer = setTimeout(() => {
-        renderAuditLogs(allAuditLogs);
-      }, 250);
-    }
-
-    async function fetchAuditLogs() {
-      try {
-        const compElem = document.getElementById('select-audit-component');
-        const comp = compElem ? compElem.value : '';
-        let url = '/api/audit/logs?limit=100';
-        if (comp) url += '&component=' + encodeURIComponent(comp);
-        const res = await fetch(url);
-        const data = await res.json();
-        allAuditLogs = data.logs || [];
-        const badge = document.getElementById('badge-audit-count');
-        if (badge) badge.innerText = allAuditLogs.length;
-        renderAuditLogs(allAuditLogs);
-      } catch (err) {
-        console.error('Erro ao carregar logs de auditoria:', err);
-      }
-    }
-
-    function renderAuditLogs(logs) {
-      const tbody = document.getElementById('audit-table-body');
-      const cardsBody = document.getElementById('audit-cards-body');
-      if (!tbody) return;
-
-      const qElem = document.getElementById('search-audit');
-      const q = (qElem ? qElem.value : '').toLowerCase().trim();
-      const filtered = logs.filter(l => {
-        if (currentAuditLevel && l.level !== currentAuditLevel) return false;
-        if (q) {
-          const hay = (l.action + ' ' + (l.actor || '') + ' ' + (l.component || '') + ' ' + JSON.stringify(l.details || {})).toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
-        return true;
-      });
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum registro de auditoria encontrado para os filtros aplicados.</td></tr>';
-        if (cardsBody) cardsBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum log encontrado.</div>';
-        return;
-      }
-
-      window.renderedAuditLogs = filtered;
-
-      tbody.innerHTML = filtered.map((l, idx) => {
-        const badgeClass = l.level === 'ERROR' ? 'badge-error' : (l.level === 'WARN' ? 'badge-warn' : 'badge-info');
-        const d = new Date(l.timestamp);
-        const tsFormatted = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + d.toLocaleDateString('pt-BR');
-        const det = (typeof l.details === 'object' && l.details) ? l.details : {};
-        const detStr = typeof l.details === 'object' ? JSON.stringify(l.details) : String(l.details || '');
-        const lat = (l.duration_ms !== null && l.duration_ms !== undefined) ? `${Number(l.duration_ms).toFixed(0)} ms` : '-';
-
-        // Humanizar Ação e Detalhe
-        let humanSummary = '';
-        const act = l.action || '';
-        if (act.includes('DEBOUNCE')) {
-          humanSummary = 'Buffer WhatsApp: Mensagem agrupada na janela de digitação';
-        } else if (act.includes('ORDER_CREATED') || act.includes('RESERVATION')) {
-          humanSummary = `Reserva criada: Peça ${det.sku || ''} para cliente ${formatPhoneBR(det.customer_phone)}`;
-        } else if (act.includes('NATIVE_PRODUCT')) {
-          humanSummary = `Cadastro de Peça: ${det.sku || ''} (${det.quantity || 0} un no balcão)`;
-        } else if (act.includes('STOCK_MOVEMENT')) {
-          humanSummary = `Estoque: ${det.movement_type || 'ENTRADA'} de ${det.quantity || 0} un (${det.sku || ''})`;
-        } else if (act.includes('PRICE_OVERRIDE')) {
-          humanSummary = `Negociação de Preço: Oferta de R$ ${det.offered_price || ''} abaixo do balcão`;
-        } else if (act.includes('OUT_OF_STOCK')) {
-          humanSummary = `Ruptura: Peça indisponível consultada (${det.sku || ''})`;
-        } else if (act.includes('HUMAN_INTERVENTION')) {
-          humanSummary = `Transbordo: Balcão solicitado para ${formatPhoneBR(det.customer_phone)}`;
-        } else if (act.includes('AI_RESPONSE')) {
-          humanSummary = `Resposta da IA gerada (${det.model || 'Gemini 2.5 Flash'})`;
-        } else {
-          humanSummary = act.replace(/_/g, ' ');
-        }
-
-        return `
-          <tr>
-            <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);">${tsFormatted}</td>
-            <td><span class="audit-badge ${badgeClass}">${l.level}</span></td>
-            <td><span class="audit-badge badge-comp">${l.component}</span></td>
-            <td style="font-weight: 600; font-size: 0.8rem; color: #fff;">${l.action}</td>
-            <td style="font-family: var(--font-mono); font-size: 0.775rem; color: var(--text-muted);">${l.actor || '-'}</td>
-            <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--emerald);">${lat}</td>
-            <td>
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                <span style="font-size: 0.775rem; color: #CBD5E1; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(detStr)}">
-                  ${escapeHtml(humanSummary)}
-                </span>
-                <button class="btn btn-secondary btn-xs" style="padding: 2px 7px; font-size: 0.7rem;" onclick="openJsonViewer(${idx})">
-                  JSON Técnico
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      if (cardsBody) {
-        cardsBody.innerHTML = filtered.map(l => {
-          const badgeClass = l.level === 'ERROR' ? 'badge-error' : (l.level === 'WARN' ? 'badge-warn' : 'badge-info');
-          const d = new Date(l.timestamp);
-          const tsFormatted = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          const detStr = typeof l.details === 'object' ? JSON.stringify(l.details) : String(l.details || '');
-          return `
-            <div class="mobile-card" style="padding: 0.85rem; margin-bottom: 0.6rem; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--border-subtle);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                <span class="audit-badge ${badgeClass}">${l.level}</span>
-                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.725rem; color: var(--text-muted);">${tsFormatted}</span>
-              </div>
-              <div style="font-weight: 600; font-size: 0.85rem; color: #fff; margin-bottom: 0.25rem;">${l.action}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem;">Componente: <span class="audit-badge badge-comp">${l.component}</span> | Ator: ${l.actor || '-'}</div>
-              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #94A3B8; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px; word-break: break-all;">${detStr}</div>
-            </div>
-          `;
-        }).join('');
-      }
-    }
-
-    async function fetchStoreProfile() {
-      try {
-        const res = await fetch('/api/system/profile');
-        const data = await res.json();
-        if (data.status === 'success' && data.profile) {
-          const p = data.profile;
-          if (document.getElementById('prof-store-name')) document.getElementById('prof-store-name').value = p.store_name || '';
-          if (document.getElementById('prof-city')) document.getElementById('prof-city').value = p.city || '';
-          if (document.getElementById('prof-niche')) document.getElementById('prof-niche').value = p.niche_description || '';
-          if (document.getElementById('prof-keywords')) document.getElementById('prof-keywords').value = (p.out_of_scope_keywords || []).join(', ');
-          if (document.getElementById('prof-rejection')) document.getElementById('prof-rejection').value = p.rejection_message || '';
-          if (document.getElementById('prof-delivery')) document.getElementById('prof-delivery').value = (p.delivery_methods || []).join(', ');
-          if (document.getElementById('prof-tone')) document.getElementById('prof-tone').value = p.tone_guidelines || '';
-        }
-      } catch (err) {
-        console.error('Erro ao carregar perfil da loja:', err);
-      }
-    }
-
-    async function saveStoreProfile(e) {
-      if (e) e.preventDefault();
-      try {
-        const payload = {
-          store_name: document.getElementById('prof-store-name').value,
-          city: document.getElementById('prof-city').value,
-          niche_description: document.getElementById('prof-niche').value,
-          out_of_scope_keywords: document.getElementById('prof-keywords').value,
-          rejection_message: document.getElementById('prof-rejection').value,
-          delivery_methods: document.getElementById('prof-delivery').value,
-          tone_guidelines: document.getElementById('prof-tone').value,
-        };
-        const res = await fetch('/api/system/profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (data.status === 'success') {
-          showToast('Diretrizes comerciais salvas com sucesso!', 'success');
-          fetchAuditLogs();
-        } else {
-          showToast('Erro ao salvar: ' + (data.message || 'Falha'), 'error');
-        }
-      } catch (err) {
-        showToast('Erro de conexão ao salvar diretrizes: ' + err, 'error');
-      }
-    }
-
-    // ==========================================
-    // ERP NATIVO & ENTRADA COGNITIVA DE ESTOQUE
-    // ==========================================
-    let currentErpProposal = null;
-
-    function demoVoiceStockEntry() {
-      const input = document.getElementById('erp-voice-input');
-      if (input) {
-        input.value = 'Entraram 10 telas do Tab A8 a 110 do fornecedor Peças Brasil e 5 conectores do T295 a 15, NF 4580';
-      }
-    }
-
-    async function loadErpSummary() {
-      try {
-        const res = await fetch('/api/erp/stock/summary');
-        const data = await res.json();
-        if (data.status === 'success' && data.metrics) {
-          const m = data.metrics;
-          if (document.getElementById('erp-total-skus')) document.getElementById('erp-total-skus').textContent = m.total_skus || 0;
-          if (document.getElementById('erp-total-units')) document.getElementById('erp-total-units').textContent = m.total_units || 0;
-          if (document.getElementById('erp-total-cost')) document.getElementById('erp-total-cost').textContent = 'R$ ' + (m.total_cost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-          if (document.getElementById('erp-total-retail')) document.getElementById('erp-total-retail').textContent = 'R$ ' + (m.total_retail || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-        }
-      } catch (err) {
-        console.error('Erro ao carregar resumo de estoque do ERP:', err);
-      }
-    }
-
-    async function loadErpMovements() {
-      try {
-        const res = await fetch('/api/erp/stock/movements?limit=30');
-        const data = await res.json();
-        const tbody = document.getElementById('erp-movements-tbody');
-        if (!tbody) return;
-
-        if (data.status === 'success' && data.movements && data.movements.length > 0) {
-          tbody.innerHTML = data.movements.map(m => {
-            const dateStr = new Date(m.created_at).toLocaleString('pt-BR');
-            const typeBadge = m.movement_type.includes('ENTRADA')
-              ? '<span style="background: rgba(16,185,129,0.15); color: #34D399; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + m.movement_type + '</span>'
-              : '<span style="background: rgba(239,68,68,0.15); color: #F87171; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + m.movement_type + '</span>';
-            const costFormatted = m.unit_cost ? 'R$ ' + Number(m.unit_cost).toFixed(2) : '-';
-            return '<tr>' +
-              '<td style="font-size: 0.8rem; color: var(--text-muted);">' + dateStr + '</td>' +
-              '<td>' + typeBadge + '</td>' +
-              '<td style="font-family: monospace; font-weight: 600;">' + m.sku + '</td>' +
-              '<td style="font-weight: 700;">' + m.quantity + '</td>' +
-              '<td>' + costFormatted + '</td>' +
-              '<td style="font-size: 0.8rem;">' + (m.invoice_number || '-') + '</td>' +
-              '<td style="font-size: 0.8rem;">' + (m.operator || 'Sistema') + '</td>' +
-              '<td style="font-size: 0.8rem; color: var(--text-muted);">' + (m.notes || '-') + '</td>' +
-            '</tr>';
-          }).join('');
-        } else {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">Nenhuma movimentação registrada no ERP até o momento.</td></tr>';
-        }
-      } catch (err) {
-        console.error('Erro ao carregar movimentações do ERP:', err);
-      }
-    }
-
-    async function submitVoiceStockEntry() {
-      const input = document.getElementById('erp-voice-input');
-      const text = input ? input.value.trim() : '';
-      if (!text) {
-        showToast('Digite ou fale o texto de entrada de estoque.', 'error');
-        return;
-      }
-
-      const btn = document.getElementById('btn-process-voice');
-      if (btn) btn.disabled = true;
-      showToast('Processando entrada com inteligência artificial...', 'success');
-
-      try {
-        const res = await fetch('/api/erp/stock/voice-entry', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ spoken_text: text })
-        });
-        const data = await res.json();
-        if (data.status === 'success' && data.proposal) {
-          currentErpProposal = data.proposal;
-          renderErpProposal(data.proposal);
-          showToast('Proposta extraída! Confira os itens abaixo antes de efetivar.', 'success');
-        } else {
-          showToast('Erro ao interpretar áudio/texto: ' + (data.detail || data.message || 'Falha'), 'error');
-        }
-      } catch (err) {
-        showToast('Erro na requisição: ' + err, 'error');
-      } finally {
-        if (btn) btn.disabled = false;
-      }
-    }
-
-    async function submitOcrStockEntry() {
-      const fileInput = document.getElementById('erp-photo-input');
-      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-        showToast('Selecione uma imagem de etiqueta ou comprovante.', 'error');
-        return;
-      }
-      const file = fileInput.files[0];
-      const reader = new FileReader();
-      const btn = document.getElementById('btn-process-ocr');
-      if (btn) btn.disabled = true;
-      showToast('Lendo imagem com OCR e IA multimodal...', 'success');
-
-      reader.onload = async () => {
-        try {
-          const b64 = reader.result.split(',')[1];
-          const res = await fetch('/api/erp/stock/ocr-entry', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image_base64: b64 })
-          });
-          const data = await res.json();
-          if (data.status === 'success' && data.proposal) {
-            currentErpProposal = data.proposal;
-            renderErpProposal(data.proposal);
-            showToast('Dados da etiqueta extraídos com sucesso!', 'success');
-          } else {
-            showToast('Falha no OCR: ' + (data.detail || 'Não foi possível ler a etiqueta'), 'error');
-          }
-        } catch (err) {
-          showToast('Erro ao processar imagem: ' + err, 'error');
-        } finally {
-          if (btn) btn.disabled = false;
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function renderErpProposal(proposal) {
-      const card = document.getElementById('erp-proposal-card');
-      const details = document.getElementById('erp-proposal-details');
-      const tbody = document.getElementById('erp-proposal-tbody');
-      if (!card || !tbody) return;
-
-      if (details) {
-        details.innerHTML = '<strong>Fornecedor:</strong> ' + (proposal.supplier_name || 'Não identificado') + ' | <strong>NF / Lote:</strong> ' + (proposal.invoice_number || 'S/N') + ' | <strong>Total de Itens:</strong> ' + proposal.total_items + ' un | <strong>Custo Total:</strong> R$ ' + (proposal.total_cost || 0).toFixed(2);
-      }
-
-      if (proposal.items && proposal.items.length > 0) {
-        tbody.innerHTML = proposal.items.map(item => '<tr>' +
-          '<td style="font-family: monospace; font-weight: 600;">' + item.sku + '</td>' +
-          '<td>' + (item.model_name || item.name) + '</td>' +
-          '<td><span style="font-size:0.75rem; background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px;">' + (item.category || 'Peça') + '</span></td>' +
-          '<td style="font-weight: 700; color: #34D399;">+' + item.quantity_to_add + '</td>' +
-          '<td>' + (item.current_stock ?? '-') + '</td>' +
-          '<td style="font-weight: 700;">' + (item.projected_stock ?? '-') + '</td>' +
-          '<td>R$ ' + (item.unit_cost || 0).toFixed(2) + '</td>' +
-          '<td style="color: #60A5FA;">R$ ' + (item.suggested_retail_price || 0).toFixed(2) + '</td>' +
-        '</tr>').join('');
-      } else {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhum item detectado.</td></tr>';
-      }
-
-      card.style.display = 'block';
-    }
-
-    async function confirmCurrentStockEntry() {
-      if (!currentErpProposal) {
-        showToast('Nenhuma proposta de entrada ativa para confirmar.', 'error');
-        return;
-      }
-      const btn = document.getElementById('btn-confirm-stock');
-      if (btn) btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/erp/stock/confirm-entry', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(currentErpProposal)
-        });
-        const data = await res.json();
-        if (data.status === 'success') {
-          showToast('Entrada de estoque confirmada e registrada com sucesso!', 'success');
-          const card = document.getElementById('erp-proposal-card');
-          if (card) card.style.display = 'none';
-          currentErpProposal = null;
-          const input = document.getElementById('erp-voice-input');
-          if (input) input.value = '';
-          loadErpSummary();
-          loadErpMovements();
-          fetchCatalog();
-          fetchAuditLogs();
-        } else {
-          showToast('Erro ao confirmar entrada: ' + (data.message || data.detail || 'Falha'), 'error');
-        }
-      } catch (err) {
-        showToast('Erro de conexão ao confirmar entrada: ' + err, 'error');
-      } finally {
-        if (btn) btn.disabled = false;
-      }
-    }
-
-    function refreshAll() {
-      fetchAIPipelineStatus();
-      showToast('Atualizando dados...', 'success');
-      fetchConversations();
-      fetchStats();
-      fetchCatalog();
-    checkMasterAISwitch();
-      fetchWhatsAppQR();
-    }
-
-    // Inicialização ao Carregar
-    fetchConversations();
-    fetchStats();
-    fetchCatalog();
-    fetchAuditLogs();
-    checkMasterAISwitch();
-    fetchWhatsAppQR();
-
-    // Auto-refresh suave a cada 20 segundos
-    setInterval(() => {
-      fetchConversations();
-      fetchStats();
-    }, 20000);
-  </script>
+  <script src="/static/js/dashboard.js?v=20261102_05"></script>
 </body>
 </html>"""
 

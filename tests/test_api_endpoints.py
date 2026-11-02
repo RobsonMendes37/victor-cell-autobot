@@ -144,8 +144,8 @@ def test_api_system_ai_switch_toggle(client, auth_cookies):
     assert res_toggle.status_code == 200
     assert res_toggle.json()["global_ai_enabled"] != initial_state
 
-    # Toggle back to restore
-    client.post("/api/system/ai-switch/toggle", cookies=auth_cookies)
+    # Restore to True so other webhook tests pass without being blocked by kill switch
+    client.post("/api/system/ai-switch/toggle", json={"enabled": True}, cookies=auth_cookies)
 
 
 def test_api_conversation_pause_and_resume(client, auth_cookies):
@@ -183,6 +183,11 @@ def test_webhook_erp_stock(client):
 
 
 def test_webhook_inbound_message(client):
+    import asyncio
+
+    from presentation.api import sqlite_repo
+    asyncio.run(sqlite_repo.set_global_ai_status(True))
+
     # Isolated phone number: 5585988881111
     payload = {
         "event": "messages.upsert",
