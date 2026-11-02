@@ -45,11 +45,16 @@ class NtfyNotificationChannel(StaffNotificationChannel):
             NotificationPriority.HIGH: "4",
             NotificationPriority.URGENT: "5",
         }
+        clean_phone = "".join(filter(str.isdigit, payload.customer_phone))
         headers = {
             "Title": payload.title,
             "Priority": prio_map.get(payload.priority, "4"),
             "Tags": ",".join(payload.tags) if payload.tags else "warning,phone",
         }
+        if clean_phone:
+            wa_link = f"https://wa.me/{clean_phone}"
+            headers["Click"] = wa_link
+            headers["Actions"] = f"view, Abrir WhatsApp, {wa_link}, clear=true"
 
         try:
             async with httpx.AsyncClient(timeout=4.0) as client:

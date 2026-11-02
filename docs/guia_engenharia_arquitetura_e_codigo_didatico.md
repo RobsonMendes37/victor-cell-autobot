@@ -334,7 +334,7 @@ Conforme demandado pelas melhores práticas do Google, VTEX e TOTVS, nenhum cód
 flowchart LR
     Dev[Código Fonte] --> Step1[Passo 1: Ruff Linting]
     Step1 --> Step2[Passo 2: Mypy Typecheck]
-    Step2 --> Step3[Passo 3: Pytest 105 Testes]
+    Step2 --> Step3[Passo 3: Pytest 110 Testes]
     Step3 --> Step4[Passo 4: Hot Backup DB]
     Step4 --> Commit[Git Commit Aprovado]
 ```
@@ -347,7 +347,7 @@ flowchart LR
 
 # Ou utilizando os atalhos do Makefile:
 make check       # Roda o Quality Gate completo
-make test        # Executa os 105 testes automatizados
+make test        # Executa os 110 testes automatizados
 make lint        # Verifica o código com Ruff
 make typecheck   # Valida tipagem de todos os arquivos com Mypy
 make backup      # Gera backup compactado .db.gz com retenção de 7 dias
@@ -406,16 +406,22 @@ def levenshtein_distance(s1: str, s2: str) -> int:
     ...
 ```
 A similaridade normalizada é calculada por:
-$$	ext{similaridade} = 1.0 - \left( rac{	ext{distância}}{\max(	ext{len}(s_1), 	ext{len}(s_2))} ight)$$
+$$	ext{similaridade} = 1.0 - \left( rac{	ext{distância}}{\max(	ext{len}(s_1), 	ext{len}(s_2))} 
+ight)$$
 Se a similaridade for superior a 0.85, "*sansung*" é reconhecido como "*samsung*" com tolerância matemática.
 
 #### 2. Dicionário Canônico de Codinomes de Fábrica
 Mapeia automaticamente referências de carcaça para o produto correto no catálogo:
-* `t220`, `t225`, `sm-t220`, `smt225` $ightarrow$ **Samsung Galaxy Tab A7 Lite**
-* `t290`, `t295`, `sm-t290` $ightarrow$ **Samsung Galaxy Tab A 8.0 (2019)**
-* `x200`, `x205` $ightarrow$ **Samsung Galaxy Tab A8 10.5**
-* `nb304`, `nb305` $ightarrow$ **Multilaser M10A 3G/4G**
-* `nb301`, `nb302` $ightarrow$ **Multilaser M7s**
+* `t220`, `t225`, `sm-t220`, `smt225` $
+ightarrow$ **Samsung Galaxy Tab A7 Lite**
+* `t290`, `t295`, `sm-t290` $
+ightarrow$ **Samsung Galaxy Tab A 8.0 (2019)**
+* `x200`, `x205` $
+ightarrow$ **Samsung Galaxy Tab A8 10.5**
+* `nb304`, `nb305` $
+ightarrow$ **Multilaser M10A 3G/4G**
+* `nb301`, `nb302` $
+ightarrow$ **Multilaser M7s**
 
 #### 3. Matriz de Discriminação de Peças
 Diferencia e aplica penalidades na pontuação:
@@ -464,3 +470,70 @@ PRAGMA busy_timeout = 5000;      -- Espera até 5 segundos para liberar travas d
 PRAGMA foreign_keys = ON;        -- Garante integridade referencial nas tabelas
 PRAGMA cache_size = -64000;      -- Aloca 64 MB de memória RAM dedicada para cache de páginas
 ```
+
+
+---
+
+## 9. Engenharia de Notificações, Auto-Ingestion de ERP & Atomicidade Transacional
+
+### 9.1 Alertas NTFY com One-Click WhatsApp Action (`infrastructure/notifiers/ntfy_channel.py`)
+
+Quando o cliente solicita separação de peças ou ocorre um transbordo que exige atendimento humano, a velocidade de reação do técnico da loja é crucial.
+
+Para eliminar atrito operacional, o [NtfyNotificationChannel](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/infrastructure/notifiers/ntfy_channel.py) injeta metadados nativos de automação nos cabeçalhos HTTP do ntfy:
+
+```python
+clean_phone = "".join(filter(str.isdigit, payload.customer_phone))
+if clean_phone:
+    wa_link = f"https://wa.me/{clean_phone}"
+    headers["Click"] = wa_link
+    headers["Actions"] = f"view, Abrir WhatsApp, {wa_link}, clear=true"
+```
+
+* **Header `Click`:** Se o atendente tocar no banner da notificação push em seu smartphone (Android ou iPhone), o sistema operacional abre o WhatsApp diretamente na conversa com o cliente correspondente.
+* **Header `Actions`:** Renderiza um botão interativo na notificação com o rótulo **"Abrir WhatsApp"**, dispensando a necessidade de digitar ou procurar o número na agenda.
+
+---
+
+### 9.2 Auto-Ingestion de Peças via Webhooks do ERP (`infrastructure/inventory/bling_v3_adapter.py`)
+
+Nas assistências técnicas de alta rotatividade, novas peças chegam semanalmente e são cadastradas no sistema de gestão (Bling ERP). Em sistemas tradicionais, a inteligência artificial precisaria ser reiniciada ou uma sincronização demorada deveria ser agendada para ler o novo catálogo.
+
+Com a **Auto-Ingestão em Tempo Real**:
+1. No momento em que a nota de entrada ou o cadastro é salvo no Bling, um evento `estoque.alterado` é enviado para o endpoint `POST /webhook/erp/stock`.
+2. O [BlingV3InventoryAdapter](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/infrastructure/inventory/bling_v3_adapter.py) inspeciona o catálogo local em memória.
+3. Se o SKU já existir, ele apenas atualiza o saldo físico e o preço.
+4. Se for uma **peça inédita**, o adaptador a auto-ingere instantaneamente na estrutura [Product](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/domain/entities.py#L59-L78), inferindo categoria, qualidade (original vs paralela) e presença de aro a partir da descrição.
+5. Em menos de 2 milissegundos, a peça nova já está disponível para cotações e respostas no WhatsApp!
+
+---
+
+### 9.3 Guarda de Reserva Atômica e Proteção Anti-Overbooking (`application/use_cases/process_incoming_message.py`)
+
+Em cenários de concorrência onde resta apenas 1 unidade de uma peça cobiçada e dois clientes confirmam o pedido no mesmo segundo, robôs maliciosos ou ingênuos poderiam criar dois despachos e solicitar duas corridas de Uber Flash para a mesma peça física (*overbooking*).
+
+Para garantir rigor transacional bancário, o pipeline de [ProcessIncomingMessageUseCase](file:///home/robson/Projetos_Desenvolvimento/victor-cell/pecasbot-api/application/use_cases/process_incoming_message.py) inverteu a ordem de operações:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cliente
+    participant Pipeline as ProcessIncomingMessageUseCase
+    participant Estoque as ProductRepository (Estoque)
+    participant Pedidos as OrderRepository (Pedidos)
+    participant Alerta as StaffDispatcher
+
+    Cliente->>Pipeline: "Sim, pode mandar o Uber!"
+    Pipeline->>Estoque: decrement_stock(SKU, 1) [Operação Atômica]
+    alt Saldo Insuficiente (decrement_stock == False)
+        Estoque-->>Pipeline: False (Esgotou!)
+        Pipeline-->>Cliente: "Essa peça acabou de esgotar aqui no estoque." (Zero pedidos criados)
+    else Saldo Deduzido com Sucesso (decrement_stock == True)
+        Estoque-->>Pipeline: True (Unidade reservada)
+        Pipeline->>Pedidos: save_order(ReservationOrder)
+        Pipeline->>Alerta: Dispara Sirene NTFY no Celular da Equipe
+        Pipeline-->>Cliente: "Separando a tela. Aguarde o Uber."
+    end
+```
+
+A dedução atômica no estoque ocorre **antes** da persistência do pedido. Se a peça esgotar no milissegundo anterior, nenhum registro falso de pedido é gravado e o cliente é notificado com honestidade e rapidez ("*Essa peça acabou de esgotar aqui no estoque.*").

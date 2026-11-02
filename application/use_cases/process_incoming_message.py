@@ -282,6 +282,25 @@ class ProcessIncomingMessageUseCase:
             prod_name = product.name if product else "Peça solicitada pelo cliente"
             prod_price = product.price if product else 0.0
 
+            # Baixa atômica no estoque com proteção contra overbooking (Atomic Reservation Guard)
+            stock_reserved = await self.product_repo.decrement_stock(final_sku, quantity=1)
+            if not stock_reserved:
+                logger.warning(
+                    f"Tentativa de reserva para {final_sku} por {clean_phone} falhou: estoque esgotado durante confirmação."
+                )
+                reply_text = "Essa peça acabou de esgotar aqui no estoque."
+                await self.messaging_gateway.send_text(clean_phone, reply_text)
+                conversation.state = ConversationState.AI_ACTIVE
+                await self.conversation_repo.save(conversation)
+                return {
+                    "status": "OUT_OF_STOCK",
+                    "intent": "OUT_OF_STOCK",
+                    "replied": True,
+                    "reply": reply_text,
+                    "order_created": False,
+                    "target_sku": final_sku,
+                }
+
             order = ReservationOrder(
                 customer_phone=clean_phone,
                 customer_name=push_name or "Cliente WhatsApp",
@@ -292,9 +311,6 @@ class ProcessIncomingMessageUseCase:
             )
             await self.order_repo.save_order(order)
             order_created = True
-
-            # Baixa automática do estoque
-            await self.product_repo.decrement_stock(final_sku, quantity=1)
 
             # Formata validade da reserva no Fuso Horário de Fortaleza (UTC-3)
             fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)

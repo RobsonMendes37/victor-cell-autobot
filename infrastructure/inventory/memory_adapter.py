@@ -5,7 +5,7 @@ Ideal for development, staging, testing, and zero-dependency environments.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from domain.entities import Product, QualityTier
 from infrastructure.inventory.base import InventoryProvider
@@ -123,4 +123,41 @@ class MemoryInventoryAdapter(InventoryProvider):
             self._products[sku].stock_quantity += quantity
             self._products[sku].has_stock = True
             return True
+        return False
+
+    async def handle_stock_webhook(self, payload: Dict[str, Any]) -> bool:
+        """Processa webhook de estoque com auto-ingestão de novos produtos."""
+        try:
+            retorno = payload.get("retorno", {}) or payload.get("data", {})
+            sku = retorno.get("codigo") or str(retorno.get("idProduto") or "")
+            new_stock = retorno.get("saldo") or retorno.get("saldoFisico")
+            product_name = retorno.get("descricao") or retorno.get("nome") or f"Peça {sku}"
+            price_val = float(retorno.get("preco") or retorno.get("precoVenda") or 0.0)
+
+            if sku and new_stock is not None:
+                new_qty = int(new_stock)
+                str_sku = str(sku)
+                if str_sku in self._products:
+                    self._products[str_sku].stock_quantity = new_qty
+                    self._products[str_sku].has_stock = new_qty > 0
+                    if price_val > 0:
+                        self._products[str_sku].price = price_val
+                    self._products[str_sku].last_updated_at = datetime.now(timezone.utc)
+                else:
+                    auto_quality = QualityTier.ORIGINAL_NACIONAL if "orig" in product_name.lower() else QualityTier.PARALELA_CHINA
+                    new_prod = Product(
+                        sku=str_sku,
+                        name=str(product_name),
+                        category="Tablet / Smartphone",
+                        compatible_models=[str_sku],
+                        quality=auto_quality,
+                        has_frame="com aro" in product_name.lower(),
+                        price=price_val if price_val > 0 else 100.0,
+                        stock_quantity=new_qty,
+                        has_stock=new_qty > 0,
+                    )
+                    self._products[str_sku] = new_prod
+                return True
+        except Exception:
+            pass
         return False

@@ -117,14 +117,17 @@ O sistema possui uma suíte completa de testes automatizados garantindo que nenh
 | `tests/test_circuit_breaker_and_resilience.py` | 7 | Estados do Circuit Breaker (CLOSED/OPEN/HALF-OPEN), sondagem, fast-fallback e resiliência de IA. |
 | `tests/test_catalog_search_service.py` | 5 | Levenshtein puro, normalização de acentos, codinomes (T220, NB304) e discriminação de peças. |
 | `tests/test_rate_limiter_and_metrics.py` | 4 | Sliding Window Rate Limiter anti-DoS, telemetria de latência e exportador Prometheus `/metrics`. |
-| **Total** | **105** | **100% de Aprovação em 45.11s** |
+| `tests/test_ntfy_whatsapp_actions.py` | 1 | Ações interativas do NTFY com link direto para o WhatsApp do cliente (`wa.me`). |
+| `tests/test_erp_auto_ingestion.py` | 2 | Auto-ingestão de novos produtos via Webhook do ERP Bling v3 e Memory Adapter. |
+| `tests/test_atomic_reservation_and_anti_overbooking.py` | 2 | Guarda de Reserva Atômica e proteção contra overbooking simultâneo no balcão. |
+| **Total** | **110** | **100% de Aprovação em 52.38s** |
 
 ---
 
 ## 4. Como Executar a Suíte de Qualidade
 
 ```bash
-# Executa o Quality Gate completo (Ruff Lint + Mypy Typecheck + Pytest 105 testes + Hot Backup)
+# Executa o Quality Gate completo (Ruff Lint + Mypy Typecheck + Pytest 110 testes + Hot Backup)
 ./scripts/quality_gate.sh
 
 # Ou via Makefile

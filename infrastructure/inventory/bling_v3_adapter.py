@@ -246,13 +246,35 @@ class BlingV3InventoryAdapter(InventoryProvider):
         try:
             logger.info(f"[BlingV3Adapter] Processando webhook de estoque: {payload}")
             retorno = payload.get("retorno", {}) or payload.get("data", {})
-            sku = retorno.get("codigo") or str(retorno.get("idProduto"))
+            sku = retorno.get("codigo") or str(retorno.get("idProduto") or "")
             new_stock = retorno.get("saldo") or retorno.get("saldoFisico")
+            product_name = retorno.get("descricao") or retorno.get("nome") or f"Peça Bling {sku}"
+            price_val = float(retorno.get("preco") or retorno.get("precoVenda") or 0.0)
 
             if sku and new_stock is not None:
                 new_qty = int(new_stock)
-                await self.update_stock(str(sku), new_qty)
-                logger.info(f"[BlingV3Adapter] Estoque atualizado via Webhook: SKU={sku} -> Novo Saldo={new_qty}")
+                str_sku = str(sku)
+                if str_sku in self._local_mirror:
+                    self._local_mirror[str_sku].stock_quantity = new_qty
+                    self._local_mirror[str_sku].has_stock = new_qty > 0
+                    if price_val > 0:
+                        self._local_mirror[str_sku].price = price_val
+                    logger.info(f"[BlingV3Adapter] Estoque atualizado via Webhook: SKU={str_sku} -> Novo Saldo={new_qty}")
+                else:
+                    auto_quality = QualityTier.ORIGINAL_NACIONAL if "orig" in product_name.lower() else QualityTier.PARALELA_CHINA
+                    new_prod = Product(
+                        sku=str_sku,
+                        name=str(product_name),
+                        category="Tablet / Smartphone",
+                        compatible_models=[str_sku],
+                        quality=auto_quality,
+                        has_frame="com aro" in product_name.lower(),
+                        price=price_val if price_val > 0 else 100.0,
+                        stock_quantity=new_qty,
+                        has_stock=new_qty > 0,
+                    )
+                    self._local_mirror[str_sku] = new_prod
+                    logger.info(f"[BlingV3Adapter] Nova peça AUTO-INGERIDA via Webhook ERP: SKU={str_sku} ({product_name})")
                 return True
         except Exception as e:
             logger.error(f"[BlingV3Adapter] Erro ao tratar webhook de estoque do Bling: {e}")
