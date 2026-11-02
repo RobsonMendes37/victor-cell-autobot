@@ -100,7 +100,7 @@ Quando o cliente pede desconto, negocia valores ou envia foto que gera incerteza
 
 ---
 
-## 3. Matriz da Suíte de Testes Automatizados (89 Testes / 100% Aprovados)
+## 3. Matriz da Suíte de Testes Automatizados (129 Testes / 100% Aprovados)
 
 O sistema possui uma suíte completa de testes automatizados garantindo que nenhuma regressão ocorra:
 
@@ -127,14 +127,16 @@ O sistema possui uma suíte completa de testes automatizados garantindo que nenh
 | `tests/test_intelligent_ai_reopen.py` | 3 | Reabertura inteligente da IA em loja fechada e pós-tolerância de 30m com nova cotação. |
 | `tests/test_fast_faq_cache.py` | 4 | Respostas em <0.05ms com zero tokens para endereço e horário, com bloqueio de Pix para garantir transbordo ao caixa humano. |
 | `tests/test_overbooking_audit_metric.py` | 1 | Telemetria e auditoria de pedidos bloqueados por falta de estoque. |
-| **Total** | **118** | **100% de Aprovação em 44.09s** |
+| tests/test_native_erp_and_cognitive_entry.py | 4 | ERP nativo, persistência de fornecedores/movimentações, entrada cognitiva e mascaramento LGPD. |
+| tests/test_verification_and_edge_cases.py | 7 | Casos negativos, proteção contra overdraft, sanitização contra SQLi na busca, limites e auth 401. |
+| **Total** | **129** | **100% de Aprovação em 55.72s** |
 
 ---
 
 ## 4. Como Executar a Suíte de Qualidade
 
 ```bash
-# Executa o Quality Gate completo (Ruff Lint + Mypy Typecheck + Pytest 118 testes + Hot Backup)
+# Executa o Quality Gate completo (Ruff Lint + Mypy Typecheck + Pytest 129 testes + Hot Backup)
 ./scripts/quality_gate.sh
 
 # Ou via Makefile
