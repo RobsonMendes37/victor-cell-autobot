@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     DASHBOARD_PASSWORD: str = "victorcell2026"
     DASHBOARD_SECRET_KEY: str = "victor-cell-secret-token-auth-2026"
 
+    # Provedor de Estoque Plugável (Ports & Adapters: GOOGLE_SHEETS, BLING_V3, MEMORY)
+    INVENTORY_PROVIDER: str = "GOOGLE_SHEETS"
+    BLING_CLIENT_ID: Optional[str] = None
+    BLING_CLIENT_SECRET: Optional[str] = None
+    BLING_ACCESS_TOKEN: Optional[str] = None
+    BLING_REFRESH_TOKEN: Optional[str] = None
+    INVENTORY_CACHE_TTL: int = 300
+
     # Lista de números do balcão/caixa (separados por vírgula no .env)
     STAFF_PHONES: str = "5585999999999"
 

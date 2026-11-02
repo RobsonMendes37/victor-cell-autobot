@@ -36,6 +36,7 @@ from infrastructure.config import settings
 from infrastructure.gateways.evolution_gateway import EvolutionGateway
 from infrastructure.repositories.google_sheets_repository import GoogleSheetsRepository
 from infrastructure.repositories.memory_product_repository import MemoryProductRepository
+from infrastructure.inventory import create_inventory_provider
 from infrastructure.repositories.sheets_exporter import SheetsExporter
 from infrastructure.repositories.sqlite_repository import SqliteRepository
 from infrastructure.services.agent_service import AIAgentService
@@ -92,15 +93,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PecasBotAPI")
 
 # Initialize singletons
-if settings.GOOGLE_SHEET_ID:
-    product_repo = GoogleSheetsRepository(
-        sheet_id=settings.GOOGLE_SHEET_ID,
-        api_key=settings.GOOGLE_SHEETS_API_KEY,
-    )
-    logger.info(f"Usando GoogleSheetsRepository com Sheet ID: {settings.GOOGLE_SHEET_ID}")
-else:
-    product_repo = MemoryProductRepository()
-    logger.info("Usando MemoryProductRepository padrão")
+product_repo = create_inventory_provider(
+    provider_name=settings.INVENTORY_PROVIDER,
+    enable_cache=True,
+    cache_ttl_seconds=settings.INVENTORY_CACHE_TTL,
+)
+logger.info(f"Usando Provedor de Estoque: {product_repo.get_provider_name()} (Cache TTL: {settings.INVENTORY_CACHE_TTL}s)")
 
 sqlite_repo = SqliteRepository(settings.DATABASE_PATH)
 gateway = EvolutionGateway(message_recorder=sqlite_repo.record_sent_message)
@@ -505,12 +503,26 @@ async def get_orders_csv(request: Request):
 @app.post("/api/reports/sync-sheets")
 async def sync_google_sheets(request: Request):
     check_dashboard_auth(request)
-    """Forces cache refresh from Google Sheets."""
-    if isinstance(product_repo, GoogleSheetsRepository):
-        product_repo._last_cache_update = None
-        products = await product_repo.list_all()
-        return {"status": "synced", "total_items": len(products)}
-    return {"status": "ignored", "reason": "Not using GoogleSheetsRepository"}
+    """Forces cache refresh from active inventory provider."""
+    if hasattr(product_repo, "sync_catalog"):
+        count = await product_repo.sync_catalog()
+        return {"status": "synced", "total_items": count, "provider": product_repo.get_provider_name()}
+    products = await product_repo.list_all()
+    return {"status": "synced", "total_items": len(products), "provider": product_repo.get_provider_name()}
+
+
+@app.post("/webhook/erp/stock")
+async def erp_stock_webhook(request: Request):
+    """Webhook para ingestão em tempo real de alterações de estoque do Bling ERP v3 ou outros ERPs."""
+    try:
+        payload = await request.json()
+        if hasattr(product_repo, "handle_stock_webhook"):
+            handled = await product_repo.handle_stock_webhook(payload)
+            return {"status": "received", "handled": handled, "provider": product_repo.get_provider_name()}
+        return {"status": "ignored", "reason": "Current provider does not support webhooks"}
+    except Exception as e:
+        logger.error(f"Erro ao processar webhook de estoque externo: {e}")
+        raise HTTPException(status_code=400, detail="Invalid payload")
 
 
 # --- WHATSAPP PAIRING VIA EVOLUTION API ---
