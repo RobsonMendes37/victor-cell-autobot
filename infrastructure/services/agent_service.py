@@ -202,14 +202,14 @@ class AIAgentService(AIServiceInterface):
             )
 
             # Constrói o histórico multi-turn
-            contents = []
+            contents: list[dict[str, object]] = []
             if history:
                 for h in history:
                     role = "user" if h.get("role") == "user" else "model"
                     contents.append({"role": role, "parts": [{"text": h.get("content", "")}]})
 
             # Monta o turno atual (com texto e/ou mídia)
-            current_turn_parts = []
+            current_turn_parts: list[object] = []
             if media_bytes and mime_type:
                 from google.genai import types
 

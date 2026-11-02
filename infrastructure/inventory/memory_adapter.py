@@ -5,7 +5,8 @@ Ideal for development, staging, testing, and zero-dependency environments.
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
 from domain.entities import Product, QualityTier
 from infrastructure.inventory.base import InventoryProvider
 

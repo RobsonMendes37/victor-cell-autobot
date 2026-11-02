@@ -8,9 +8,10 @@ Covers:
 """
 
 import os
+
 import pytest
-from datetime import datetime, timezone
-from domain.entities import ReservationOrder, OrderStatus, Conversation, ConversationState
+
+from domain.entities import ReservationOrder
 from infrastructure.repositories.sqlite_repository import SqliteRepository
 
 TEST_DB = "data/test_deep_sqlite.db"

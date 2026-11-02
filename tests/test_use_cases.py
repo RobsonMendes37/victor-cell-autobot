@@ -156,7 +156,7 @@ async def test_inactivity_resets_context_and_prevents_stale_orders(use_case, tes
     limpa a peça ativa e impede que uma mensagem aleatória após 2 horas
     seja interpretada como confirmação de pedido pendente.
     """
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
     phone = "5585991117770"
 
     # 1. Cotação (Peça de Tablet presente no repositório de teste: Tab A8)
@@ -206,8 +206,8 @@ async def test_post_sale_order_tracking_query(use_case, test_sqlite):
     Testa se a IA reconhece o pedido recente do cliente no banco
     ao ser questionada sobre o status de despacho/entrega ('deu certo? já mandou?').
     """
-    from domain.entities import ReservationOrder, OrderStatus
-    from datetime import datetime, timezone
+
+    from domain.entities import OrderStatus, ReservationOrder
     phone = "5585991118888"
 
     # Cria pedido no banco para o cliente

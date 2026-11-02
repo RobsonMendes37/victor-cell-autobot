@@ -5,11 +5,11 @@ Varre todos os chats exportados (.zip e .txt), extrai o DNA de atendimento human
 cataloga modelos e preços reais praticados, e gera o dataset de Few-Shot para a IA.
 """
 
+import glob
+import json
 import os
 import re
-import json
 import zipfile
-import glob
 from collections import Counter, defaultdict
 from datetime import datetime
 
@@ -35,23 +35,23 @@ def parse_chat_content(raw_text: str, source_name: str):
     """
     lines = raw_text.splitlines()
     messages = []
-    
+
     # Regex 1: [25/05/2026, 10:13:22] Nome: Msg
     pattern_bracket = re.compile(r"^‎?\[(\d{1,2}/\d{1,2}/\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?)\]\s+([^:]+):\s*(.*)$")
     # Regex 2: 25/05/2026 10:13 - Nome: Msg
     pattern_dash = re.compile(r"^‎?(\d{1,2}/\d{1,2}/\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+-\s+([^:]+):\s*(.*)$")
-    
+
     current_msg = None
-    
+
     for line in lines:
         line_clean = line.strip()
         if not line_clean:
             continue
-            
+
         m1 = pattern_bracket.match(line_clean)
         m2 = pattern_dash.match(line_clean)
         match = m1 or m2
-        
+
         if match:
             if current_msg:
                 messages.append(current_msg)
@@ -67,10 +67,10 @@ def parse_chat_content(raw_text: str, source_name: str):
         else:
             if current_msg:
                 current_msg["text"] += "\n" + line_clean
-                
+
     if current_msg:
         messages.append(current_msg)
-        
+
     return messages
 
 def extract_dialogue_turns(messages):
@@ -80,7 +80,7 @@ def extract_dialogue_turns(messages):
     turns = []
     i = 0
     n = len(messages)
-    
+
     while i < n:
         msg = messages[i]
         if not msg["is_store"]:
@@ -92,13 +92,13 @@ def extract_dialogue_turns(messages):
             while j < n and not messages[j]["is_store"]:
                 cust_texts.append(messages[j]["text"])
                 j += 1
-                
+
             # Verifica se houve resposta da loja em seguida
             store_texts = []
             while j < n and messages[j]["is_store"]:
                 store_texts.append(messages[j]["text"])
                 j += 1
-                
+
             if store_texts:
                 turns.append({
                     "customer_name": cust_name,
@@ -110,7 +110,7 @@ def extract_dialogue_turns(messages):
             i = j
         else:
             i += 1
-            
+
     return turns
 
 def extract_models_and_prices(turns):
@@ -129,16 +129,16 @@ def extract_models_and_prices(turns):
         # Apple iPad
         r"\b(iPad\s*\d+|iPad\s*Air\s*\d*|iPad\s*Mini\s*\d*|iPad\s*Pro)\b",
     ]
-    
+
     catalog_findings = defaultdict(lambda: {"quotes": [], "piece_types": Counter(), "stock_status": Counter()})
-    
+
     price_pattern = re.compile(r"(?:R\$\s*|de\s*)?(\d{2,3})(?:\.00|,00)?\b", re.IGNORECASE)
-    
+
     for turn in turns:
         c_text = turn["customer_query"]
         s_text = turn["store_reply"]
         combined = f"{c_text} {s_text}"
-        
+
         # Detecta peça
         piece_type = "Geral"
         if re.search(r"\btouch\b", combined, re.IGNORECASE):
@@ -151,7 +151,7 @@ def extract_models_and_prices(turns):
             piece_type = "Conector de Carga"
         elif re.search(r"\b(?:tampa|carcaça)\b", combined, re.IGNORECASE):
             piece_type = "Tampa / Carcaça"
-            
+
         # Detecta modelos
         found_models = []
         for pat in model_patterns:
@@ -160,12 +160,12 @@ def extract_models_and_prices(turns):
                 clean_m = m.upper().strip()
                 if len(clean_m) >= 2 and clean_m not in ["DE", "OU", "EM"]:
                     found_models.append(clean_m)
-                    
+
         for mod in set(found_models):
             # Detecta preço na resposta da loja
             prices = price_pattern.findall(s_text)
             valid_prices = [int(p) for p in prices if 15 <= int(p) <= 800]
-            
+
             # Detecta disponibilidade
             s_lower = s_text.lower()
             if any(w in s_lower for w in ["tem não", "tenho não", "não", "esgotado", "falta"]):
@@ -174,7 +174,7 @@ def extract_models_and_prices(turns):
                 status = "Tem no Estoque"
             else:
                 status = "A Verificar"
-                
+
             catalog_findings[mod]["piece_types"][piece_type] += 1
             catalog_findings[mod]["stock_status"][status] += 1
             if valid_prices:
@@ -186,30 +186,30 @@ def extract_models_and_prices(turns):
                         "client": turn["customer_name"],
                         "date": turn["timestamp"]
                     })
-                    
+
     return catalog_findings
 
 def main():
     print("="*60)
     print("PIPELINE DE APRENDIZADO DE CHATS - VICTOR CELL")
     print("="*60)
-    
+
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    
+
     zip_files = sorted(glob.glob(os.path.join(CHATS_DIR, "WhatsApp Chat - *.zip")))
     txt_files = sorted(glob.glob(os.path.join(CHATS_DIR, "WhatsApp Chat - *.txt")))
-    
+
     all_files = zip_files + txt_files
     print(f"Total de arquivos de chat encontrados: {len(all_files)}")
-    
+
     all_messages = []
     all_turns = []
     client_stats = {}
-    
+
     for file_path in all_files:
         base_name = os.path.basename(file_path)
         content = ""
-        
+
         try:
             if file_path.endswith(".zip"):
                 with zipfile.ZipFile(file_path, "r") as z:
@@ -220,13 +220,13 @@ def main():
             else:
                 with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                     content = f.read()
-                    
+
             if content:
                 msgs = parse_chat_content(content, base_name)
                 turns = extract_dialogue_turns(msgs)
                 all_messages.extend(msgs)
                 all_turns.extend(turns)
-                
+
                 client_name = base_name.replace("WhatsApp Chat - ", "").replace(".zip", "").replace(".txt", "")
                 client_stats[client_name] = {
                     "total_messages": len(msgs),
@@ -237,35 +237,35 @@ def main():
                 print(f"  [OK] {client_name[:25]:<25} -> {len(msgs):3d} msgs | {len(turns):2d} turnos")
         except Exception as e:
             print(f"  [ERRO] Falha ao processar {base_name}: {e}")
-            
+
     print("-" * 60)
-    print(f"TOTAL GERAL PROCESSADO:")
+    print("TOTAL GERAL PROCESSADO:")
     print(f"  - Mensagens brutas analisadas: {len(all_messages)}")
     print(f"  - Turnos completos de atendimento: {len(all_turns)}")
     print(f"  - Clientes / Assistências distintas: {len(client_stats)}")
-    
+
     # Análise de Estilo do Balcão
     store_replies = [t["store_reply"] for t in all_turns]
     word_counts = [len(r.split()) for r in store_replies if len(r.split()) > 0]
     avg_words = sum(word_counts) / len(word_counts) if word_counts else 0
     short_replies = sum(1 for wc in word_counts if wc <= 6)
     pct_short = (short_replies / len(word_counts)) * 100 if word_counts else 0
-    
-    print(f"\nESTATÍSTICAS DE COMUNICAÇÃO DO BALCÃO:")
+
+    print("\nESTATÍSTICAS DE COMUNICAÇÃO DO BALCÃO:")
     print(f"  - Média de palavras por resposta: {avg_words:.2f} palavras")
     print(f"  - Respostas ultra-curtas (<= 6 palavras): {pct_short:.1f}%")
-    
+
     # Mineração de Catálogo e Preços
     catalog_intelligence = extract_models_and_prices(all_turns)
     print(f"\nMODELOS DE APARELHOS IDENTIFICADOS NO MERCADO: {len(catalog_intelligence)}")
-    
+
     # Top Modelos Mais Cotados
     sorted_models = sorted(
         catalog_intelligence.items(),
         key=lambda item: sum(item[1]["piece_types"].values()),
         reverse=True
     )
-    
+
     print("\nTOP 10 MODELOS MAIS PROCURADOS EM FORTALEZA:")
     for mod, data in sorted_models[:10]:
         total_inquiries = sum(data["piece_types"].values())
@@ -273,7 +273,7 @@ def main():
         quotes = [q["price"] for q in data["quotes"]]
         avg_price = f"R$ {sum(quotes)/len(quotes):.0f}" if quotes else "Sob Consulta"
         print(f"  * {mod:<12}: {total_inquiries:2d} cotações | Peças: {top_pieces} | Média Preço: {avg_price}")
-        
+
     # Salva os arquivos de inteligência
     output_catalog = os.path.join(OUTPUT_DIR, "mined_catalog_intelligence.json")
     with open(output_catalog, "w", encoding="utf-8") as f:
@@ -288,12 +288,12 @@ def main():
             }
         json.dump(serializable_catalog, f, ensure_ascii=False, indent=2)
     print(f"\n[SALVO] Catálogo minerado salvo em: {output_catalog}")
-    
+
     output_dialogues = os.path.join(OUTPUT_DIR, "golden_dialogues_mined.json")
     with open(output_dialogues, "w", encoding="utf-8") as f:
         json.dump(all_turns, f, ensure_ascii=False, indent=2)
     print(f"[SALVO] Diálogos minerados salvos em: {output_dialogues}")
-    
+
     # Gera o Relatório Consolidado em Markdown
     generate_markdown_report(all_messages, all_turns, client_stats, avg_words, pct_short, sorted_models)
 
@@ -331,7 +331,7 @@ def generate_markdown_report(all_messages, all_turns, client_stats, avg_words, p
     report_lines.append("")
     report_lines.append("| Modelo | Cotações | Peças Mais Buscadas | Preço Médio Balcão | Status no Estoque |")
     report_lines.append("| :--- | :---: | :--- | :---: | :--- |")
-    
+
     for mod, data in sorted_models[:15]:
         total_inquiries = sum(data["piece_types"].values())
         top_pieces = ", ".join([f"{k} ({v})" for k, v in data["piece_types"].most_common(2)])
@@ -339,7 +339,7 @@ def generate_markdown_report(all_messages, all_turns, client_stats, avg_words, p
         avg_price = f"R$ {sum(quotes)/len(quotes):.2f}" if quotes else "Sob Consulta"
         top_status = data["stock_status"].most_common(1)[0][0] if data["stock_status"] else "Disponível"
         report_lines.append(f"| **{mod}** | {total_inquiries} | {top_pieces} | {avg_price} | {top_status} |")
-        
+
     report_lines.append("")
     report_lines.append("---")
     report_lines.append("")
@@ -349,7 +349,7 @@ def generate_markdown_report(all_messages, all_turns, client_stats, avg_words, p
     report_lines.append("| :--- | :---: | :---: | :---: | :---: |")
     for client, st in sorted(client_stats.items(), key=lambda x: x[1]["total_turns"], reverse=True)[:20]:
         report_lines.append(f"| {client} | {st['total_messages']} | {st['total_turns']} | {st['customer_messages']} | {st['store_messages']} |")
-        
+
     report_lines.append("")
     report_lines.append("---")
     report_lines.append("")
@@ -358,10 +358,10 @@ def generate_markdown_report(all_messages, all_turns, client_stats, avg_words, p
     report_lines.append("1. **Zero 'Eco' de IA:** Não cumprimenta com textão. Responde com o valor da peça de imediato.")
     report_lines.append("2. **Regra de 100% de Certeza:** Se o cliente não passar o modelo exato ou mandar só a foto da frente, a IA replica o balcão: *'Foto dele parte trás'*.")
     report_lines.append("3. **Transbordo Silencioso (É só passar):** Dúvida técnica, reparo de placa ou negociação aciona `HUMAN_HANDOFF` sem enviar nenhuma mensagem ao cliente. O bot silencia a IA e transfere direto para a equipe humana assumir no WhatsApp.")
-    
+
     with open(ARTIFACT_REPORT, "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines))
-        
+
     print(f"\n[SUCESSO] Relatório consolidado gerado em: {ARTIFACT_REPORT}")
 
 if __name__ == "__main__":

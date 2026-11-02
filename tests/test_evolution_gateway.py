@@ -7,9 +7,11 @@ Covers:
 - fetch_media_bytes for image/audio messages
 """
 
-import pytest
-import httpx
 from unittest.mock import AsyncMock, patch
+
+import httpx
+import pytest
+
 from infrastructure.gateways.evolution_gateway import EvolutionGateway
 
 

@@ -4,8 +4,10 @@ Delivers urgent alerts directly to attendants' smartphones with priority sirens 
 """
 
 import logging
-import httpx
 from typing import Optional
+
+import httpx
+
 from infrastructure.config import settings
 from infrastructure.notifiers.base import (
     NotificationPayload,

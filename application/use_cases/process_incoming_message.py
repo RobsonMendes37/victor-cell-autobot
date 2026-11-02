@@ -17,6 +17,7 @@ import pytz
 
 from domain.entities import (
     ConversationState,
+    QualityTier,
     ReservationOrder,
 )
 from domain.gateways import AIServiceInterface, MessagingGatewayInterface
@@ -167,7 +168,7 @@ class ProcessIncomingMessageUseCase:
 
         reply_text = ai_decision.get("reply_text", "")
         intent = ai_decision.get("intent", "GENERAL_QUESTION")
-        requires_staff_alert = ai_decision.get("requires_staff_alert", False)
+        ai_decision.get("requires_staff_alert", False)
         target_sku = ai_decision.get("target_sku") or conversation.active_sku
         destination_address = ai_decision.get("destination_address")
 
@@ -225,7 +226,6 @@ class ProcessIncomingMessageUseCase:
                     f"Downgrade ORDER_DISPATCH -> ORDER_PENDING_CONFIRMATION para {clean_phone} (estado={conversation.state.value}, sem confirmação em 2 etapas)"
                 )
                 intent = "ORDER_PENDING_CONFIRMATION"
-                requires_staff_alert = False
 
         order_created = False
         if intent == "ORDER_PENDING_CONFIRMATION":
@@ -266,7 +266,6 @@ class ProcessIncomingMessageUseCase:
 
         # 11. Se o cliente CONFIRMOU explicitamente e fechou o pedido de separação
         elif intent == "ORDER_DISPATCH":
-            requires_staff_alert = True
             final_sku = target_sku or conversation.active_sku or "TEL-SAM-A15-ORIG"
             target_sku = final_sku
             final_address = destination_address or conversation.notes or "Retirada no Balcão"

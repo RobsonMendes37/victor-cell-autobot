@@ -108,11 +108,11 @@ class EvolutionGateway(MessagingGatewayInterface):
             try:
                 clean_cust_phone = "".join(filter(str.isdigit, customer_phone)) if customer_phone else ""
                 wa_link = f"https://wa.me/{clean_cust_phone}" if clean_cust_phone else None
-                
+
                 # Mapeia tags para lista
                 tag_list = [t.strip() for t in (tags or "rotating_light,phone,package").split(",") if t.strip()]
-                
-                payload = {
+
+                payload: dict[str, object] = {
                     "topic": settings.NTFY_TOPIC,
                     "title": title or "🚨 ALERTA BALCÃO VICTOR CELL",
                     "message": alert_text,
@@ -164,7 +164,7 @@ class EvolutionGateway(MessagingGatewayInterface):
             # Se já veio no payload em base64
             if raw_base64:
                 logger.info(f"Mídia decodificada diretamente do base64 do webhook ({mime_type})")
-                return base64.b64decode(raw_base64), mime_type
+                return base64.b64decode(raw_base64), str(mime_type or "image/jpeg")
 
             # Se não veio no payload, busca na Evolution API via getBase64FromMediaMessage
             url = f"{self.base_url}/chat/getBase64FromMediaMessage/{self.instance}"
@@ -182,7 +182,7 @@ class EvolutionGateway(MessagingGatewayInterface):
                     b64_str = data.get("base64")
                     if b64_str:
                         logger.info(f"Mídia obtida com sucesso via getBase64FromMediaMessage ({mime_type})")
-                        return base64.b64decode(b64_str), mime_type
+                        return base64.b64decode(b64_str), str(mime_type or "image/jpeg")
                 else:
                     logger.warning(f"Evolution API getBase64FromMediaMessage retornou status {res.status_code}: {res.text}")
         except Exception as e:

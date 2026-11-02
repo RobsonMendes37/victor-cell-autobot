@@ -5,11 +5,12 @@ Can integrate with Twilio Voice, Comtele, TotalVoice or internal VoIP/Asterisk P
 """
 
 import logging
-import httpx
 from typing import Optional
+
+import httpx
+
 from infrastructure.notifiers.base import (
     NotificationPayload,
-    NotificationPriority,
     StaffNotificationChannel,
 )
 

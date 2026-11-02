@@ -7,13 +7,13 @@ Supports:
 - Automated verification of backup archive health
 """
 
-import os
-import sys
 import gzip
+import logging
+import os
 import shutil
 import sqlite3
-import logging
-from datetime import datetime, timezone, timedelta
+import sys
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 # Adiciona diretório raiz ao path

@@ -4,6 +4,7 @@ Pytest configuration and fixtures.
 
 import os
 from typing import Any, Dict, Optional, Tuple
+
 import pytest
 
 from application.use_cases.process_incoming_message import ProcessIncomingMessageUseCase

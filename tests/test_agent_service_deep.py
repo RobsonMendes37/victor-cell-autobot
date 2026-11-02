@@ -7,8 +7,10 @@ Covers:
 - Copilot consultation
 """
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+
 from domain.entities import Conversation, ConversationState
 from infrastructure.services.agent_service import AIAgentService
 

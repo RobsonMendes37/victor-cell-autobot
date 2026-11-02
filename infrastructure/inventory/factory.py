@@ -3,13 +3,14 @@ Inventory Provider Factory.
 Instantiates and configures the appropriate inventory provider based on application settings.
 """
 
-import os
 import logging
+import os
 from typing import Optional
+
 from infrastructure.inventory.base import InventoryProvider
+from infrastructure.inventory.bling_v3_adapter import BlingV3InventoryAdapter
 from infrastructure.inventory.cached_proxy import CachedInventoryProxy
 from infrastructure.inventory.google_sheets_adapter import GoogleSheetsInventoryAdapter
-from infrastructure.inventory.bling_v3_adapter import BlingV3InventoryAdapter
 from infrastructure.inventory.memory_adapter import MemoryInventoryAdapter
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ def create_inventory_provider(
     """
     from infrastructure.config import settings
 
-    target = (provider_name or getattr(settings, 'INVENTORY_PROVIDER', 'GOOGLE_SHEETS')).upper()
+    target = str(provider_name or getattr(settings, 'INVENTORY_PROVIDER', 'GOOGLE_SHEETS') or 'GOOGLE_SHEETS').upper()
     logger.info(f"[InventoryFactory] Inicializando provedor de estoque: '{target}'")
 
     provider: InventoryProvider

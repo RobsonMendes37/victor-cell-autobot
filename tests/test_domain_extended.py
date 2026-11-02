@@ -7,16 +7,17 @@ Covers 100% of:
 - Store business hours (Domingo, antes da abertura, durante expediente, após expediente, sábado e sexta)
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
 import pytz
+
 from domain.entities import (
     Conversation,
     ConversationState,
+    OrderStatus,
     Product,
     QualityTier,
     ReservationOrder,
-    OrderStatus,
 )
 from infrastructure.config import settings
 

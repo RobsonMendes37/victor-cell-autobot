@@ -174,7 +174,7 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
     async def _fetch_via_service_account(self, client: gspread.Client) -> Dict[str, Product]:
         """Fetches catalog using gspread and Service Account."""
         try:
-            sheet = client.open_by_key(self.sheet_id)
+            sheet = client.open_by_key(str(self.sheet_id or ""))
             worksheet = None
             try:
                 worksheet = sheet.worksheet("Estoque_Catalogo")
@@ -209,7 +209,7 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
                 quality_str = row[4].strip() if len(row) > 4 else "ORIGINAL_NACIONAL"
                 has_frame = (row[5].strip().upper() in ["SIM", "TRUE", "S", "1"]) if len(row) > 5 else False
                 price = float(row[6].replace("R$", "").replace(",", ".").strip()) if len(row) > 6 else 0.0
-                
+
                 # Suporte inteligente a Booleano de Estoque (Checkbox TRUE/FALSE, SIM/NÃO, ou Contagem numérica)
                 stock_raw = row[7].strip() if len(row) > 7 else "SIM"
                 s_upper = stock_raw.upper()
@@ -309,7 +309,7 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
         client = self._get_service_client()
         if client and self.sheet_id:
             try:
-                sheet = client.open_by_key(self.sheet_id)
+                sheet = client.open_by_key(str(self.sheet_id or ""))
                 worksheet = sheet.worksheet("Logs_Expedicao_PowerBI")
                 fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
                 created_str = order.created_at.astimezone(fortaleza_tz).strftime("%Y-%m-%d %H:%M:%S")
@@ -328,7 +328,7 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
                     order.status.value,
                     expires_str,
                 ]
-                worksheet.append_row(row_data)
+                worksheet.append_row([str(x) for x in row_data])
                 logger.info(f"Pedido #{order.id} registrado com sucesso no Google Sheets.")
                 return True
             except Exception as e:

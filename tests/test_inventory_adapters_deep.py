@@ -9,13 +9,14 @@ Covers:
 - GoogleSheetsAdapter Health Check & Sync
 """
 
-import pytest
-import httpx
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
-from domain.entities import QualityTier, Product
+
+import httpx
+import pytest
+
+from domain.entities import Product, QualityTier
 from infrastructure.inventory.bling_v3_adapter import BlingV3InventoryAdapter
-from infrastructure.inventory.google_sheets_adapter import GoogleSheetsInventoryAdapter
 from infrastructure.inventory.cached_proxy import CachedInventoryProxy
 from infrastructure.inventory.memory_adapter import MemoryInventoryAdapter
 
@@ -185,7 +186,7 @@ async def test_cached_proxy_full_stock_and_search_operations():
     assert (await proxy.get_by_sku(sku)).stock_quantity == 20
 
     # webhook invalidates cache
-    handled = await proxy.handle_stock_webhook({"retorno": {"codigo": sku, "saldo": 8}})
+    await proxy.handle_stock_webhook({"retorno": {"codigo": sku, "saldo": 8}})
     assert proxy._cache_expires_at is None
 
 
@@ -230,9 +231,10 @@ async def test_bling_stock_mutations_and_search():
 
 @pytest.mark.asyncio
 async def test_memory_product_repository_edge_cases():
+    from datetime import datetime, timedelta, timezone
+
+    from domain.entities import OrderStatus, ReservationOrder
     from infrastructure.repositories.memory_product_repository import MemoryProductRepository
-    from domain.entities import ReservationOrder, OrderStatus
-    from datetime import datetime, timezone, timedelta
 
     repo = MemoryProductRepository()
     sku = "TEL-TAB-A8-1LINHA"

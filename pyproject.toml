@@ -9,4 +9,24 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
-ignore = ["E501"]
+ignore = ["E501", "E402"]
+
+[tool.mypy]
+python_version = "3.13"
+explicit_package_bases = true
+ignore_missing_imports = true
+warn_unused_ignores = false
+warn_redundant_casts = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "asyncpg.*",
+    "aiosqlite.*",
+    "gspread.*",
+    "google.*",
+    "redis.*",
+]
+ignore_missing_imports = true

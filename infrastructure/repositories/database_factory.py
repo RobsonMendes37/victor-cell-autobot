@@ -6,6 +6,7 @@ or SqliteRepository (for lightweight self-hosted deployment) based on configurat
 
 import logging
 from typing import Any, Optional
+
 from infrastructure.config import settings
 from infrastructure.repositories.sqlite_repository import SqliteRepository
 
@@ -24,7 +25,7 @@ def create_database_repository(
     if dsn and (dsn.startswith("postgres://") or dsn.startswith("postgresql://")):
         try:
             from infrastructure.repositories.postgres_repository import PostgresRepository
-            logger.info(f"[DatabaseFactory] Inicializando repositório PostgreSQL (Enterprise DSN configurado).")
+            logger.info("[DatabaseFactory] Inicializando repositório PostgreSQL (Enterprise DSN configurado).")
             return PostgresRepository(dsn=dsn)
         except Exception as e:
             logger.error(f"[DatabaseFactory] Falha ao instanciar PostgresRepository ({e}). Recorrendo ao SQLite.")

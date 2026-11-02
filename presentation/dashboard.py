@@ -15,6 +15,7 @@ Includes:
 
 from typing import Optional
 
+
 def render_dashboard_html() -> str:
     return r"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -449,7 +450,7 @@ def render_dashboard_html() -> str:
       .section-toolbar { flex-direction: column; align-items: stretch; gap: 0.75rem; }
       .toolbar-actions { justify-content: stretch; }
       .toolbar-actions .btn, .toolbar-actions .search-input { flex: 1; }
-      
+
       /* Oculta tabelas grandes no celular e ativa os cards touch */
       .table-container { display: none; }
       .mobile-card-deck { display: flex; }
@@ -466,7 +467,7 @@ def render_dashboard_html() -> str:
       .table-container { display: block; }
       .mobile-card-deck { display: none; }
     }
-  
+
     /* --- ESTILOS DO COPILOTO IA DO GESTOR --- */
     .quick-chips-wrapper {
       margin-bottom: 1.25rem;
@@ -1218,7 +1219,7 @@ def render_dashboard_html() -> str:
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 0.25rem;">
           <div style="display: flex; align-items: center; gap: 0.85rem;">
             <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
-              
+
             </div>
             <div>
               <h3 style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -1452,8 +1453,8 @@ def render_dashboard_html() -> str:
       </div>
       <!-- SIMULADOR DE TESTE INTEGRADO AO GEMINI -->
       <div style="margin-top: 1.5rem;">
-        
-    
+
+
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
@@ -1892,7 +1893,7 @@ def render_dashboard_html() -> str:
         renderConversations(allConversations);
         return;
       }
-      const filtered = allConversations.filter(c => 
+      const filtered = allConversations.filter(c =>
         (c.customer_name || '').toLowerCase().includes(q) ||
         (c.phone || '').includes(q) ||
         (c.formatted_phone || '').includes(q) ||
@@ -2764,7 +2765,7 @@ def render_login_html(error_message: Optional[str] = None) -> str:
     body {{
       font-family: var(--font-sans);
       background-color: var(--bg);
-      background-image: 
+      background-image:
         radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.12) 0px, transparent 50%),
         radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.12) 0px, transparent 50%);
       color: var(--text);

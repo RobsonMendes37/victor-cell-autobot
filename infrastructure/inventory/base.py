@@ -4,8 +4,8 @@ Defines the contract that any ERP (Bling, Tiny, Omie, Sheets, Postgres) must imp
 """
 
 from abc import abstractmethod
-from typing import Any, Dict, List, Optional
-from domain.entities import Product, QualityTier
+from typing import Any, Dict
+
 from domain.repositories import ProductRepositoryInterface
 
 

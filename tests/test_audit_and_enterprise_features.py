@@ -7,32 +7,19 @@ Test Suite for Enterprise Features:
 - API Endpoints (/api/audit/logs, /api/system/profile)
 """
 
-import os
-import json
 import pytest
-import aiosqlite
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from domain.entities import (
-    StoreProfile,
     AuditLogEntry,
-    Conversation,
-    ConversationState,
-    ReservationOrder,
-    OrderStatus,
+    StoreProfile,
 )
-from infrastructure.repositories.sqlite_repository import SqliteRepository
-from infrastructure.repositories.database_factory import create_database_repository
 from infrastructure.notifiers.base import (
-    StaffNotificationChannel,
     NotificationPayload,
-    NotificationPriority,
+    StaffNotificationChannel,
 )
 from infrastructure.notifiers.dispatcher import StaffNotificationDispatcher
-from infrastructure.notifiers.ntfy_channel import NtfyNotificationChannel
-from infrastructure.notifiers.call_channel import PhoneCallNotificationChannel
-
+from infrastructure.repositories.database_factory import create_database_repository
+from infrastructure.repositories.sqlite_repository import SqliteRepository
 
 # --- 1. Testes de Entidade de Domínio ---
 
@@ -243,8 +230,9 @@ def test_database_factory_resolution(tmp_path):
 
 def test_api_audit_and_profile_endpoints():
     from fastapi.testclient import TestClient
-    from presentation.api import app, create_session_token
+
     from infrastructure.config import settings
+    from presentation.api import app, create_session_token
 
     client = TestClient(app)
     token = create_session_token(settings.DASHBOARD_USERNAME, settings.DASHBOARD_SECRET_KEY)
@@ -283,4 +271,4 @@ def test_api_audit_and_profile_endpoints():
     res_logs = client.get("/api/audit/logs?limit=5", cookies=cookies)
     assert res_logs.status_code == 200
     recent_logs = res_logs.json()["logs"]
-    assert any(l["action"] == "STORE_PROFILE_UPDATED" for l in recent_logs)
+    assert any(entry["action"] == "STORE_PROFILE_UPDATED" for entry in recent_logs)

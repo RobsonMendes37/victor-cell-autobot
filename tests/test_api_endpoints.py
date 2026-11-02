@@ -10,8 +10,9 @@ Tests:
 
 import pytest
 from starlette.testclient import TestClient
-from presentation.api import app, SESSION_COOKIE_NAME, create_session_token
+
 from infrastructure.config import settings
+from presentation.api import SESSION_COOKIE_NAME, app, create_session_token
 
 
 @pytest.fixture

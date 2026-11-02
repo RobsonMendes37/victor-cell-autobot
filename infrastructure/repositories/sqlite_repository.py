@@ -4,7 +4,7 @@ Persists Conversations, Orders, Messages (history), and Sent Message IDs.
 """
 
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 import aiosqlite
@@ -20,7 +20,6 @@ from domain.repositories import (
     OrderRepositoryInterface,
 )
 from infrastructure.config import settings
-
 
 
 def _format_relative_time(timestamp_iso: str, now: datetime) -> str:
@@ -303,7 +302,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
             )
             rows = await cursor.fetchall()
             messages = []
-            for r in reversed(rows):
+            for r in reversed(list(rows)):
                 time_str = _format_relative_time(r["timestamp"], now)
                 messages.append({
                     "role": r["role"],
@@ -530,7 +529,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
                 )
             return products
 
-    async def record_quote_log(self, phone: str, query: str, sku: str = None, had_stock: bool = True) -> None:
+    async def record_quote_log(self, phone: str, query: str, sku: Optional[str] = None, had_stock: bool = True) -> None:
         """Registra intenções de compra/cotações para análise de demanda reprimida."""
         await self.init_db()
         from datetime import datetime, timezone
@@ -672,6 +671,7 @@ class SqliteRepository(ConversationRepositoryInterface, OrderRepositoryInterface
         """Lista entradas de auditoria com filtros opcionais por nível e componente."""
         await self.init_db()
         import json
+
         from domain.entities import AuditLogEntry
         query = "SELECT * FROM audit_logs WHERE 1=1"
         params = []

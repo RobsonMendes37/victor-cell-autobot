@@ -6,14 +6,15 @@ Broadcasts urgent customer escalations and order dispatch notifications across a
 
 import logging
 from typing import List, Optional
+
+from domain.entities import AuditLogEntry
 from infrastructure.notifiers.base import (
     NotificationPayload,
     NotificationPriority,
     StaffNotificationChannel,
 )
-from infrastructure.notifiers.ntfy_channel import NtfyNotificationChannel
 from infrastructure.notifiers.call_channel import PhoneCallNotificationChannel
-from domain.entities import AuditLogEntry
+from infrastructure.notifiers.ntfy_channel import NtfyNotificationChannel
 
 logger = logging.getLogger(__name__)
 

@@ -6,8 +6,9 @@ Guarantees < 2ms query times for the Gemini AI agent while protecting upstream E
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
+
 from domain.entities import Product, QualityTier
 from infrastructure.inventory.base import InventoryProvider
 

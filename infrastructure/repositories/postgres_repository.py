@@ -6,17 +6,16 @@ Implements ConversationRepositoryInterface, OrderRepositoryInterface and AuditLo
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Optional
 
 import asyncpg
+
 from domain.entities import (
     AuditLogEntry,
     Conversation,
     ConversationState,
     OrderStatus,
-    Product,
-    QualityTier,
     ReservationOrder,
     StoreProfile,
 )
@@ -497,7 +496,7 @@ class PostgresRepository:
         await self.init_db()
         pool = await self._get_pool()
         query = "SELECT * FROM audit_logs WHERE 1=1"
-        args = []
+        args: list[object] = []
         idx = 1
         if level:
             query += f" AND level = ${idx}"

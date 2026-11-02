@@ -10,18 +10,18 @@ Populates realistic operational records for Victor Cell:
 import asyncio
 import os
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from infrastructure.repositories.sqlite_repository import SqliteRepository
 from domain.entities import (
-    ReservationOrder,
-    OrderStatus,
+    AuditLogEntry,
     Conversation,
     ConversationState,
-    AuditLogEntry,
+    OrderStatus,
+    ReservationOrder,
     StoreProfile,
 )
+from infrastructure.repositories.sqlite_repository import SqliteRepository
 
 
 async def seed():

@@ -4,7 +4,9 @@ Verifies message aggregation, timer resets on bursts, and flush behavior.
 """
 
 import asyncio
+
 import pytest
+
 from application.use_cases.debounce_buffer import DebounceBuffer
 
 

@@ -1,7 +1,3 @@
-import json
-import os
-from datetime import datetime, timedelta, timezone
-import re
 """
 FastAPI Presentation Layer for PecasBot.
 Includes:
@@ -17,17 +13,24 @@ Includes:
 - Evolution API WhatsApp QR Code pairing endpoint
 """
 
+import hashlib
+import hmac
 import io
+import json
 import logging
+import os
+import re
+import time
 from collections import Counter
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 import aiosqlite
 import httpx
 import pytz
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Response, status
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 
 from application.use_cases.debounce_buffer import DebounceBuffer
@@ -35,20 +38,13 @@ from application.use_cases.process_incoming_message import ProcessIncomingMessag
 from domain.entities import QualityTier
 from infrastructure.config import settings
 from infrastructure.gateways.evolution_gateway import EvolutionGateway
-from infrastructure.repositories.google_sheets_repository import GoogleSheetsRepository
-from infrastructure.repositories.memory_product_repository import MemoryProductRepository
 from infrastructure.inventory import create_inventory_provider
-from infrastructure.repositories.sheets_exporter import SheetsExporter
-from infrastructure.repositories.sqlite_repository import SqliteRepository
-from infrastructure.repositories.database_factory import create_database_repository
+from infrastructure.notifiers.call_channel import PhoneCallNotificationChannel
 from infrastructure.notifiers.dispatcher import StaffNotificationDispatcher
 from infrastructure.notifiers.ntfy_channel import NtfyNotificationChannel
-from infrastructure.notifiers.call_channel import PhoneCallNotificationChannel
+from infrastructure.repositories.database_factory import create_database_repository
+from infrastructure.repositories.sheets_exporter import SheetsExporter
 from infrastructure.services.agent_service import AIAgentService
-import hashlib
-import hmac
-import time
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from presentation.dashboard import render_dashboard_html, render_login_html
 
 SESSION_COOKIE_NAME = "victor_session"
@@ -144,11 +140,48 @@ async def lifespan(app: FastAPI):
     logger.info("Encerrando PecasBot API...")
 
 
+tags_metadata = [
+    {
+        "name": "Atendimento & Webhooks",
+        "description": "Recepção e roteamento de mensagens WhatsApp via Evolution API e eventos de ERP.",
+    },
+    {
+        "name": "Auditoria & Observabilidade",
+        "description": "Trilha de auditoria completa, telemetria de latência, rastreamento de IA e conformidade LGPD.",
+    },
+    {
+        "name": "Configuração Comercial & Whitelabel",
+        "description": "Parametrização dinâmica de loja, nicho, regras de escopo e diretrizes de tom de voz.",
+    },
+    {
+        "name": "Catálogo & Estoque",
+        "description": "Catálogo de peças de tablet, verificação de estoque e sincronização em tempo real.",
+    },
+    {
+        "name": "Operações & Despacho",
+        "description": "Fila de separação de balcão, pedidos Uber Flash, métricas de conversão e exportação analítica.",
+    },
+    {
+        "name": "Copiloto & Inteligência",
+        "description": "Simulador de atendimento, consultor de vendas executivo e telemetria de quotas de IA.",
+    },
+]
+
+class ErrorResponse(BaseModel):
+    status: str = "error"
+    message: str
+    code: Optional[str] = None
+
 app = FastAPI(
-    title="Victor Cell - PecasBot API",
-    description="API de atendimento e despacho autônomo para peças de smartphone com painel de inteligência",
-    version="1.0.0",
+    title="PecasBot Enterprise API",
+    description=(
+        "Plataforma Corporativa de Atendimento Cognitivo, Auditoria e Despacho de Peças para WhatsApp.\n\n"
+        "Benchmark de Arquitetura inspirado nos padrões TOTVS, Google Cloud e VTEX.\n"
+        "Suporta multi-tenancy, isolamento de dados, fallback semântico resiliente e trilha de auditoria completa."
+    ),
+    version="2.0.0",
     lifespan=lifespan,
+    openapi_tags=tags_metadata,
 )
 
 
@@ -249,7 +282,7 @@ async def get_dashboard(request: Request):
 
 
 _cached_funnel_stats = None
-_cached_funnel_time = 0
+_cached_funnel_time: float = 0.0
 
 def get_chat_funnel_stats() -> Dict[str, Any]:
     global _cached_funnel_stats, _cached_funnel_time
@@ -276,12 +309,12 @@ def get_chat_funnel_stats() -> Dict[str, Any]:
     try:
         with open(dialogues_path, "r", encoding="utf-8") as f:
             turns = json.load(f)
-            
+
         closed_orders = 0
         lost_stock = 0
         in_negotiation = 0
         client_stats = {}
-        
+
         lost_pieces = [
             {"model": "Bateria Tab A 8.0 (T290/T295)", "count": 10},
             {"model": "Display Multilaser M8", "count": 9},
@@ -290,16 +323,16 @@ def get_chat_funnel_stats() -> Dict[str, Any]:
             {"model": "Display Samsung Tab T355", "count": 3},
             {"model": "Touch iPad 11", "count": 2},
         ]
-        
+
         for t in turns:
             c = t.get("customer_query", "").lower()
             s = t.get("store_reply", "").lower()
             client = t.get("source", "").replace("WhatsApp Chat - ", "").replace(".zip", "").replace(".txt", "")
-            
+
             if client not in client_stats:
                 client_stats[client] = {"turns": 0, "closed": 0, "lost": 0}
             client_stats[client]["turns"] += 1
-            
+
             if any(w in s for w in ["tem não", "tenho não", "não", "nada", "sem estoque"]):
                 lost_stock += 1
                 client_stats[client]["lost"] += 1
@@ -308,18 +341,18 @@ def get_chat_funnel_stats() -> Dict[str, Any]:
                 client_stats[client]["closed"] += 1
             else:
                 in_negotiation += 1
-                
+
         conversion_rate = (closed_orders / (closed_orders + lost_stock) * 100) if (closed_orders + lost_stock) > 0 else 0.0
         recurrent_clients = sum(1 for v in client_stats.values() if v["turns"] >= 5)
         total_clients = len(client_stats) or 37
         recurrence_rate = (recurrent_clients / total_clients * 100) if total_clients > 0 else 81.1
-        
+
         top_clients = sorted(client_stats.items(), key=lambda x: x[1]["turns"], reverse=True)[:8]
         formatted_clients = [
             {"name": k, "turns": v["turns"], "closed": v["closed"], "lost": v["lost"]}
             for k, v in top_clients
         ]
-        
+
         _cached_funnel_stats = {
             "total_inquiries": len(turns),
             "orders_closed": closed_orders,
@@ -349,7 +382,7 @@ def get_chat_funnel_stats() -> Dict[str, Any]:
             "top_recurrent_clients": []
         }
 
-@app.get("/api/reports/stats")
+@app.get("/api/reports/stats", tags=["Operações & Despacho"], summary="Métricas de Conversão e Estoque")
 async def get_report_stats(request: Request):
     check_dashboard_auth(request)
     """Returns summarized KPIs, top products, customer FAQ intents and recent orders."""
@@ -399,7 +432,7 @@ async def get_report_stats(request: Request):
             category_counts[matched.category] = category_counts.get(matched.category, 0) + o.quantity
 
     # 3. Análise de Intenções e Perguntas Mais Frequentes dos Clientes
-    intent_counts = Counter()
+    intent_counts: Counter[str] = Counter()
     try:
         async with aiosqlite.connect(settings.DATABASE_PATH) as db:
             cursor = await db.execute("SELECT content FROM messages WHERE role = 'user'")
@@ -501,7 +534,7 @@ async def simulate_chat(req: SimMessageRequest, request: Request):
     return {"reply": (reply.get("reply") if isinstance(reply, dict) else reply) or "Nenhuma resposta gerada."}
 
 
-@app.get("/api/reports/orders.csv")
+@app.get("/api/reports/orders.csv", tags=["Operações & Despacho"], summary="Exportar Pedidos em CSV")
 async def get_orders_csv(request: Request):
     check_dashboard_auth(request)
     """Direct CSV Feed for export and reporting."""
@@ -529,7 +562,7 @@ async def sync_google_sheets(request: Request):
     return {"status": "synced", "total_items": len(products), "provider": product_repo.get_provider_name()}
 
 
-@app.post("/webhook/erp/stock")
+@app.post("/webhook/erp/stock", tags=["Atendimento & Webhooks"], summary="Webhook de Atualização de Estoque ERP")
 async def erp_stock_webhook(request: Request):
     """Webhook para ingestão em tempo real de alterações de estoque do Bling ERP v3 ou outros ERPs."""
     try:
@@ -591,7 +624,7 @@ async def get_whatsapp_qrcode(request: Request):
 # --- WEBHOOK WHATSAPP ---
 
 
-@app.get("/health", status_code=status.HTTP_200_OK)
+@app.get("/health", tags=["Auditoria & Observabilidade"], summary="Health Check do Sistema", status_code=status.HTTP_200_OK)
 async def health_check():
     """Health check endpoint for Docker container liveness and monitoring."""
     local_time = settings.get_local_now().strftime("%Y-%m-%d %H:%M:%S")
@@ -605,7 +638,7 @@ async def health_check():
     }
 
 
-@app.get("/products")
+@app.get("/products", tags=["Catálogo & Estoque"], summary="Catálogo Simples de Produtos")
 async def list_products():
     """Returns currently available products in the active repository."""
     return await product_repo.list_all()
@@ -616,12 +649,12 @@ class UpdateKeyRequest(BaseModel):
     new_key: str
 
 
-@app.get("/api/catalog")
+@app.get("/api/catalog", tags=["Catálogo & Estoque"], summary="Listar Catálogo de Peças")
 async def get_catalog(request: Request):
     check_dashboard_auth(request)
     """Returns live catalog items for the dashboard, updating the SQLite cache for offline resilience."""
     products = await product_repo.list_all()
-    
+
     # Se conseguiu ler do Google Sheets, salva cópia de segurança no SQLite
     if products and hasattr(sqlite_repo, "cache_products"):
         try:
@@ -817,8 +850,8 @@ async def toggle_master_ai_switch(request: Request):
         "message": "IA reativada com sucesso para todas as conversas!" if new_state else "DISJUNTOR ACIONADO: Todas as conversas da IA foram desligadas!"
     }
 
-@app.post("/webhook")
-@app.post("/webhook/whatsapp")
+@app.post("/webhook", tags=["Atendimento & Webhooks"], summary="Webhook Principal Evolution API")
+@app.post("/webhook/whatsapp", tags=["Atendimento & Webhooks"], summary="Webhook WhatsApp Alternativo")
 async def evolution_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -1071,10 +1104,10 @@ async def get_filtered_analytics(
     - search: texto para filtrar por modelo de aparelho ou cliente
     """
     check_dashboard_auth(request)
-    from datetime import datetime
-    from collections import defaultdict
     import json
     import os
+    from collections import defaultdict
+    from datetime import datetime
 
     dialogues_path = "data/golden_dialogues_mined.json"
     if not os.path.exists(dialogues_path):
@@ -1085,8 +1118,8 @@ async def get_filtered_analytics(
 
     now = datetime(2026, 11, 1) # Data operacional de referência
     filtered = []
-    daily_stats = defaultdict(lambda: {"total": 0, "closed": 0, "lost": 0})
-    product_stats = defaultdict(lambda: {"count": 0, "closed": 0, "lost": 0, "prices": []})
+    daily_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "closed": 0, "lost": 0})
+    product_stats: dict[str, Any] = defaultdict(lambda: {"count": 0, "closed": 0, "lost": 0, "prices": []})
 
     model_patterns = [
         "M8", "T295", "M7", "T800", "T2040", "TAB S6", "IPAD 9", "VISION TAB 7",
@@ -1156,12 +1189,12 @@ async def get_filtered_analytics(
 
         prices = [int(p) for p in re.findall(r"(?:R\$\s*|de\s*)?(\d{2,3})", s) if 15 <= int(p) <= 800]
 
-        product_stats[detected_model]["count"] += 1
+        product_stats[detected_model]["count"] = int(product_stats[detected_model]["count"]) + 1
         if outcome == "closed":
-            product_stats[detected_model]["closed"] += 1
+            product_stats[detected_model]["closed"] = int(product_stats[detected_model]["closed"]) + 1
         elif outcome == "lost_stock":
-            product_stats[detected_model]["lost"] += 1
-        if prices:
+            product_stats[detected_model]["lost"] = int(product_stats[detected_model]["lost"]) + 1
+        if prices and isinstance(product_stats[detected_model]["prices"], list):
             product_stats[detected_model]["prices"].extend(prices)
 
     total_closed = sum(1 for t in filtered if any(w in t.get("customer_query", "").lower() for w in ["vou querer", "separa", "manda o uber", "pix"]) or any(w in t.get("store_reply", "").lower() for w in ["pix", "separado"]))
@@ -1170,10 +1203,11 @@ async def get_filtered_analytics(
     conv_rate = (total_closed / (total_closed + total_lost) * 100) if (total_closed + total_lost) > 0 else 0.0
 
     top_prods = []
-    for mod, data in sorted(product_stats.items(), key=lambda x: x[1]["count"], reverse=True):
+    for mod, data in sorted(product_stats.items(), key=lambda x: int(x[1]["count"]), reverse=True):
         if mod == "Outro" and len(product_stats) > 1:
             continue
-        avg_price = f"R$ {sum(data['prices'])/len(data['prices']):.0f}" if data["prices"] else "Sob Consulta"
+        p_list = list(data["prices"]) if isinstance(data["prices"], list) else []
+        avg_price = f"R$ {sum(p_list)/len(p_list):.0f}" if p_list else "Sob Consulta"
         top_prods.append({
             "model": mod,
             "count": data["count"],
@@ -1222,7 +1256,7 @@ class StoreProfilePayload(BaseModel):
     tone_guidelines: str
 
 
-@app.get("/api/audit/logs")
+@app.get("/api/audit/logs", tags=["Auditoria & Observabilidade"], summary="Consultar Trilha de Auditoria")
 async def get_audit_logs(
     request: Request,
     limit: int = 100,
@@ -1257,7 +1291,7 @@ async def get_audit_logs(
     return {"status": "success", "count": 0, "logs": []}
 
 
-@app.get("/api/system/profile")
+@app.get("/api/system/profile", tags=["Configuração Comercial & Whitelabel"], summary="Recuperar Diretrizes da Loja")
 async def get_store_profile_endpoint(request: Request):
     """
     Recupera os dados de identidade comercial do tenant (White-label).
@@ -1282,14 +1316,14 @@ async def get_store_profile_endpoint(request: Request):
     return {"status": "error", "message": "Store profile não suportado neste repositório"}
 
 
-@app.post("/api/system/profile")
+@app.post("/api/system/profile", tags=["Configuração Comercial & Whitelabel"], summary="Atualizar Diretrizes Comerciais")
 async def update_store_profile_endpoint(payload: StoreProfilePayload, request: Request):
     """
     Atualiza os parâmetros de identidade e nicho comercial da loja sem reiniciar a API.
     Emite log de auditoria imediato para rastreabilidade de mudanças operacionais.
     """
     check_dashboard_auth(request)
-    from domain.entities import StoreProfile, AuditLogEntry
+    from domain.entities import AuditLogEntry, StoreProfile
     if hasattr(sqlite_repo, "save_store_profile"):
         keywords = payload.out_of_scope_keywords
         if isinstance(keywords, str):

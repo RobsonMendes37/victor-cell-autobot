@@ -5,9 +5,10 @@ Adapts the existing GoogleSheetsRepository into the unified InventoryProvider in
 
 import logging
 from typing import Any, Dict, List, Optional
+
 from domain.entities import Product, QualityTier
-from infrastructure.repositories.google_sheets_repository import GoogleSheetsRepository
 from infrastructure.inventory.base import InventoryProvider
+from infrastructure.repositories.google_sheets_repository import GoogleSheetsRepository
 
 logger = logging.getLogger(__name__)
 

@@ -73,6 +73,7 @@ def test_order_expiration():
 
 def test_store_schedule_sunday():
     import pytz
+
     from infrastructure.config import settings
 
     tz = pytz.timezone("America/Fortaleza")
@@ -86,6 +87,7 @@ def test_store_schedule_sunday():
 
 def test_store_schedule_weekday_open():
     import pytz
+
     from infrastructure.config import settings
 
     tz = pytz.timezone("America/Fortaleza")
