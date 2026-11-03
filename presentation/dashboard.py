@@ -755,7 +755,11 @@ def render_dashboard_html() -> str:
             </div>
           </div>
           <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-            <a href="https://docs.google.com/spreadsheets/d/1N2gigR8MmuiBRSbtO1TDLnS9AFQS3dJYhxYEEUs7kZY/edit" target="_blank" class="btn btn-primary btn-sm" style="text-decoration: none; font-weight: 700; background: #10B981; color: #042F2E;">
+            <button class="btn btn-primary btn-sm" onclick="openAiImportModal()" id="btn-catalog-import-ai" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              📥 Importar Arquivo com IA
+            </button>
+            <a href="https://docs.google.com/spreadsheets/d/1N2gigR8MmuiBRSbtO1TDLnS9AFQS3dJYhxYEEUs7kZY/edit" target="_blank" class="btn btn-emerald btn-sm" style="text-decoration: none; font-weight: 700; background: #10B981; color: #042F2E;">
               Abrir no Google Sheets ↗
             </a>
             <button class="btn btn-secondary btn-sm" onclick="syncGoogleSheets()" id="btn-sync-sheets" style="display: inline-flex; align-items: center; gap: 6px;">
@@ -911,7 +915,11 @@ def render_dashboard_html() -> str:
               <div class="card-subtitle">Fale no microfone ou envie foto da etiqueta do fornecedor para extração automática</div>
             </div>
           </div>
-          <div>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="openAiImportModal()" id="btn-erp-import-ai" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              📥 Importar Arquivo com IA
+            </button>
             <button class="btn btn-emerald" onclick="openNewProductModal()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align: -2px; margin-right: 4px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> + Nova Peça no Estoque</button>
           </div>
         </div>
@@ -1401,14 +1409,28 @@ def render_dashboard_html() -> str:
             <input type="text" id="tenant-logo-url" class="input-styled" placeholder="Ex: /static/brands/minha-loja.png" style="width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
           </div>
 
-          <!-- PALETA DE CORES CENTRALIZADA (SISTEMA DE 4 CORES + FILTROS) -->
+          <!-- IDENTIDADE VISUAL & PALETA DE CORES CORPORATIVA -->
           <div style="grid-column: 1 / -1; margin-top: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
-            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem; display: flex; align-items: center; gap: 6px;">
-              <span>🎨 Paleta de Cores Centralizada (Constantes do Sistema em Hexadecimal)</span>
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem; display: flex; align-items: center; gap: 8px;">
+              <span>🎨 Identidade Visual & Paleta de Cores Corporativa</span>
             </div>
-            <p style="font-size: 0.775rem; color: var(--text-muted); margin-bottom: 1rem;">
-              Defina as 4 cores base do sistema no formato hexadecimal (ex: #F71963). O gestor tem controle total da identidade visual.
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+              Personalize os tons oficiais do sistema com padrão visual executivo. Selecione uma paleta corporativa pré-configurada ou ajuste as cores nos seletores individuais:
             </p>
+
+            <!-- PRESETS EXECUTIVOS RÁPIDOS -->
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="applyColorPreset('erp_blue')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; border-color: #2563EB; background: rgba(37, 99, 235, 0.08); color: #2563EB;">
+                🏢 Padrão ERP Executivo (Azul & Branco)
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="applyColorPreset('dark_slate')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+                🌑 Dark Slate Enterprise
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="applyColorPreset('victor_magenta')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+                ⚡ Victor Cell Magenta Oficial
+              </button>
+            </div>
+
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
 
               <!-- 1. Cor Primária / Marca Principal -->
@@ -1417,9 +1439,18 @@ def render_dashboard_html() -> str:
                   1. Cor Primária (Principal)
                 </label>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                  <input type="color" id="tenant-primary-color" value="#F71963" oninput="syncColorPicker('tenant-primary-color', 'tenant-primary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
-                  <input type="text" id="tenant-primary-color-text" value="#F71963" maxlength="7" placeholder="#F71963" oninput="syncColorText('tenant-primary-color-text', 'tenant-primary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                  <input type="color" id="tenant-primary-color" value="#1E40AF" oninput="syncColorPicker('tenant-primary-color', 'tenant-primary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-primary-color-text" value="#1E40AF" maxlength="7" placeholder="#1E40AF" oninput="syncColorText('tenant-primary-color-text', 'tenant-primary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
                 </div>
+                <select id="tenant-primary-color-select" class="input-styled" onchange="syncColorFromSelect('tenant-primary-color', 'tenant-primary-color-text', this.value)" style="padding: 0.45rem 0.6rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.775rem; width: 100%; margin-top: 6px;">
+                  <option value="">-- Escolher cor rápida --</option>
+                  <option value="#1E40AF">Azul ERP Clássico (#1E40AF)</option>
+                  <option value="#2563EB">Azul Royal Corporativo (#2563EB)</option>
+                  <option value="#0284C7">Azul Cobalto (#0284C7)</option>
+                  <option value="#0F172A">Dark Slate Executivo (#0F172A)</option>
+                  <option value="#10B981">Verde Esmeralda (#10B981)</option>
+                  <option value="#F71963">Victor Cell Magenta (#F71963)</option>
+                </select>
                 <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Botões de ação, tabs ativas e logo</span>
               </div>
 
@@ -1429,9 +1460,17 @@ def render_dashboard_html() -> str:
                   2. Cor Secundária (Info & Gráficos)
                 </label>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                  <input type="color" id="tenant-secondary-color" value="#6366F1" oninput="syncColorPicker('tenant-secondary-color', 'tenant-secondary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
-                  <input type="text" id="tenant-secondary-color-text" value="#6366F1" maxlength="7" placeholder="#6366F1" oninput="syncColorText('tenant-secondary-color-text', 'tenant-secondary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                  <input type="color" id="tenant-secondary-color" value="#2563EB" oninput="syncColorPicker('tenant-secondary-color', 'tenant-secondary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-secondary-color-text" value="#2563EB" maxlength="7" placeholder="#2563EB" oninput="syncColorText('tenant-secondary-color-text', 'tenant-secondary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
                 </div>
+                <select id="tenant-secondary-color-select" class="input-styled" onchange="syncColorFromSelect('tenant-secondary-color', 'tenant-secondary-color-text', this.value)" style="padding: 0.45rem 0.6rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.775rem; width: 100%; margin-top: 6px;">
+                  <option value="">-- Escolher cor rápida --</option>
+                  <option value="#2563EB">Azul Royal Corporativo (#2563EB)</option>
+                  <option value="#6366F1">Índigo Moderno (#6366F1)</option>
+                  <option value="#0284C7">Azul Cobalto (#0284C7)</option>
+                  <option value="#8B5CF6">Púrpura Executivo (#8B5CF6)</option>
+                  <option value="#334155">Slate Neutro (#334155)</option>
+                </select>
                 <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Gráficos de mix, badges de info</span>
               </div>
 
@@ -1441,9 +1480,16 @@ def render_dashboard_html() -> str:
                   3. Cor Terciária (Sucesso & Estoque)
                 </label>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                  <input type="color" id="tenant-tertiary-color" value="#10B981" oninput="syncColorPicker('tenant-tertiary-color', 'tenant-tertiary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
-                  <input type="text" id="tenant-tertiary-color-text" value="#10B981" maxlength="7" placeholder="#10B981" oninput="syncColorText('tenant-tertiary-color-text', 'tenant-tertiary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                  <input type="color" id="tenant-tertiary-color" value="#059669" oninput="syncColorPicker('tenant-tertiary-color', 'tenant-tertiary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-tertiary-color-text" value="#059669" maxlength="7" placeholder="#059669" oninput="syncColorText('tenant-tertiary-color-text', 'tenant-tertiary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
                 </div>
+                <select id="tenant-tertiary-color-select" class="input-styled" onchange="syncColorFromSelect('tenant-tertiary-color', 'tenant-tertiary-color-text', this.value)" style="padding: 0.45rem 0.6rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.775rem; width: 100%; margin-top: 6px;">
+                  <option value="">-- Escolher cor rápida --</option>
+                  <option value="#059669">Verde Floresta (#059669)</option>
+                  <option value="#10B981">Verde Esmeralda (#10B981)</option>
+                  <option value="#16A34A">Verde Corporativo (#16A34A)</option>
+                  <option value="#0D9488">Teal Executivo (#0D9488)</option>
+                </select>
                 <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Itens em estoque, vendas fechadas</span>
               </div>
 
@@ -1453,9 +1499,16 @@ def render_dashboard_html() -> str:
                   4. Cor Quaternária (Avisos & Logística)
                 </label>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                  <input type="color" id="tenant-quaternary-color" value="#F59E0B" oninput="syncColorPicker('tenant-quaternary-color', 'tenant-quaternary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
-                  <input type="text" id="tenant-quaternary-color-text" value="#F59E0B" maxlength="7" placeholder="#F59E0B" oninput="syncColorText('tenant-quaternary-color-text', 'tenant-quaternary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                  <input type="color" id="tenant-quaternary-color" value="#D97706" oninput="syncColorPicker('tenant-quaternary-color', 'tenant-quaternary-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-quaternary-color-text" value="#D97706" maxlength="7" placeholder="#D97706" oninput="syncColorText('tenant-quaternary-color-text', 'tenant-quaternary-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
                 </div>
+                <select id="tenant-quaternary-color-select" class="input-styled" onchange="syncColorFromSelect('tenant-quaternary-color', 'tenant-quaternary-color-text', this.value)" style="padding: 0.45rem 0.6rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.775rem; width: 100%; margin-top: 6px;">
+                  <option value="">-- Escolher cor rápida --</option>
+                  <option value="#D97706">Âmbar Corporativo (#D97706)</option>
+                  <option value="#F59E0B">Âmbar Claro (#F59E0B)</option>
+                  <option value="#EA580C">Laranja Executivo (#EA580C)</option>
+                  <option value="#EF4444">Vermelho Alerta (#EF4444)</option>
+                </select>
                 <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Uber Flash, cotações e alertas</span>
               </div>
 
@@ -1465,9 +1518,16 @@ def render_dashboard_html() -> str:
                   5. Cor dos Filtros (Chips / Pills)
                 </label>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                  <input type="color" id="tenant-filter-color" value="#334155" oninput="syncColorPicker('tenant-filter-color', 'tenant-filter-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
-                  <input type="text" id="tenant-filter-color-text" value="#334155" maxlength="7" placeholder="#334155" oninput="syncColorText('tenant-filter-color-text', 'tenant-filter-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                  <input type="color" id="tenant-filter-color" value="#0F172A" oninput="syncColorPicker('tenant-filter-color', 'tenant-filter-color-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-filter-color-text" value="#0F172A" maxlength="7" placeholder="#0F172A" oninput="syncColorText('tenant-filter-color-text', 'tenant-filter-color')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
                 </div>
+                <select id="tenant-filter-color-select" class="input-styled" onchange="syncColorFromSelect('tenant-filter-color', 'tenant-filter-color-text', this.value)" style="padding: 0.45rem 0.6rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.775rem; width: 100%; margin-top: 6px;">
+                  <option value="">-- Escolher cor rápida --</option>
+                  <option value="#0F172A">Dark Slate (#0F172A)</option>
+                  <option value="#1E293B">Slate 800 (#1E293B)</option>
+                  <option value="#334155">Slate 700 (#334155)</option>
+                  <option value="#1E40AF">Azul ERP (#1E40AF)</option>
+                </select>
                 <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Fundo de botões de filtro e chips</span>
               </div>
 
@@ -1477,14 +1537,22 @@ def render_dashboard_html() -> str:
                   Cor Hover de Botões
                 </label>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                  <input type="color" id="tenant-primary-hover" value="#E00E54" oninput="syncColorPicker('tenant-primary-hover', 'tenant-primary-hover-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
-                  <input type="text" id="tenant-primary-hover-text" value="#E00E54" maxlength="7" placeholder="#E00E54" oninput="syncColorText('tenant-primary-hover-text', 'tenant-primary-hover')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
+                  <input type="color" id="tenant-primary-hover" value="#1D4ED8" oninput="syncColorPicker('tenant-primary-hover', 'tenant-primary-hover-text')" style="width: 44px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                  <input type="text" id="tenant-primary-hover-text" value="#1D4ED8" maxlength="7" placeholder="#1D4ED8" oninput="syncColorText('tenant-primary-hover-text', 'tenant-primary-hover')" class="input-styled" style="flex: 1; padding: 0.55rem 0.75rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-family: var(--font-mono); font-size: 0.85rem;">
                 </div>
+                <select id="tenant-primary-hover-select" class="input-styled" onchange="syncColorFromSelect('tenant-primary-hover', 'tenant-primary-hover-text', this.value)" style="padding: 0.45rem 0.6rem; border-radius: 8px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); font-size: 0.775rem; width: 100%; margin-top: 6px;">
+                  <option value="">-- Escolher cor rápida --</option>
+                  <option value="#1D4ED8">Azul Real Hover (#1D4ED8)</option>
+                  <option value="#1E40AF">Azul Navy Hover (#1E40AF)</option>
+                  <option value="#1E293B">Slate Hover (#1E293B)</option>
+                  <option value="#E00E54">Magenta Hover (#E00E54)</option>
+                </select>
                 <span style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px; display: block;">Estado interativo ao passar o mouse</span>
               </div>
 
             </div>
           </div>
+
 
           <!-- PRÉVIA INSTANTÂNEA DA MARCA -->
           <div style="grid-column: 1 / -1;" class="tenant-preview-box">
@@ -1645,7 +1713,130 @@ def render_dashboard_html() -> str:
     </div>
   </div>
 
-  <script src="/static/js/dashboard.js?v=20261102_06"></script>
+  <!-- MODAL: IMPORTAÇÃO INTELIGENTE DE ARQUIVO COM IA (CATÁLOGO & GOOGLE SHEETS) -->
+  <div id="modal-ai-file-import" class="vtex-modal-overlay">
+    <div class="vtex-modal" style="max-width: 880px; width: 92%;">
+      <div class="vtex-modal-header">
+        <div class="vtex-modal-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--primary);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <span>Importação de Arquivo com IA & Sincronização Google Sheets</span>
+        </div>
+        <button class="drawer-close-btn" onclick="closeAiImportModal()">✕</button>
+      </div>
+
+      <div class="vtex-modal-body" style="max-height: 75vh; overflow-y: auto;">
+
+        <!-- ETAPA 1: SELEÇÃO / UPLOAD DE ARQUIVO OU TEXTO -->
+        <div id="ai-import-upload-step">
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Envie planilhas (CSV, XLSX, TSV), notas fiscais em PDF ou cole o texto do orçamento/pedido. A IA Gemini irá extrair as peças, calcular margens de venda e preparar a sincronização com o Google Sheets.
+          </p>
+
+          <div id="ai-dropzone" class="ai-dropzone-box" onclick="document.getElementById('ai-file-input').click()" ondragover="handleAiDragOver(event)" ondragleave="handleAiDragLeave(event)" ondrop="handleAiFileDrop(event)">
+            <input type="file" id="ai-file-input" style="display: none;" accept=".csv,.xlsx,.xls,.pdf,.txt,.json,.tsv" onchange="handleAiFileSelected(event)">
+            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📂</div>
+            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin-bottom: 0.25rem;" id="ai-dropzone-label">
+              Clique para selecionar ou arraste o arquivo aqui
+            </div>
+            <div style="font-size: 0.775rem; color: var(--text-dim);">Suporta planilhas CSV/XLSX, PDFs de notas fiscais, relatórios TXT ou JSON</div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 1rem; margin: 1.25rem 0;">
+            <div style="flex: 1; height: 1px; background: var(--border-subtle);"></div>
+            <span style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">ou cole o texto da nota / pedido</span>
+            <div style="flex: 1; height: 1px; background: var(--border-subtle);"></div>
+          </div>
+
+          <textarea id="ai-import-raw-text" rows="4" class="input-styled" placeholder="Ex: Cotação Peças Brasil - NF 5541: 10x Tela Frontal Galaxy A15 a R$ 85, 5x Bateria iPhone 11 a R$ 65, 8x Conector Moto G22 a R$ 15..." style="width: 100%; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; font-family: var(--font-mono); resize: vertical;"></textarea>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="demoAiFileImportText()">
+              ✨ Inserir Exemplo de Nota
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-process-ai-import" onclick="processAiFileImport()" style="display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/></svg>
+              <span>Analisar com IA Gemini</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ETAPA 2: REVISÃO, CONFIRMAÇÕES DA IA E TABELA ESTRUTURADA -->
+        <div id="ai-import-review-step" style="display: none;">
+          <!-- Banner de Resumo da IA -->
+          <div style="background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 1.6rem;">🤖</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 0.875rem; color: var(--text-main);" id="ai-review-summary-title">IA Gemini estruturou a tabela com sucesso</div>
+              <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 2px;" id="ai-review-summary-desc">Verifique os itens identificados e responda às validações da IA abaixo antes de finalizar.</div>
+            </div>
+            <span class="badge" id="ai-review-count-badge" style="background: #2563EB; color: #FFFFFF; font-weight: 700;">0 peças</span>
+          </div>
+
+          <!-- Caixa de Perguntas e Confirmações da IA -->
+          <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+            <div style="font-size: 0.825rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Validações & Confirmações da IA para o Gestor
+            </div>
+            <div id="ai-questions-container" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Injetado dinamicamente via JS -->
+            </div>
+          </div>
+
+          <!-- Tabela de Prévia Editável -->
+          <div style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <div style="font-size: 0.825rem; font-weight: 700; color: var(--text-main);">Tabela de Peças a Registrar:</div>
+              <span style="font-size: 0.75rem; color: var(--text-dim);">Você pode ajustar preços e quantidades antes de confirmar</span>
+            </div>
+            <div class="table-container" style="max-height: 260px; overflow-y: auto;">
+              <table class="data-table" style="width: 100%; font-size: 0.8rem;">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Modelo / Descrição</th>
+                    <th>Categoria</th>
+                    <th>Qtd</th>
+                    <th>Custo Unit. (R$)</th>
+                    <th>Venda Balcão (R$)</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="ai-review-table-body">
+                  <!-- Injetado dinamicamente via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Checkbox Google Sheets Sync -->
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="ai-sync-sheets-checkbox" checked style="width: 18px; height: 18px; cursor: pointer; accent-color: #10B981;">
+            <label for="ai-sync-sheets-checkbox" style="font-size: 0.825rem; font-weight: 600; color: var(--text-main); cursor: pointer;">
+              Sincronizar e criar novas linhas automaticamente na Planilha Oficial do Google Sheets (Aba: Estoque_Catalogo)
+            </label>
+          </div>
+
+          <!-- Rodapé de Ações -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="resetAiImportForm()">
+              ← Analisar Outro Arquivo
+            </button>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="button" class="btn btn-secondary" onclick="closeAiImportModal()">Cancelar</button>
+              <button type="button" class="btn btn-primary" id="btn-confirm-ai-import" onclick="confirmAiFileImport()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Confirmar & Sincronizar no Google Sheets</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/dashboard.js?v=20261102_07"></script>
 </body>
 </html>"""
 

@@ -32,7 +32,7 @@
       --tenant-brand-glow: var(--vtex-pink-glow);
     }
 
-    /* MODO CLARO (LIGHT THEME) */
+    /* MODO CLARO (LIGHT THEME - PADRÃO EXECUTIVO ERP AZUL & BRANCO) */
     [data-theme="light"] {
       --bg-canvas: #F8FAFC;
       --bg-sidebar: #FFFFFF;
@@ -41,24 +41,24 @@
       --bg-surface-hover: #E2E8F0;
       --border-subtle: #E2E8F0;
       --border-medium: #CBD5E1;
-      --vtex-pink: #E00E54;
-      --vtex-pink-hover: #BD0043;
-      --vtex-pink-glow: rgba(224, 14, 84, 0.2);
-      --vtex-pink-bg: rgba(224, 14, 84, 0.08);
-      --primary: #4F46E5;
-      --primary-hover: #4338CA;
-      --primary-glow: rgba(79, 70, 229, 0.18);
+      --vtex-pink: #1E40AF; /* Azul Executivo ERP Clássico */
+      --vtex-pink-hover: #1D4ED8;
+      --vtex-pink-glow: rgba(30, 64, 175, 0.2);
+      --vtex-pink-bg: #EFF6FF;
+      --primary: #1E40AF;
+      --primary-hover: #1D4ED8;
+      --primary-glow: rgba(30, 64, 175, 0.2);
       --emerald: #059669;
       --emerald-glow: rgba(5, 150, 105, 0.18);
       --amber: #D97706;
       --amber-glow: rgba(217, 119, 6, 0.18);
       --rose: #DC2626;
       --text-main: #0F172A;
-      --text-muted: #475569;
+      --text-muted: #334155;
       --text-dim: #64748B;
-      --tenant-brand: var(--vtex-pink);
-      --tenant-brand-hover: var(--vtex-pink-hover);
-      --tenant-brand-glow: var(--vtex-pink-glow);
+      --tenant-brand: #1E40AF;
+      --tenant-brand-hover: #1D4ED8;
+      --tenant-brand-glow: rgba(30, 64, 175, 0.2);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -1878,15 +1878,32 @@
       border-top: 1px solid #E2E8F0;
     }
     [data-theme="light"] .sidebar-nav .nav-tab {
-      color: #475569;
+      color: #334155;
     }
     [data-theme="light"] .sidebar-nav .nav-tab:hover {
       background: #F1F5F9;
       color: #0F172A;
     }
     [data-theme="light"] .sidebar-nav .nav-tab.active {
-      background: rgba(224, 14, 84, 0.09);
-      color: #BD0043;
+      background: #EFF6FF !important;
+      color: #1E40AF !important;
+      border-left: 3px solid #1E40AF !important;
+      font-weight: 700 !important;
+    }
+    [data-theme="light"] .brand-badge-vtex {
+      background: #EFF6FF !important;
+      color: #1E40AF !important;
+      border-color: #BFDBFE !important;
+    }
+    [data-theme="light"] .btn-primary {
+      background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%) !important;
+      color: #FFFFFF !important;
+      border: 1px solid #1D4ED8 !important;
+      box-shadow: 0 2px 4px rgba(30, 64, 175, 0.2) !important;
+    }
+    [data-theme="light"] .btn-primary:hover {
+      background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
+      box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3) !important;
     }
     [data-theme="light"] .section-card,
     [data-theme="light"] .card,
@@ -1901,13 +1918,13 @@
     [data-theme="light"] .table-container thead th,
     [data-theme="light"] .data-table th {
       background: #F8FAFC !important;
-      color: #475569 !important;
+      color: #334155 !important;
       border-bottom: 1px solid #E2E8F0 !important;
     }
     [data-theme="light"] .table-container tbody td,
     [data-theme="light"] .data-table td {
       border-bottom: 1px solid #F1F5F9 !important;
-      color: #1E293B !important;
+      color: #0F172A !important;
     }
     [data-theme="light"] .table-container tbody tr:hover,
     [data-theme="light"] .data-table tbody tr:hover {
@@ -1974,9 +1991,10 @@
       color: #0F172A;
     }
     [data-theme="light"] .filter-btn.active {
-      background: rgba(224, 14, 84, 0.1);
-      border-color: var(--tenant-brand, #E00E54);
-      color: var(--tenant-brand, #E00E54);
+      background: #EFF6FF !important;
+      border-color: #2563EB !important;
+      color: #1E40AF !important;
+      font-weight: 700 !important;
     }
     [data-theme="light"] .order-row-hover td div,
     [data-theme="light"] .order-row-hover td,
@@ -1995,12 +2013,12 @@
       border-color: #E2E8F0;
     }
     [data-theme="light"] .chat-msg.user {
-      background: #4F46E5;
+      background: #1E40AF;
       color: #FFFFFF;
     }
 
     [data-theme="light"] .banner-card-gradient {
-      background: linear-gradient(135deg, #FFFFFF, rgba(99, 102, 241, 0.05)) !important;
+      background: linear-gradient(135deg, #FFFFFF, rgba(37, 99, 235, 0.06)) !important;
       border-color: #CBD5E1 !important;
     }
     [data-theme="light"] .banner-sheets-gradient {
@@ -2016,7 +2034,7 @@
     }
     [data-theme="light"] .json-code-box {
       background: #F8FAFC !important;
-      color: #3730A3 !important;
+      color: #1E40AF !important;
       border-color: #CBD5E1 !important;
     }
     [data-theme="light"] .audit-toolbar {
@@ -2033,10 +2051,12 @@
       color: #0F172A;
     }
     [data-theme="light"] .catalog-filter-btn.active {
-      background: rgba(224, 14, 84, 0.1);
-      border-color: var(--vtex-pink);
-      color: var(--vtex-pink);
+      background: #EFF6FF !important;
+      border-color: #2563EB !important;
+      color: #1E40AF !important;
+      font-weight: 700 !important;
     }
+
     [data-theme="light"] .copilot-container,
     [data-theme="light"] .copilot-chat-container {
       background: #FFFFFF !important;
@@ -2175,6 +2195,33 @@
       color: var(--tenant-brand, #E00E54) !important;
       font-weight: 800;
     }
+
+    /* DROPZONE PARA IMPORTAÇÃO DE ARQUIVOS */
+    .ai-dropzone-box {
+      border: 2px dashed var(--border-medium);
+      border-radius: 12px;
+      padding: 2.25rem 1.5rem;
+      text-align: center;
+      background: var(--bg-surface-elevated);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .ai-dropzone-box:hover,
+    .ai-dropzone-box.dragover {
+      border-color: var(--primary) !important;
+      background: rgba(37, 99, 235, 0.08) !important;
+      transform: scale(1.005);
+    }
+    [data-theme="light"] .ai-dropzone-box {
+      background: #F8FAFC !important;
+      border-color: #CBD5E1 !important;
+    }
+    [data-theme="light"] .ai-dropzone-box:hover,
+    [data-theme="light"] .ai-dropzone-box.dragover {
+      background: #EFF6FF !important;
+      border-color: #2563EB !important;
+    }
+
 
 
 

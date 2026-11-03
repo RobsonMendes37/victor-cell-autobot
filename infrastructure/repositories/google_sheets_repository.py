@@ -334,3 +334,74 @@ class GoogleSheetsRepository(ProductRepositoryInterface):
             except Exception as e:
                 logger.error(f"Erro ao gravar log no Google Sheets via service account: {e}")
         return False
+
+    async def append_product(self, product: Product) -> bool:
+        """Appends a single product to the 'Estoque_Catalogo' tab via Service Account."""
+        client = self._get_service_client()
+        self._cached_products[product.sku] = product
+        if client and self.sheet_id:
+            try:
+                sheet = client.open_by_key(str(self.sheet_id or ""))
+                try:
+                    worksheet = sheet.worksheet("Estoque_Catalogo")
+                except Exception:
+                    worksheet = sheet.get_worksheet(0)
+
+                qual_val = product.quality.value if hasattr(product.quality, "value") else str(product.quality)
+                row_data = [
+                    product.sku,
+                    product.name,
+                    ", ".join(product.compatible_models) if product.compatible_models else product.name,
+                    product.category,
+                    qual_val,
+                    "SIM" if product.has_frame else "NÃO",
+                    f"{product.price:.2f}",
+                    str(product.stock_quantity),
+                    str(product.warranty_days),
+                    f"{product.cost_price:.2f}" if product.cost_price else "0.00",
+                    product.location or "GAVETA-A1",
+                ]
+                worksheet.append_row(row_data)
+                logger.info(f"Peça {product.sku} ({product.name}) gravada no Google Sheets.")
+                return True
+            except Exception as e:
+                logger.error(f"Erro ao inserir peça no Google Sheets: {e}")
+        return True
+
+    async def append_products_batch(self, products: List[Product]) -> int:
+        """Appends a batch of products to the Google Sheets spreadsheet."""
+        client = self._get_service_client()
+        count = 0
+        rows_to_append = []
+        for product in products:
+            self._cached_products[product.sku] = product
+            qual_val = product.quality.value if hasattr(product.quality, "value") else str(product.quality)
+            row_data = [
+                product.sku,
+                product.name,
+                ", ".join(product.compatible_models) if product.compatible_models else product.name,
+                product.category,
+                qual_val,
+                "SIM" if product.has_frame else "NÃO",
+                f"{product.price:.2f}",
+                str(product.stock_quantity),
+                str(product.warranty_days),
+                f"{product.cost_price:.2f}" if product.cost_price else "0.00",
+                product.location or "GAVETA-A1",
+            ]
+            rows_to_append.append(row_data)
+            count += 1
+
+        if client and self.sheet_id and rows_to_append:
+            try:
+                sheet = client.open_by_key(str(self.sheet_id or ""))
+                try:
+                    worksheet = sheet.worksheet("Estoque_Catalogo")
+                except Exception:
+                    worksheet = sheet.get_worksheet(0)
+                worksheet.append_rows(rows_to_append)
+                logger.info(f"{len(rows_to_append)} peças adicionadas em lote no Google Sheets.")
+            except Exception as e:
+                logger.error(f"Erro ao inserir lote no Google Sheets: {e}")
+        return count
+

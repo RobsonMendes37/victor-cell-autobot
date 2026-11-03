@@ -1458,8 +1458,19 @@
       if (icon) icon.innerText = isLight ? '🌙' : '☀️';
       if (label) label.innerText = isLight ? 'Modo Escuro' : 'Modo Claro';
 
+      const root = document.documentElement;
+      if (isLight) {
+        root.style.removeProperty('--bg-canvas');
+        root.style.removeProperty('--bg-surface');
+        root.style.removeProperty('--bg-sidebar');
+        root.style.removeProperty('--bg-surface-elevated');
+      } else if (tenantConfig && tenantConfig.theme) {
+        if (tenantConfig.theme.bg_canvas) root.style.setProperty('--bg-canvas', tenantConfig.theme.bg_canvas);
+        if (tenantConfig.theme.bg_surface) root.style.setProperty('--bg-surface', tenantConfig.theme.bg_surface);
+      }
+
       if (window.Chart) {
-        Chart.defaults.color = isLight ? '#475569' : '#94A3B8';
+        Chart.defaults.color = isLight ? '#334155' : '#94A3B8';
         Chart.defaults.borderColor = isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.08)';
       }
     }
@@ -2152,6 +2163,69 @@
       }
     }
 
+    function syncColorFromSelect(colorInputId, textInputId, colorVal) {
+      if (!colorVal) return;
+      const colorInp = document.getElementById(colorInputId);
+      const textInp = document.getElementById(textInputId);
+      if (colorInp) colorInp.value = colorVal;
+      if (textInp) textInp.value = colorVal;
+      updateTenantPreview();
+    }
+
+    function applyColorPreset(presetKey) {
+      const presets = {
+        erp_blue: {
+          primary: '#1E40AF',
+          primary_hover: '#1D4ED8',
+          secondary: '#2563EB',
+          tertiary: '#059669',
+          quaternary: '#D97706',
+          filter: '#0F172A',
+          name: 'Padrão ERP Executivo (Azul & Branco)'
+        },
+        dark_slate: {
+          primary: '#0F172A',
+          primary_hover: '#1E293B',
+          secondary: '#3B82F6',
+          tertiary: '#10B981',
+          quaternary: '#F59E0B',
+          filter: '#1E293B',
+          name: 'Dark Slate Enterprise'
+        },
+        victor_magenta: {
+          primary: '#F71963',
+          primary_hover: '#E00E54',
+          secondary: '#6366F1',
+          tertiary: '#10B981',
+          quaternary: '#F59E0B',
+          filter: '#334155',
+          name: 'Victor Cell Magenta Oficial'
+        }
+      };
+
+      const p = presets[presetKey];
+      if (!p) return;
+
+      const setPair = (colorId, textId, selectId, val) => {
+        const c = document.getElementById(colorId);
+        const t = document.getElementById(textId);
+        const s = document.getElementById(selectId);
+        if (c) c.value = val;
+        if (t) t.value = val;
+        if (s) s.value = val;
+      };
+
+      setPair('tenant-primary-color', 'tenant-primary-color-text', 'tenant-primary-color-select', p.primary);
+      setPair('tenant-primary-hover', 'tenant-primary-hover-text', 'tenant-primary-hover-select', p.primary_hover);
+      setPair('tenant-secondary-color', 'tenant-secondary-color-text', 'tenant-secondary-color-select', p.secondary);
+      setPair('tenant-tertiary-color', 'tenant-tertiary-color-text', 'tenant-tertiary-color-select', p.tertiary);
+      setPair('tenant-quaternary-color', 'tenant-quaternary-color-text', 'tenant-quaternary-color-select', p.quaternary);
+      setPair('tenant-filter-color', 'tenant-filter-color-text', 'tenant-filter-color-select', p.filter);
+
+      updateTenantPreview();
+      showToast(`🎨 Tema "${p.name}" aplicado! Clique em "Salvar Identidade" para gravar.`);
+    }
+
     function applyTenantConfig(config) {
       if (!config) return;
       tenantConfig = config;
@@ -2172,21 +2246,41 @@
       // 2. Cores e Variáveis CSS (White-Label Dinâmico - Paleta Centralizada)
       if (config.theme) {
         const root = document.documentElement;
-        if (config.theme.primary_color) {
-          root.style.setProperty('--vtex-pink', config.theme.primary_color);
-          root.style.setProperty('--tenant-brand', config.theme.primary_color);
-          root.style.setProperty('--primary', config.theme.primary_color);
+        const currentTheme = root.getAttribute('data-theme') || 'dark';
+        const isLight = currentTheme === 'light';
+
+        if (isLight) {
+          root.style.removeProperty('--bg-canvas');
+          root.style.removeProperty('--bg-surface');
+          root.style.removeProperty('--bg-sidebar');
+          const primColor = (config.theme.primary_color && config.theme.primary_color !== '#F71963') ? config.theme.primary_color : '#1E40AF';
+          root.style.setProperty('--primary', primColor);
+          root.style.setProperty('--tenant-brand', primColor);
+          root.style.setProperty('--vtex-pink', primColor);
+        } else {
+          if (config.theme.primary_color) {
+            root.style.setProperty('--vtex-pink', config.theme.primary_color);
+            root.style.setProperty('--tenant-brand', config.theme.primary_color);
+            root.style.setProperty('--primary', config.theme.primary_color);
+          }
+          if (config.theme.primary_hover) {
+            root.style.setProperty('--vtex-pink-hover', config.theme.primary_hover);
+            root.style.setProperty('--tenant-brand-hover', config.theme.primary_hover);
+          }
+          if (config.theme.primary_glow) {
+            root.style.setProperty('--vtex-pink-glow', config.theme.primary_glow);
+            root.style.setProperty('--tenant-brand-glow', config.theme.primary_glow);
+            const bgAlpha = config.theme.primary_glow.replace(/[\d\.]+\)$/, '0.09)');
+            root.style.setProperty('--vtex-pink-bg', bgAlpha);
+          }
+          if (config.theme.bg_canvas) {
+            root.style.setProperty('--bg-canvas', config.theme.bg_canvas);
+          }
+          if (config.theme.bg_surface) {
+            root.style.setProperty('--bg-surface', config.theme.bg_surface);
+          }
         }
-        if (config.theme.primary_hover) {
-          root.style.setProperty('--vtex-pink-hover', config.theme.primary_hover);
-          root.style.setProperty('--tenant-brand-hover', config.theme.primary_hover);
-        }
-        if (config.theme.primary_glow) {
-          root.style.setProperty('--vtex-pink-glow', config.theme.primary_glow);
-          root.style.setProperty('--tenant-brand-glow', config.theme.primary_glow);
-          const bgAlpha = config.theme.primary_glow.replace(/[\d\.]+\)$/, '0.09)');
-          root.style.setProperty('--vtex-pink-bg', bgAlpha);
-        }
+
         if (config.theme.secondary_color) {
           root.style.setProperty('--secondary-color', config.theme.secondary_color);
           root.style.setProperty('--tenant-secondary', config.theme.secondary_color);
@@ -2203,12 +2297,6 @@
         }
         if (config.theme.filter_color) {
           root.style.setProperty('--tenant-filter-bg', config.theme.filter_color);
-        }
-        if (config.theme.bg_canvas) {
-          root.style.setProperty('--bg-canvas', config.theme.bg_canvas);
-        }
-        if (config.theme.bg_surface) {
-          root.style.setProperty('--bg-surface', config.theme.bg_surface);
         }
         if (config.theme.logo_icon) {
           const logoElems = document.querySelectorAll('.brand-logo');
@@ -2232,18 +2320,18 @@
             const el = document.getElementById(id);
             if (el && val) el.value = val;
           };
-          setField('tenant-primary-color', config.theme.primary_color || '#F71963');
-          setField('tenant-primary-color-text', config.theme.primary_color || '#F71963');
-          setField('tenant-primary-hover', config.theme.primary_hover || '#E00E54');
-          setField('tenant-primary-hover-text', config.theme.primary_hover || '#E00E54');
-          setField('tenant-secondary-color', config.theme.secondary_color || '#6366F1');
-          setField('tenant-secondary-color-text', config.theme.secondary_color || '#6366F1');
-          setField('tenant-tertiary-color', config.theme.tertiary_color || '#10B981');
-          setField('tenant-tertiary-color-text', config.theme.tertiary_color || '#10B981');
-          setField('tenant-quaternary-color', config.theme.quaternary_color || '#F59E0B');
-          setField('tenant-quaternary-color-text', config.theme.quaternary_color || '#F59E0B');
-          setField('tenant-filter-color', config.theme.filter_color || '#334155');
-          setField('tenant-filter-color-text', config.theme.filter_color || '#334155');
+          setField('tenant-primary-color', config.theme.primary_color || '#1E40AF');
+          setField('tenant-primary-color-text', config.theme.primary_color || '#1E40AF');
+          setField('tenant-primary-hover', config.theme.primary_hover || '#1D4ED8');
+          setField('tenant-primary-hover-text', config.theme.primary_hover || '#1D4ED8');
+          setField('tenant-secondary-color', config.theme.secondary_color || '#2563EB');
+          setField('tenant-secondary-color-text', config.theme.secondary_color || '#2563EB');
+          setField('tenant-tertiary-color', config.theme.tertiary_color || '#059669');
+          setField('tenant-tertiary-color-text', config.theme.tertiary_color || '#059669');
+          setField('tenant-quaternary-color', config.theme.quaternary_color || '#D97706');
+          setField('tenant-quaternary-color-text', config.theme.quaternary_color || '#D97706');
+          setField('tenant-filter-color', config.theme.filter_color || '#0F172A');
+          setField('tenant-filter-color-text', config.theme.filter_color || '#0F172A');
           setField('tenant-logo-icon', config.theme.logo_icon || '⚡');
           setField('tenant-logo-url', config.theme.logo_url || '');
         }
@@ -2710,6 +2798,281 @@
       }
     }
 
+    // --- IMPORTAÇÃO INTELIGENTE DE ARQUIVOS COM IA GEMINI & GOOGLE SHEETS ---
+    let currentAiImportProposal = null;
+    let selectedAiFile = null;
+
+    function openAiImportModal() {
+      const modal = document.getElementById('modal-ai-file-import');
+      if (modal) {
+        modal.classList.add('active');
+        resetAiImportForm();
+      }
+    }
+
+    function closeAiImportModal() {
+      const modal = document.getElementById('modal-ai-file-import');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function resetAiImportForm() {
+      selectedAiFile = null;
+      currentAiImportProposal = null;
+      const fileInput = document.getElementById('ai-file-input');
+      if (fileInput) fileInput.value = '';
+      const textInput = document.getElementById('ai-import-raw-text');
+      if (textInput) textInput.value = '';
+      const dropLabel = document.getElementById('ai-dropzone-label');
+      if (dropLabel) dropLabel.innerText = 'Clique para selecionar ou arraste o arquivo aqui';
+      
+      const uploadStep = document.getElementById('ai-import-upload-step');
+      const reviewStep = document.getElementById('ai-import-review-step');
+      if (uploadStep) uploadStep.style.display = 'block';
+      if (reviewStep) reviewStep.style.display = 'none';
+      
+      const btn = document.getElementById('btn-process-ai-import');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/></svg> <span>Analisar com IA Gemini</span>`;
+      }
+    }
+
+    function handleAiDragOver(e) {
+      e.preventDefault();
+      const dropzone = document.getElementById('ai-dropzone');
+      if (dropzone) dropzone.classList.add('dragover');
+    }
+
+    function handleAiDragLeave(e) {
+      e.preventDefault();
+      const dropzone = document.getElementById('ai-dropzone');
+      if (dropzone) dropzone.classList.remove('dragover');
+    }
+
+    function handleAiFileDrop(e) {
+      e.preventDefault();
+      const dropzone = document.getElementById('ai-dropzone');
+      if (dropzone) dropzone.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        selectedAiFile = e.dataTransfer.files[0];
+        const dropLabel = document.getElementById('ai-dropzone-label');
+        if (dropLabel) dropLabel.innerText = `📄 Arquivo selecionado: ${selectedAiFile.name} (${(selectedAiFile.size / 1024).toFixed(1)} KB)`;
+      }
+    }
+
+    function handleAiFileSelected(e) {
+      if (e.target && e.target.files && e.target.files.length > 0) {
+        selectedAiFile = e.target.files[0];
+        const dropLabel = document.getElementById('ai-dropzone-label');
+        if (dropLabel) dropLabel.innerText = `📄 Arquivo selecionado: ${selectedAiFile.name} (${(selectedAiFile.size / 1024).toFixed(1)} KB)`;
+      }
+    }
+
+    function demoAiFileImportText() {
+      const textInput = document.getElementById('ai-import-raw-text');
+      if (textInput) {
+        textInput.value = `Nota Fiscal Eletrônica - Fornecedor: Distribuidora Central de Peças Brasil\n` +
+          `NF-e: 98452 - Emissão: 02/11/2026\n` +
+          `1. 10x Tela Frontal Samsung Galaxy A15 4G/5G com Aro - Custo R$ 85,00 - Venda Balcão R$ 145,00\n` +
+          `2. 05x Bateria Apple iPhone 11 Original China Foxconn - Custo R$ 65,00 - Venda Balcão R$ 120,00\n` +
+          `3. 08x Conector de Carga Placa Sub Motorola Moto G22 - Custo R$ 15,00 - Venda Balcão R$ 35,00\n` +
+          `4. 04x Tela Frontal Xiaomi Redmi Note 13 Incell - Custo R$ 90,00 - Venda Balcão R$ 160,00`;
+        showToast('✨ Exemplo de Nota Fiscal inserido com sucesso!');
+      }
+    }
+
+    async function processAiFileImport() {
+      const btn = document.getElementById('btn-process-ai-import');
+      let contentToSend = '';
+      let filename = 'documento_importado.txt';
+      let mimeType = 'text/plain';
+
+      if (selectedAiFile) {
+        filename = selectedAiFile.name;
+        mimeType = selectedAiFile.type || 'application/octet-stream';
+        try {
+          if (filename.endsWith('.csv') || filename.endsWith('.txt') || filename.endsWith('.json') || filename.endsWith('.tsv')) {
+            contentToSend = await selectedAiFile.text();
+          } else {
+            contentToSend = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(selectedAiFile);
+            });
+          }
+        } catch (err) {
+          showToast('Erro ao ler arquivo: ' + err, 'error');
+          return;
+        }
+      } else {
+        const textVal = document.getElementById('ai-import-raw-text')?.value.trim();
+        if (!textVal) {
+          showToast('Por favor, selecione um arquivo ou digite/cole o texto das peças.', 'warning');
+          return;
+        }
+        contentToSend = textVal;
+        filename = 'nota_balcao.txt';
+        mimeType = 'text/plain';
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="loading-spinner"></span> <span>Processando com IA...</span>`;
+      }
+
+      try {
+        const res = await fetch('/api/erp/stock/import-file-ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file_content: contentToSend,
+            filename: filename,
+            mime_type: mimeType,
+            operator_name: 'GESTOR_BALCAO'
+          })
+        });
+
+        if (!res.ok) throw new Error(`Status ${res.status}: ${await res.text()}`);
+        const proposal = await res.json();
+        currentAiImportProposal = proposal;
+        renderAiImportReview(proposal);
+      } catch (err) {
+        console.error('Erro na extração IA:', err);
+        showToast('Erro ao analisar com IA: ' + err.message, 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/></svg> <span>Analisar com IA Gemini</span>`;
+        }
+      }
+    }
+
+    function renderAiImportReview(proposal) {
+      const uploadStep = document.getElementById('ai-import-upload-step');
+      const reviewStep = document.getElementById('ai-import-review-step');
+      if (uploadStep) uploadStep.style.display = 'none';
+      if (reviewStep) reviewStep.style.display = 'block';
+
+      const titleEl = document.getElementById('ai-review-summary-title');
+      const descEl = document.getElementById('ai-review-summary-desc');
+      const countEl = document.getElementById('ai-review-count-badge');
+      if (titleEl) titleEl.innerText = `IA Gemini estruturou ${proposal.total_items || proposal.items.length} peças com sucesso`;
+      if (descEl) descEl.innerText = proposal.summary || `Fornecedor: ${proposal.supplier_name || 'Geral'} | Lote: ${proposal.batch_number}`;
+      if (countEl) countEl.innerText = `${proposal.total_units || proposal.items.length} un. / ${proposal.items.length} SKUs`;
+
+      const questionsContainer = document.getElementById('ai-questions-container');
+      if (questionsContainer) {
+        const questions = proposal.ai_questions || [];
+        if (questions.length === 0) {
+          questionsContainer.innerHTML = `<div style="font-size: 0.8rem; color: #10B981;">✓ Nenhuma dúvida pendente. Todos os parâmetros de catálogo estão completos.</div>`;
+        } else {
+          questionsContainer.innerHTML = questions.map((q, idx) => `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--bg-surface); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+              <span style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">❓ ${escapeHtml(q.question)}</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 0.775rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                  <input type="radio" name="ai_q_${idx}" value="SIM" checked style="accent-color: #2563EB;"> Sim / Confirmar
+                </label>
+                <label style="font-size: 0.775rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                  <input type="radio" name="ai_q_${idx}" value="NAO" style="accent-color: #2563EB;"> Ajustar
+                </label>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+
+      const tableBody = document.getElementById('ai-review-table-body');
+      if (tableBody) {
+        tableBody.innerHTML = proposal.items.map((item, idx) => `
+          <tr id="ai-import-row-${idx}">
+            <td style="font-family: var(--font-mono); font-size: 0.75rem; color: #2563EB; font-weight: 600;">
+              ${escapeHtml(item.sku || 'AUTO-SKU')}
+            </td>
+            <td>
+              <input type="text" class="input-styled" value="${escapeHtml(item.model_name || '')}" onchange="updateAiImportItem(${idx}, 'model_name', this.value)" style="width: 100%; padding: 4px 6px; font-size: 0.775rem;">
+            </td>
+            <td>
+              <span class="badge" style="background: var(--bg-surface-elevated); color: var(--text-muted); font-size: 0.7rem;">${escapeHtml(item.category || 'Geral')}</span>
+            </td>
+            <td style="width: 70px;">
+              <input type="number" min="1" class="input-styled" value="${item.quantity || 1}" onchange="updateAiImportItem(${idx}, 'quantity', parseInt(this.value, 10))" style="width: 60px; padding: 4px 6px; font-size: 0.775rem; text-align: center;">
+            </td>
+            <td style="width: 90px;">
+              <input type="number" step="0.01" class="input-styled" value="${(item.unit_cost || 0).toFixed(2)}" onchange="updateAiImportItem(${idx}, 'unit_cost', parseFloat(this.value))" style="width: 80px; padding: 4px 6px; font-size: 0.775rem; text-align: right;">
+            </td>
+            <td style="width: 90px;">
+              <input type="number" step="0.01" class="input-styled" value="${(item.suggested_price || 0).toFixed(2)}" onchange="updateAiImportItem(${idx}, 'suggested_price', parseFloat(this.value))" style="width: 80px; padding: 4px 6px; font-size: 0.775rem; text-align: right; font-weight: 700; color: #10B981;">
+            </td>
+            <td style="width: 40px; text-align: center;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="removeAiImportItem(${idx})" style="padding: 2px 6px; font-size: 0.75rem; color: #EF4444;" title="Excluir peça">✕</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function updateAiImportItem(index, field, value) {
+      if (currentAiImportProposal && currentAiImportProposal.items && currentAiImportProposal.items[index]) {
+        currentAiImportProposal.items[index][field] = value;
+      }
+    }
+
+    function removeAiImportItem(index) {
+      if (currentAiImportProposal && currentAiImportProposal.items) {
+        currentAiImportProposal.items.splice(index, 1);
+        currentAiImportProposal.total_items = currentAiImportProposal.items.length;
+        currentAiImportProposal.total_units = currentAiImportProposal.items.reduce((acc, i) => acc + (i.quantity || 1), 0);
+        renderAiImportReview(currentAiImportProposal);
+      }
+    }
+
+    async function confirmAiFileImport() {
+      if (!currentAiImportProposal || !currentAiImportProposal.items || currentAiImportProposal.items.length === 0) {
+        showToast('Nenhum item válido para importar.', 'warning');
+        return;
+      }
+
+      const syncSheets = document.getElementById('ai-sync-sheets-checkbox')?.checked ?? true;
+      const btn = document.getElementById('btn-confirm-ai-import');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="loading-spinner"></span> <span>Gravando e Sincronizando...</span>`;
+      }
+
+      try {
+        const res = await fetch('/api/erp/stock/confirm-file-import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            proposal: currentAiImportProposal,
+            sync_to_sheets: syncSheets,
+            operator_name: 'GESTOR_BALCAO'
+          })
+        });
+
+        if (!res.ok) throw new Error(`Status ${res.status}: ${await res.text()}`);
+        const result = await res.json();
+
+        let msg = result.message || 'Itens importados com sucesso!';
+        if (result.sheets_synced) {
+          msg += ' Sincronizado com a planilha do Google Sheets!';
+        }
+        showToast('✅ ' + msg);
+        closeAiImportModal();
+
+        if (typeof fetchCatalog === 'function') fetchCatalog();
+        if (typeof fetchStats === 'function') fetchStats();
+      } catch (err) {
+        console.error('Erro na confirmação da importação:', err);
+        showToast('Erro ao confirmar importação: ' + err.message, 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg> <span>Confirmar & Sincronizar no Google Sheets</span>`;
+        }
+      }
+    }
+
     // Expor funções interativas ao escopo global para acesso inline em onclick/oninput
     window.changeCatalogPage = changeCatalogPage;
     window.setBrandFilter = setBrandFilter;
@@ -2717,6 +3080,8 @@
     window.filterCatalogTable = filterCatalogTable;
     window.syncColorPicker = syncColorPicker;
     window.syncColorText = syncColorText;
+    window.syncColorFromSelect = syncColorFromSelect;
+    window.applyColorPreset = applyColorPreset;
     window.sendQuickPrompt = sendQuickPrompt;
     window.clearCopilotChat = clearCopilotChat;
     window.sendCopilotMessage = sendCopilotMessage;
@@ -2729,6 +3094,19 @@
     window.toggleCustomerColumnSort = toggleCustomerColumnSort;
     window.applyCustomerSort = applyCustomerSort;
     window.setCustomerRecurrenceBracket = setCustomerRecurrenceBracket;
+    window.openAiImportModal = openAiImportModal;
+    window.closeAiImportModal = closeAiImportModal;
+    window.handleAiDragOver = handleAiDragOver;
+    window.handleAiDragLeave = handleAiDragLeave;
+    window.handleAiFileDrop = handleAiFileDrop;
+    window.handleAiFileSelected = handleAiFileSelected;
+    window.processAiFileImport = processAiFileImport;
+    window.confirmAiFileImport = confirmAiFileImport;
+    window.demoAiFileImportText = demoAiFileImportText;
+    window.resetAiImportForm = resetAiImportForm;
+    window.removeAiImportItem = removeAiImportItem;
+    window.updateAiImportItem = updateAiImportItem;
+
 
     // Inicialização ao Carregar
     initTheme();

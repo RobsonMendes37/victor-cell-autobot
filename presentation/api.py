@@ -1989,6 +1989,19 @@ class ConfirmStockEntryRequest(BaseModel):
     operator_name: str = "BALCAO"
 
 
+class AiFileImportRequest(BaseModel):
+    file_content: str
+    filename: str = "catalogo.csv"
+    mime_type: Optional[str] = "text/csv"
+    operator_name: str = "BALCAO"
+
+
+class ConfirmAiFileImportRequest(BaseModel):
+    proposal: Dict[str, Any]
+    sync_to_sheets: bool = True
+    operator_name: str = "BALCAO"
+
+
 class SupplierCreateRequest(BaseModel):
     name: str
     document: Optional[str] = None
@@ -2029,6 +2042,23 @@ async def ocr_stock_entry(req: OcrStockEntryRequest, request: Request):
     return proposal
 
 
+@app.post("/api/erp/stock/import-file-ai", tags=["ERP & Estoque Nativo"], summary="Importação e Leitura de Arquivo de Peças com IA Gemini")
+async def import_file_ai_endpoint(req: AiFileImportRequest, request: Request):
+    check_dashboard_auth(request)
+    use_case = CognitiveStockEntryUseCase(
+        inventory_provider=product_repo,
+        ai_client=getattr(ai_service, "_client", None),
+        audit_repo=sqlite_repo,
+    )
+    proposal = await use_case.parse_file_stock_entry(
+        file_content=req.file_content,
+        filename=req.filename,
+        mime_type=req.mime_type,
+        operator_name=req.operator_name,
+    )
+    return proposal
+
+
 @app.post("/api/erp/stock/confirm-entry", tags=["ERP & Estoque Nativo"], summary="Confirmar e Efetivar Entrada de Estoque")
 async def confirm_stock_entry_endpoint(req: ConfirmStockEntryRequest, request: Request):
     check_dashboard_auth(request)
@@ -2042,6 +2072,49 @@ async def confirm_stock_entry_endpoint(req: ConfirmStockEntryRequest, request: R
         operator_name=req.operator_name,
     )
     return result
+
+
+@app.post("/api/erp/stock/confirm-file-import", tags=["ERP & Estoque Nativo"], summary="Confirmar Importação de Arquivo e Sincronizar com Google Sheets")
+async def confirm_file_import_endpoint(req: ConfirmAiFileImportRequest, request: Request):
+    check_dashboard_auth(request)
+    use_case = CognitiveStockEntryUseCase(
+        inventory_provider=product_repo,
+        ai_client=getattr(ai_service, "_client", None),
+        audit_repo=sqlite_repo,
+    )
+    result = await use_case.confirm_stock_entry(
+        proposal=req.proposal,
+        operator_name=req.operator_name,
+    )
+
+    sheets_synced = False
+    sheets_error = None
+    if req.sync_to_sheets and result.get("status") == "SUCCESS":
+        try:
+            from infrastructure.repositories.google_sheets_repository import GoogleSheetsRepository
+            sheets_repo = GoogleSheetsRepository()
+            items_to_sync = []
+            for it in req.proposal.get("items", []):
+                sku = it.get("sku")
+                if not sku:
+                    continue
+                prod = await product_repo.get_by_sku(sku)
+                if prod:
+                    items_to_sync.append(prod)
+
+            if items_to_sync:
+                await sheets_repo.append_products_batch(items_to_sync)
+                sheets_synced = True
+                logger.info(f"Sincronização com Google Sheets realizada com sucesso para {len(items_to_sync)} peças.")
+        except Exception as e:
+            logger.error(f"Erro ao sincronizar peças com Google Sheets: {e}")
+            sheets_error = str(e)
+
+    result["sheets_synced"] = sheets_synced
+    if sheets_error:
+        result["sheets_error"] = sheets_error
+    return result
+
 
 
 @app.get("/api/erp/stock/movements", tags=["ERP & Estoque Nativo"], summary="Histórico de Movimentações Fiscais")

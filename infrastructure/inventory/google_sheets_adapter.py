@@ -64,3 +64,11 @@ class GoogleSheetsInventoryAdapter(InventoryProvider):
             self.repo._last_cache_update = None
         prods = await self.repo.list_all()
         return len(prods)
+
+    async def register_product(self, product: Product) -> bool:
+        if hasattr(self.repo, "append_product"):
+            return await self.repo.append_product(product)
+        if hasattr(self.repo, "_cached_products"):
+            self.repo._cached_products[product.sku] = product
+        return True
+

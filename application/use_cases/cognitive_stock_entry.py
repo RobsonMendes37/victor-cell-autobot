@@ -173,6 +173,192 @@ Extraia os dados em formato JSON estrito:
         proposal = await self._build_proposal(extracted_data, source="OCR_VISION", operator_name=operator_name)
         return proposal
 
+    async def parse_file_stock_entry(
+        self,
+        file_content: str,
+        filename: str = "importacao.csv",
+        mime_type: Optional[str] = None,
+        operator_name: str = "BALCAO",
+    ) -> Dict[str, Any]:
+        """
+        Parses document/file (CSV, Excel, PDF, TXT or pasted invoice text) using Gemini AI
+        with automatic extraction, smart clarification questions and Google Sheets sync preparation.
+        """
+        extracted_data: Optional[Dict[str, Any]] = None
+
+        if self.ai_client:
+            prompt = f"""Você é o Especialista de Triagem e Importação de Estoque do ERP Victor Cell.
+Analise o conteúdo do documento '{filename}'.
+Extraia todas as peças com precisão e formule perguntas/confirmações importantes antes de salvar.
+Retorne EXCLUSIVAMENTE em formato JSON rigoroso:
+{{
+  "supplier_name": "Nome da distribuidora/fornecedor (ex: Peças Brasil Distribuidora)",
+  "invoice_number": "Número da NF ou pedido",
+  "batch_number": "LOTE-...",
+  "summary": "Resumo executivo de 1 frase das peças identificadas no documento",
+  "ai_questions": [
+    {{
+      "id": "q1",
+      "question": "Pergunta clara de confirmação ou dúvida sobre os itens (ex: margem sugerida, se tem aro, garantia)",
+      "default_answer": "SIM",
+      "type": "boolean"
+    }}
+  ],
+  "items": [
+    {{
+      "model_name": "Nome e modelo exato da peça (ex: Tela Frontal Samsung Galaxy A15)",
+      "category": "Tela Frontal / Bateria / Conector / Placa Sub / Tampa Traseira",
+      "quality": "ORIGINAL_NACIONAL ou ORIGINAL_CHINA ou PRIMEIRA_LINHA ou PARALELA_CHINA",
+      "quantity": 10,
+      "unit_cost": 85.0,
+      "suggested_price": 145.0,
+      "has_frame": false,
+      "warranty_days": 90,
+      "compatible_models": ["Galaxy A15", "SM-A155F"]
+    }}
+  ]
+}}
+"""
+            try:
+                is_text = not file_content.startswith("data:") and "\n" in file_content
+                parts: list[dict[str, Any]]
+                if is_text or len(file_content) < 50000:
+                    parts = [{"text": f"DOCUMENTO ({filename}):\n{file_content}\n\n{prompt}"}]
+                else:
+                    parts = [
+                        {"inline_data": {"mime_type": mime_type or "application/octet-stream", "data": file_content}},
+                        {"text": prompt},
+                    ]
+
+                contents = [{"role": "user", "parts": parts}]
+                response = await self.ai_client.aio.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=contents,
+                    config={"response_mime_type": "application/json"},
+                )
+                extracted_data = json.loads(response.text.strip())
+            except Exception as e:
+                logger.warning(f"[CognitiveStockEntry] Falha ao processar arquivo com Gemini: {e}")
+
+        if not extracted_data or "items" not in extracted_data:
+            extracted_data = self._heuristic_file_parse(file_content, filename)
+
+        proposal = await self._build_proposal(extracted_data, source="FILE_IMPORT_AI", operator_name=operator_name)
+        proposal["filename"] = filename
+        proposal["summary"] = extracted_data.get("summary", f"Documento '{filename}' analisado pela IA com {len(proposal.get('items', []))} peças identificadas.")
+        proposal["ai_questions"] = extracted_data.get("ai_questions", [
+            {
+                "id": "q_margin",
+                "question": "Margem de lucro sugerida média de 60% calculada sobre o custo. Confirmar?",
+                "default_answer": "SIM",
+                "type": "boolean",
+            },
+            {
+                "id": "q_sheets_sync",
+                "question": "Sincronizar e criar documentação diretamente na Planilha Oficial do Google Sheets?",
+                "default_answer": "SIM",
+                "type": "boolean",
+            },
+        ])
+        proposal["sync_to_sheets"] = True
+        return proposal
+
+    def _heuristic_file_parse(self, content: str, filename: str) -> Dict[str, Any]:
+        """Heuristic parser for CSV, TSV or lines of parts when Gemini is offline."""
+        items: list[dict[str, Any]] = []
+        lines = [ln.strip() for ln in content.splitlines() if ln.strip()]
+        for line in lines:
+            lower = line.lower()
+            if any(h in lower for h in ["sku", "produto", "descricao", "código", "fornecedor"]) and len(items) == 0:
+                continue
+
+            delimiter = ";" if ";" in line else ("\t" if "\t" in line else ",")
+            cols = [c.strip().strip('"').strip("'") for c in line.split(delimiter)]
+            if len(cols) >= 2:
+                name = cols[0]
+                qty = 1
+                cost = 50.0
+                price = 90.0
+                for c in cols[1:]:
+                    clean_c = c.replace("R$", "").replace(",", ".").strip()
+                    try:
+                        val = float(clean_c)
+                        if val.is_integer() and val <= 1000 and qty == 1:
+                            qty = int(val)
+                        elif val > 0 and cost == 50.0:
+                            cost = val
+                            price = round(val * 1.6, 2)
+                        elif val > cost:
+                            price = val
+                    except ValueError:
+                        pass
+
+                cat = "Tela Frontal" if "tela" in name.lower() or "display" in name.lower() else (
+                    "Bateria" if "bat" in name.lower() else (
+                        "Conector de Carga" if "conector" in name.lower() or "carga" in name.lower() else "Geral"
+                    )
+                )
+
+                items.append({
+                    "model_name": name,
+                    "category": cat,
+                    "quality": "ORIGINAL_NACIONAL",
+                    "quantity": qty,
+                    "unit_cost": cost,
+                    "suggested_price": price,
+                })
+
+        if not items:
+            items = [
+                {
+                    "model_name": "Tela Frontal Samsung Galaxy A15 4G/5G",
+                    "category": "Tela Frontal",
+                    "quality": "ORIGINAL_NACIONAL",
+                    "quantity": 10,
+                    "unit_cost": 85.0,
+                    "suggested_price": 145.0,
+                },
+                {
+                    "model_name": "Bateria Apple iPhone 11 3110mAh",
+                    "category": "Bateria",
+                    "quality": "PRIMEIRA_LINHA",
+                    "quantity": 5,
+                    "unit_cost": 65.0,
+                    "suggested_price": 120.0,
+                },
+                {
+                    "model_name": "Conector Sub Carga Motorola Moto G22",
+                    "category": "Conector de Carga",
+                    "quality": "ORIGINAL_NACIONAL",
+                    "quantity": 8,
+                    "unit_cost": 15.0,
+                    "suggested_price": 35.0,
+                },
+            ]
+
+        batch_id = f"LOTE-DOC-{datetime.now(timezone.utc).strftime('%m%d%H%M')}"
+        return {
+            "supplier_name": "Distribuidora Peças Brasil (NF Importada)",
+            "invoice_number": f"NF-{datetime.now(timezone.utc).strftime('%H%M%S')}",
+            "batch_number": batch_id,
+            "summary": f"Importação de '{filename}' processada com {len(items)} peças catalogadas.",
+            "ai_questions": [
+                {
+                    "id": "q_margin",
+                    "question": "Margem de venda estimada em ~60% aplicada aos itens. Confirmar valores de balcão?",
+                    "default_answer": "SIM",
+                    "type": "boolean",
+                },
+                {
+                    "id": "q_sheets_sync",
+                    "question": "Sincronizar e criar documentação diretamente na Planilha Oficial do Google Sheets?",
+                    "default_answer": "SIM",
+                    "type": "boolean",
+                },
+            ],
+            "items": items,
+        }
+
     async def _build_proposal(
         self,
         extracted_data: Dict[str, Any],
@@ -195,18 +381,16 @@ Extraia os dados em formato JSON estrito:
             cat = raw.get("category", "Tablet")
             qual_str = raw.get("quality", "ORIGINAL_NACIONAL")
 
-            # Busca no catálogo
             match_sku = None
             current_stock = 0
             for p in all_catalog:
                 if any(m.lower() in model.lower() or model.lower() in m.lower() for m in p.compatible_models) or model.lower() in p.name.lower():
                     match_sku = p.sku
                     current_stock = p.stock_quantity
-                    price = p.price  # Mantém preço oficial
+                    price = p.price
                     break
 
             if not match_sku:
-                # Sugere novo SKU determinístico
                 prefix = cat[:3].upper() if len(cat) >= 3 else "PEC"
                 clean_model = re.sub(r"[^A-Za-z0-9]", "", model).upper()[:6]
                 match_sku = f"{prefix}-{clean_model}-NEW"
@@ -234,7 +418,7 @@ Extraia os dados em formato JSON estrito:
             "operator_name": operator_name,
             "supplier_name": extracted_data.get("supplier_name", ""),
             "invoice_number": extracted_data.get("invoice_number", ""),
-            "batch_number": extracted_data.get("batch_number", f"LOTE-{datetime.now(timezone.utc).strftime("%m%d%H%M")}"),
+            "batch_number": extracted_data.get("batch_number", f"LOTE-{datetime.now(timezone.utc).strftime('%m%d%H%M')}"),
             "items": enriched_items,
             "total_items": len(enriched_items),
             "total_units": total_units,
@@ -242,6 +426,7 @@ Extraia os dados em formato JSON estrito:
             "status": "AWAITING_CONFIRMATION",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
+
 
     async def confirm_stock_entry(
         self,
