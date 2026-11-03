@@ -2159,5 +2159,22 @@
       border: 1px solid rgba(56, 189, 248, 0.4);
     }
 
+    /* TABLE COLUMN SORT INDICATORS */
+    .sort-icon {
+      display: inline-block;
+      margin-left: 4px;
+      font-size: 0.72rem;
+      color: #64748B;
+      transition: color 0.15s ease, transform 0.15s ease;
+      vertical-align: middle;
+    }
+    th:hover .sort-icon {
+      color: var(--tenant-brand, #E00E54);
+    }
+    .sort-icon.active {
+      color: var(--tenant-brand, #E00E54) !important;
+      font-weight: 800;
+    }
+
 
 

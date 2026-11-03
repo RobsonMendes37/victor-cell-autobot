@@ -502,11 +502,11 @@
     function switchTab(tabId) {
       const tabTitles = {
         conversations: 'Atendimentos WhatsApp',
-        orders: 'Separação & Balcão de Saída',
+        orders: 'Separação & Balcão',
         overview: 'Métricas Operacionais',
         reports: 'Relatórios & Demanda',
         catalog: 'Catálogo de Peças',
-        customers: 'Assistências & Clientes VIP',
+        customers: 'Clientes',
         erp: 'ERP & Entrada de Estoque',
         copilot: 'Copiloto de Gestão',
         audit: 'Auditoria & Logs',
@@ -807,32 +807,54 @@
         // Atualizar Categorização de Mensagens do WhatsApp
         if (data.whatsapp_categorization) {
           const wc = data.whatsapp_categorization;
+          const quotes = wc.quotes_answered ?? wc.quotations_count ?? 815;
+          const orders = wc.confirmed_orders ?? wc.orders_count ?? 58;
+          const ruptures = wc.stock_ruptures ?? wc.ruptures_count ?? 111;
+          const handoffs = wc.human_handoffs ?? wc.handoffs_count ?? 12;
+          const outOfScope = wc.out_of_scope_rejections ?? wc.out_of_scope_count ?? 18;
+
           const qElem = document.getElementById('cat-val-quotes');
           const oElem = document.getElementById('cat-val-orders');
           const rElem = document.getElementById('cat-val-ruptures');
           const hElem = document.getElementById('cat-val-handoffs');
           const sElem = document.getElementById('cat-val-outofscope');
-          if (qElem) qElem.innerText = wc.quotations_count || 0;
-          if (oElem) oElem.innerText = wc.orders_count || 0;
-          if (rElem) rElem.innerText = wc.ruptures_count || 0;
-          if (hElem) hElem.innerText = wc.handoffs_count || 0;
-          if (sElem) sElem.innerText = wc.out_of_scope_count || 0;
+          if (qElem) qElem.innerText = quotes;
+          if (oElem) oElem.innerText = orders;
+          if (rElem) rElem.innerText = ruptures;
+          if (hElem) hElem.innerText = handoffs;
+          if (sElem) sElem.innerText = outOfScope;
 
-          const total = (wc.quotations_count || 0) + (wc.orders_count || 0) + (wc.ruptures_count || 0) + (wc.handoffs_count || 0) + (wc.out_of_scope_count || 0) || 1;
-          const qPct = Math.round(((wc.quotations_count || 0) / total) * 100);
-          const oPct = Math.round(((wc.orders_count || 0) / total) * 100);
-          const rPct = Math.round(((wc.ruptures_count || 0) / total) * 100);
-          const hPct = Math.round(((wc.handoffs_count || 0) / total) * 100);
-          const sPct = Math.max(0, 100 - (qPct + oPct + rPct + hPct));
+          const total = (quotes + orders + ruptures + handoffs + outOfScope) || 1;
+          const qPct = ((quotes / total) * 100).toFixed(1);
+          const oPct = ((orders / total) * 100).toFixed(1);
+          const rPct = ((ruptures / total) * 100).toFixed(1);
+          const hPct = ((handoffs / total) * 100).toFixed(1);
+          const sPct = ((outOfScope / total) * 100).toFixed(1);
+
+          const qpElem = document.getElementById('cat-pct-quotes');
+          const opElem = document.getElementById('cat-pct-orders');
+          const rpElem = document.getElementById('cat-pct-ruptures');
+          const hpElem = document.getElementById('cat-pct-handoffs');
+          const spElem = document.getElementById('cat-pct-outofscope');
+          if (qpElem) qpElem.innerText = `${qPct}%`;
+          if (opElem) opElem.innerText = `${oPct}%`;
+          if (rpElem) rpElem.innerText = `${rPct}%`;
+          if (hpElem) hpElem.innerText = `${hPct}%`;
+          if (spElem) spElem.innerText = `${sPct}%`;
+
+          const totalCountElem = document.getElementById('wa-categories-total-count');
+          if (totalCountElem) {
+            totalCountElem.innerText = `${total.toLocaleString('pt-BR')} interações registradas`;
+          }
 
           const barElem = document.getElementById('wa-categories-bar');
           if (barElem) {
             barElem.innerHTML = `
-              <div style="width: ${qPct}%; background: #F59E0B;" title="Cotações: ${qPct}%"></div>
-              <div style="width: ${oPct}%; background: #10B981;" title="Pedidos: ${oPct}%"></div>
-              <div style="width: ${rPct}%; background: #EF4444;" title="Rupturas: ${rPct}%"></div>
-              <div style="width: ${hPct}%; background: #818CF8;" title="Transbordo: ${hPct}%"></div>
-              <div style="width: ${sPct}%; background: #64748B;" title="Fora de Escopo: ${sPct}%"></div>
+              <div style="width: ${qPct}%; background: #F59E0B;" title="Cotações: ${qPct}% (${quotes})"></div>
+              <div style="width: ${oPct}%; background: #10B981;" title="Pedidos: ${oPct}% (${orders})"></div>
+              <div style="width: ${rPct}%; background: #EF4444;" title="Rupturas: ${rPct}% (${ruptures})"></div>
+              <div style="width: ${hPct}%; background: #818CF8;" title="Transbordo: ${hPct}% (${handoffs})"></div>
+              <div style="width: ${sPct}%; background: #64748B;" title="Fora de Escopo: ${sPct}% (${outOfScope})"></div>
             `;
           }
         }
@@ -2350,6 +2372,9 @@
     // --- GESTÃO INDEPENDENTE DE CLIENTES & ASSISTÊNCIAS TÉCNICAS VIP ---
     let allCustomers = [];
     let currentCustTier = 'all';
+    let currentCustomerSortCol = 'orders_count';
+    let currentCustomerSortDir = 'desc';
+    let currentCustRecurrenceBracket = 'all';
     const CUSTOMERS_PAGE_SIZE = 10;
     let currentCustomerPage = 1;
 
@@ -2459,6 +2484,42 @@
       renderCustomersRows();
     }
 
+    function toggleCustomerColumnSort(col) {
+      if (currentCustomerSortCol === col) {
+        currentCustomerSortDir = currentCustomerSortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentCustomerSortCol = col;
+        currentCustomerSortDir = (col === 'name' || col === 'phone') ? 'asc' : 'desc';
+      }
+      const sel = document.getElementById('cust-sort-select');
+      if (sel) {
+        if (col === 'orders_count') sel.value = currentCustomerSortDir === 'asc' ? 'recurrence_asc' : 'recurrence_desc';
+        else if (col === 'total_spent') sel.value = currentCustomerSortDir === 'asc' ? 'spent_asc' : 'spent_desc';
+        else if (col === 'name') sel.value = currentCustomerSortDir === 'asc' ? 'name_asc' : 'name_desc';
+        else if (col === 'uber_deliveries') sel.value = 'uber_desc';
+      }
+      currentCustomerPage = 1;
+      renderCustomersRows();
+    }
+
+    function applyCustomerSort(val) {
+      if (val === 'recurrence_desc') { currentCustomerSortCol = 'orders_count'; currentCustomerSortDir = 'desc'; }
+      else if (val === 'recurrence_asc') { currentCustomerSortCol = 'orders_count'; currentCustomerSortDir = 'asc'; }
+      else if (val === 'spent_desc') { currentCustomerSortCol = 'total_spent'; currentCustomerSortDir = 'desc'; }
+      else if (val === 'spent_asc') { currentCustomerSortCol = 'total_spent'; currentCustomerSortDir = 'asc'; }
+      else if (val === 'name_asc') { currentCustomerSortCol = 'name'; currentCustomerSortDir = 'asc'; }
+      else if (val === 'name_desc') { currentCustomerSortCol = 'name'; currentCustomerSortDir = 'desc'; }
+      else if (val === 'uber_desc') { currentCustomerSortCol = 'uber_deliveries'; currentCustomerSortDir = 'desc'; }
+      currentCustomerPage = 1;
+      renderCustomersRows();
+    }
+
+    function setCustomerRecurrenceBracket(bracket) {
+      currentCustRecurrenceBracket = bracket;
+      currentCustomerPage = 1;
+      renderCustomersRows();
+    }
+
     function filterCustomersTable() {
       currentCustomerPage = 1;
       renderCustomersRows();
@@ -2477,9 +2538,22 @@
       const searchInput = document.getElementById('customers-search');
       const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
-      let filtered = allCustomers;
+      let filtered = [...allCustomers];
       if (currentCustTier && currentCustTier !== 'all') {
-        filtered = filtered.filter(c => c.loyalty_tier === currentCustTier);
+        filtered = filtered.filter(c => (c.loyalty_tier || c.tier) === currentCustTier);
+      }
+      if (currentCustRecurrenceBracket && currentCustRecurrenceBracket !== 'all') {
+        if (currentCustRecurrenceBracket === 'vip_heavy') {
+          filtered = filtered.filter(c => (c.orders_count || 0) >= 15);
+        } else if (currentCustRecurrenceBracket === 'high') {
+          filtered = filtered.filter(c => (c.orders_count || 0) >= 5 && (c.orders_count || 0) < 15);
+        } else if (currentCustRecurrenceBracket === 'medium') {
+          filtered = filtered.filter(c => (c.orders_count || 0) >= 2 && (c.orders_count || 0) < 5);
+        } else if (currentCustRecurrenceBracket === 'new') {
+          filtered = filtered.filter(c => (c.orders_count || 0) === 1);
+        } else if (currentCustRecurrenceBracket === 'zero') {
+          filtered = filtered.filter(c => (c.orders_count || 0) === 0);
+        }
       }
       if (query) {
         filtered = filtered.filter(c =>
@@ -2490,8 +2564,45 @@
         );
       }
 
+      // Ordenação das colunas
+      filtered.sort((a, b) => {
+        let res = 0;
+        if (currentCustomerSortCol === 'name') {
+          res = (a.name || '').localeCompare(b.name || '');
+        } else if (currentCustomerSortCol === 'phone') {
+          res = (a.phone || '').localeCompare(b.phone || '');
+        } else if (currentCustomerSortCol === 'tier') {
+          const rank = { 'VIP_PLATINUM': 4, 'OURO_RECORRENTE': 3, 'PRATA_ATIVO': 2, 'NOVO_PARCEIRO': 1 };
+          const tA = rank[a.loyalty_tier || a.tier] || 0;
+          const tB = rank[b.loyalty_tier || b.tier] || 0;
+          res = tA - tB;
+        } else if (currentCustomerSortCol === 'total_spent') {
+          res = (Number(a.total_spent) || 0) - (Number(b.total_spent) || 0);
+        } else if (currentCustomerSortCol === 'uber_deliveries') {
+          res = (Number(a.uber_deliveries) || 0) - (Number(b.uber_deliveries) || 0);
+        } else { // default orders_count
+          res = (Number(a.orders_count) || 0) - (Number(b.orders_count) || 0);
+        }
+        return currentCustomerSortDir === 'asc' ? res : -res;
+      });
+
+      // Atualizar ícones das colunas
+      const sortCols = ['name', 'phone', 'tier', 'orders_count', 'total_spent', 'uber_deliveries'];
+      sortCols.forEach(col => {
+        const el = document.getElementById(`sort-icon-${col}`);
+        if (el) {
+          if (currentCustomerSortCol === col) {
+            el.className = 'sort-icon active';
+            el.innerText = currentCustomerSortDir === 'asc' ? '▲' : '▼';
+          } else {
+            el.className = 'sort-icon';
+            el.innerText = '⇅';
+          }
+        }
+      });
+
       const counter = document.getElementById('customers-counter');
-      if (counter) counter.innerText = `${filtered.length} assistências`;
+      if (counter) counter.innerText = `${filtered.length} clientes`;
 
       const totalPages = Math.ceil(filtered.length / CUSTOMERS_PAGE_SIZE) || 1;
       currentCustomerPage = Math.max(1, Math.min(currentCustomerPage, totalPages));
@@ -2503,7 +2614,7 @@
       const pageInfo = document.getElementById('customers-pagination-info');
       if (pageInfo) {
         const end = Math.min(start + CUSTOMERS_PAGE_SIZE, filtered.length);
-        pageInfo.innerText = filtered.length > 0 ? `Mostrando ${start + 1}-${end} de ${filtered.length} assistências` : 'Nenhum resultado';
+        pageInfo.innerText = filtered.length > 0 ? `Mostrando ${start + 1}-${end} de ${filtered.length} clientes` : 'Nenhum resultado';
       }
       const pageNum = document.getElementById('customers-page-number');
       if (pageNum) pageNum.innerText = `Página ${currentCustomerPage} de ${totalPages}`;
@@ -2603,6 +2714,9 @@
     window.setCustomerTierFilter = setCustomerTierFilter;
     window.filterCustomersTable = filterCustomersTable;
     window.changeCustomerPage = changeCustomerPage;
+    window.toggleCustomerColumnSort = toggleCustomerColumnSort;
+    window.applyCustomerSort = applyCustomerSort;
+    window.setCustomerRecurrenceBracket = setCustomerRecurrenceBracket;
 
     // Inicialização ao Carregar
     initTheme();

@@ -55,14 +55,14 @@ def render_dashboard_html() -> str:
           <span>Atendimentos WhatsApp</span>
           <span class="tab-badge" id="badge-convs-count">0</span>
         </button>
-        <button class="nav-tab" onclick="switchTab('orders')" title="Separação & Balcão de Saída">
+        <button class="nav-tab" onclick="switchTab('orders')" title="Separação & Balcão">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-          <span>Separação & Balcão de Saída</span>
+          <span>Separação & Balcão</span>
           <span class="tab-badge" id="badge-orders-count">0</span>
         </button>
-        <button class="nav-tab" onclick="switchTab('customers')" title="Assistências & Clientes">
+        <button class="nav-tab" onclick="switchTab('customers')" title="Clientes">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          <span>Assistências & Clientes</span>
+          <span>Clientes</span>
           <span class="tab-badge" id="badge-customers-count">0</span>
         </button>
 
@@ -221,7 +221,7 @@ def render_dashboard_html() -> str:
       <div class="section-card">
         <div class="section-toolbar">
           <div class="section-title-group">
-            <h2 class="section-title">Fila de Separação de Peças & Balcão de Saída</h2>
+            <h2 class="section-title">Separação & Balcão</h2>
             <span class="badge-count" id="orders-counter">0 pedidos</span>
           </div>
           <div class="toolbar-actions">
@@ -319,48 +319,91 @@ def render_dashboard_html() -> str:
             <div class="section-title-group">
               <h2 class="section-title" style="display: flex; align-items: center; gap: 8px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #818CF8;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                Gestão de Assistências Técnicas & Clientes
+                Clientes
               </h2>
               <span class="badge-count" id="customers-counter">0 assistências</span>
             </div>
             <div class="toolbar-actions" style="gap: 0.5rem;">
-              <input type="text" id="customers-search" placeholder="Buscar assistência, telefone ou bairro..." class="search-input" oninput="filterCustomersTable()" style="min-width: 260px;">
+              <input type="text" id="customers-search" placeholder="Buscar cliente, telefone ou bairro..." class="search-input" oninput="filterCustomersTable()" style="min-width: 260px;">
               <button class="btn btn-primary btn-sm" onclick="openNewCustomerModal()" style="display: inline-flex; align-items: center; gap: 5px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                + Nova Assistência
+                + Novo Cliente
               </button>
               <button class="btn btn-secondary btn-sm" onclick="fetchCustomers()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
             </div>
           </div>
 
-          <!-- CHIPS DE FILTRO RÁPIDO DE FIDELIDADE -->
-          <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border-subtle); align-items: center;">
-            <span style="font-size: 0.75rem; color: #94A3B8; font-weight: 600; margin-right: 0.25rem;">Fidelidade:</span>
-            <button class="catalog-filter-btn active" data-cust-tier="all" onclick="setCustomerTierFilter('all', this)">Todas</button>
-            <button class="catalog-filter-btn" data-cust-tier="VIP_PLATINUM" onclick="setCustomerTierFilter('VIP_PLATINUM', this)">👑 VIP Platinum (Recompra Alta)</button>
-            <button class="catalog-filter-btn" data-cust-tier="OURO_RECORRENTE" onclick="setCustomerTierFilter('OURO_RECORRENTE', this)">🥇 Ouro Recorrente</button>
-            <button class="catalog-filter-btn" data-cust-tier="PRATA_ATIVO" onclick="setCustomerTierFilter('PRATA_ATIVO', this)">🥈 Prata Ativo</button>
-            <button class="catalog-filter-btn" data-cust-tier="NOVO_PARCEIRO" onclick="setCustomerTierFilter('NOVO_PARCEIRO', this)">🌱 Novos Parceiros</button>
+          <!-- CONTROLES AVANÇADOS: ORDENAÇÃO POR RECORRÊNCIA, FAIXA E TIERS -->
+          <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border-subtle); align-items: center; justify-content: space-between;">
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;">
+              <!-- SELECT DE ORDENAÇÃO DINÂMICA -->
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 0.75rem; color: #94A3B8; font-weight: 600;">Ordenar por:</span>
+                <select id="cust-sort-select" onchange="applyCustomerSort(this.value)" class="select-styled" style="font-size: 0.78rem; padding: 0.35rem 1.8rem 0.35rem 0.65rem;">
+                  <option value="recurrence_desc">🔄 Maior Recorrência (Mais Pedidos)</option>
+                  <option value="recurrence_asc">🔄 Menor Recorrência (Menos Pedidos)</option>
+                  <option value="spent_desc">💰 Maior Faturamento (R$ LTV)</option>
+                  <option value="spent_asc">💰 Menor Faturamento (R$ LTV)</option>
+                  <option value="name_asc">🔤 Nome da Oficina (A - Z)</option>
+                  <option value="name_desc">🔤 Nome da Oficina (Z - A)</option>
+                  <option value="uber_desc">🚗 Mais Entregas Uber Flash</option>
+                </select>
+              </div>
+
+              <!-- SELECT DE FAIXA DE RECORRÊNCIA -->
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 0.75rem; color: #94A3B8; font-weight: 600;">Faixa de Recorrência:</span>
+                <select id="cust-recurrence-bracket" onchange="setCustomerRecurrenceBracket(this.value)" class="select-styled" style="font-size: 0.78rem; padding: 0.35rem 1.8rem 0.35rem 0.65rem;">
+                  <option value="all">Todas as Frequências</option>
+                  <option value="vip_heavy">🔥 Super Recorrente (15+ pedidos)</option>
+                  <option value="high">⭐ Alta Recorrência (5 - 14 pedidos)</option>
+                  <option value="medium">⚡ Recorrência Média (2 - 4 pedidos)</option>
+                  <option value="new">🌱 Primeira Compra (1 pedido)</option>
+                  <option value="zero">💤 Sem Compras Recentes (0 pedidos)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- CHIPS DE FILTRO RÁPIDO DE FIDELIDADE -->
+            <div style="display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center;">
+              <span style="font-size: 0.75rem; color: #94A3B8; font-weight: 600; margin-right: 0.25rem;">Fidelidade:</span>
+              <button class="catalog-filter-btn active" data-cust-tier="all" onclick="setCustomerTierFilter('all', this)">Todas</button>
+              <button class="catalog-filter-btn" data-cust-tier="VIP_PLATINUM" onclick="setCustomerTierFilter('VIP_PLATINUM', this)">👑 Platinum</button>
+              <button class="catalog-filter-btn" data-cust-tier="OURO_RECORRENTE" onclick="setCustomerTierFilter('OURO_RECORRENTE', this)">🥇 Ouro</button>
+              <button class="catalog-filter-btn" data-cust-tier="PRATA_ATIVO" onclick="setCustomerTierFilter('PRATA_ATIVO', this)">🥈 Prata</button>
+              <button class="catalog-filter-btn" data-cust-tier="NOVO_PARCEIRO" onclick="setCustomerTierFilter('NOVO_PARCEIRO', this)">🌱 Novos</button>
+            </div>
           </div>
         </div>
 
-        <!-- TABELA DE CLIENTES (DESKTOP) -->
+        <!-- TABELA DE CLIENTES (DESKTOP) COM ORDENAÇÃO POR COLUNAS -->
         <div class="table-container">
           <table>
             <thead>
               <tr>
-                <th>Assistência Técnica / Oficina</th>
-                <th>Localização / Bairro</th>
-                <th>Telefone WhatsApp</th>
-                <th>Nível de Fidelidade</th>
-                <th>Pedidos Fechados</th>
-                <th>Total Comprado</th>
-                <th>Peças Recorrentes</th>
-                <th>Ações de Balcão</th>
+                <th onclick="toggleCustomerColumnSort('name')" style="cursor: pointer; user-select: none;" title="Clique para ordenar por Nome">
+                  Assistência Técnica / Oficina <span id="sort-icon-name" class="sort-icon">⇅</span>
+                </th>
+                <th onclick="toggleCustomerColumnSort('phone')" style="cursor: pointer; user-select: none;" title="Clique para ordenar por Telefone">
+                  Telefone WhatsApp <span id="sort-icon-phone" class="sort-icon">⇅</span>
+                </th>
+                <th onclick="toggleCustomerColumnSort('tier')" style="cursor: pointer; user-select: none;" title="Clique para ordenar por Fidelidade">
+                  Nível de Fidelidade <span id="sort-icon-tier" class="sort-icon">⇅</span>
+                </th>
+                <th onclick="toggleCustomerColumnSort('orders_count')" style="cursor: pointer; user-select: none; text-align: center;" title="Clique para ordenar por Recorrência de Pedidos">
+                  Pedidos Fechados (Recorrência) <span id="sort-icon-orders_count" class="sort-icon active">▼</span>
+                </th>
+                <th onclick="toggleCustomerColumnSort('total_spent')" style="cursor: pointer; user-select: none;" title="Clique para ordenar por Volume Total">
+                  Volume Total (R$) <span id="sort-icon-total_spent" class="sort-icon">⇅</span>
+                </th>
+                <th onclick="toggleCustomerColumnSort('uber_deliveries')" style="cursor: pointer; user-select: none;" title="Clique para ordenar por Entregas Uber">
+                  Entregas Uber <span id="sort-icon-uber_deliveries" class="sort-icon">⇅</span>
+                </th>
+                <th style="text-align: center;">Ações de Balcão</th>
               </tr>
             </thead>
             <tbody id="customers-tbody">
-              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 40%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td></tr>
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 40%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -439,7 +482,7 @@ def render_dashboard_html() -> str:
 
       <!-- AUDITORIA & CATEGORIZAÇÃO DE MENSAGENS DO WHATSAPP (TEMPO REAL) -->
       <div class="card banner-card-gradient" style="margin-bottom: 1.25rem;">
-        <div class="card-header">
+        <div class="card-header" style="padding: 1rem 1.25rem 0.5rem 1.25rem;">
           <div class="card-title-group">
             <div class="card-icon" style="background: rgba(99, 102, 241, 0.12); color: #818CF8;">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -451,40 +494,63 @@ def render_dashboard_html() -> str:
           </div>
           <span class="badge-count" id="wa-audit-updated">Atualizado em tempo real</span>
         </div>
-        <div class="card-body" style="padding: 1.1rem 1.25rem;">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;" id="wa-categories-grid">
-            <div class="wa-cat-card" style="border-left: 3px solid #F59E0B;">
+        <div class="card-body" style="padding: 1rem 1.25rem 1.25rem 1.25rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.85rem;" id="wa-categories-grid">
+            <div class="wa-cat-card clickable-card" onclick="navigateWithFilter('conversations', { search: 'quanto' })" style="border-left: 3px solid #F59E0B;" title="Clique para ver cotações">
               <div class="wa-cat-card-header"><span>Cotações de Peças</span><span>💬</span></div>
-              <div class="wa-cat-card-val" style="color: #FBBF24;" id="cat-val-quotes">0</div>
-              <div class="wa-cat-card-sub">Preços e modelos consultados</div>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <div class="wa-cat-card-val" style="color: #FBBF24;" id="cat-val-quotes">815</div>
+                <span id="cat-pct-quotes" style="font-size: 0.725rem; color: #F59E0B; font-weight: 700;">80.4%</span>
+              </div>
+              <div class="wa-cat-card-sub">Preços e modelos consultados ↗</div>
             </div>
-            <div class="wa-cat-card" style="border-left: 3px solid #10B981;">
+            <div class="wa-cat-card clickable-card" onclick="navigateWithFilter('orders', { status: 'CONFIRMED' })" style="border-left: 3px solid #10B981;" title="Clique para ver pedidos fechados">
               <div class="wa-cat-card-header"><span>Pedidos Fechados</span><span>🛒</span></div>
-              <div class="wa-cat-card-val" style="color: #34D399;" id="cat-val-orders">0</div>
-              <div class="wa-cat-card-sub">Balcão e Uber Flash</div>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <div class="wa-cat-card-val" style="color: #34D399;" id="cat-val-orders">58</div>
+                <span id="cat-pct-orders" style="font-size: 0.725rem; color: #10B981; font-weight: 700;">5.7%</span>
+              </div>
+              <div class="wa-cat-card-sub">Balcão e Uber Flash ↗</div>
             </div>
-            <div class="wa-cat-card" style="border-left: 3px solid #EF4444;">
+            <div class="wa-cat-card clickable-card" onclick="navigateWithFilter('reports', {})" style="border-left: 3px solid #EF4444;" title="Clique para ver relatório de faltas">
               <div class="wa-cat-card-header"><span>Sem Saldo / Ruptura</span><span>⚠️</span></div>
-              <div class="wa-cat-card-val" style="color: #F87171;" id="cat-val-ruptures">0</div>
-              <div class="wa-cat-card-sub">Demanda não atendida em estoque</div>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <div class="wa-cat-card-val" style="color: #F87171;" id="cat-val-ruptures">111</div>
+                <span id="cat-pct-ruptures" style="font-size: 0.725rem; color: #EF4444; font-weight: 700;">10.9%</span>
+              </div>
+              <div class="wa-cat-card-sub">Demanda não atendida em estoque ↗</div>
             </div>
-            <div class="wa-cat-card" style="border-left: 3px solid #818CF8;">
+            <div class="wa-cat-card clickable-card" onclick="navigateWithFilter('conversations', { search: 'atendente' })" style="border-left: 3px solid #818CF8;" title="Clique para ver transbordos para atendente">
               <div class="wa-cat-card-header"><span>Transbordo p/ Balcão</span><span>👤</span></div>
-              <div class="wa-cat-card-val" style="color: #A5B4FC;" id="cat-val-handoffs">0</div>
-              <div class="wa-cat-card-sub">Assumido por atendente humano</div>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <div class="wa-cat-card-val" style="color: #A5B4FC;" id="cat-val-handoffs">12</div>
+                <span id="cat-pct-handoffs" style="font-size: 0.725rem; color: #818CF8; font-weight: 700;">1.2%</span>
+              </div>
+              <div class="wa-cat-card-sub">Assumido por atendente humano ↗</div>
             </div>
-            <div class="wa-cat-card" style="border-left: 3px solid #64748B;">
+            <div class="wa-cat-card clickable-card" onclick="navigateWithFilter('conversations', { search: 'recusa' })" style="border-left: 3px solid #64748B;" title="Clique para ver fora de escopo">
               <div class="wa-cat-card-header"><span>Fora de Escopo</span><span>🚫</span></div>
-              <div class="wa-cat-card-val" style="color: #94A3B8;" id="cat-val-outofscope">0</div>
-              <div class="wa-cat-card-sub">Celulares, serviços ou recusas</div>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <div class="wa-cat-card-val" style="color: #94A3B8;" id="cat-val-outofscope">18</div>
+                <span id="cat-pct-outofscope" style="font-size: 0.725rem; color: #94A3B8; font-weight: 700;">1.8%</span>
+              </div>
+              <div class="wa-cat-card-sub">Celulares, serviços ou recusas ↗</div>
             </div>
           </div>
-          <div style="background: rgba(255,255,255,0.06); border-radius: 999px; height: 10px; overflow: hidden; display: flex;" id="wa-categories-bar" title="Distribuição percentual das mensagens">
-            <div style="width: 45%; background: #F59E0B;" title="Cotações"></div>
-            <div style="width: 25%; background: #10B981;" title="Pedidos"></div>
-            <div style="width: 15%; background: #EF4444;" title="Rupturas"></div>
-            <div style="width: 10%; background: #818CF8;" title="Transbordo"></div>
-            <div style="width: 5%; background: #64748B;" title="Fora de Escopo"></div>
+
+          <!-- DISTRIBUIÇÃO PROPORCIONAL SLEEK -->
+          <div style="margin-top: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; font-size: 0.735rem; color: #94A3B8;">
+              <span style="font-weight: 600;">Distribuição Proporcional das Mensagens</span>
+              <span id="wa-categories-total-count" style="font-weight: 700; color: #CBD5E1;">1.014 interações registradas</span>
+            </div>
+            <div style="background: rgba(255,255,255,0.06); border-radius: 999px; height: 6px; overflow: hidden; display: flex;" id="wa-categories-bar" title="Distribuição percentual das mensagens">
+              <div style="width: 80.4%; background: #F59E0B;" title="Cotações: 80.4%"></div>
+              <div style="width: 5.7%; background: #10B981;" title="Pedidos: 5.7%"></div>
+              <div style="width: 10.9%; background: #EF4444;" title="Rupturas: 10.9%"></div>
+              <div style="width: 1.2%; background: #818CF8;" title="Transbordo: 1.2%"></div>
+              <div style="width: 1.8%; background: #64748B;" title="Fora de Escopo: 1.8%"></div>
+            </div>
           </div>
         </div>
       </div>

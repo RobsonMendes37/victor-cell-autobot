@@ -81,7 +81,7 @@ def test_login_valid_credentials_and_session(client):
     res_dash = client.get("/dashboard", cookies={SESSION_COOKIE_NAME: cookie_val})
     assert res_dash.status_code == 200
     assert "Victor Cell" in res_dash.text
-    assert "Separação & Balcão de Saída" in res_dash.text
+    assert "Separação & Balcão" in res_dash.text
 
 
 def test_logout_clears_session(client, auth_cookies):

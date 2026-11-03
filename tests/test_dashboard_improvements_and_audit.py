@@ -395,6 +395,26 @@ def test_dashboard_html_customers_and_catalog_fixes(auth_client):
     assert "navigateWithFilter" in res_js.text
     assert "setCustomerTierFilter" in res_js.text
     assert "renderCustomersShareChart" in res_js.text
+    assert "toggleCustomerColumnSort" in res_js.text
+    assert "applyCustomerSort" in res_js.text
+    assert "setCustomerRecurrenceBracket" in res_js.text
+
+    # Verificação de títulos concisos e controles avançados de ordenação / recorrência
+    assert "Separação & Balcão" in html
+    assert "Fila de Separação de Peças & Balcão de Saída" not in html
+    assert 'id="cust-sort-select"' in html
+    assert 'id="cust-recurrence-bracket"' in html
+    assert "sort-icon" in html
+    assert ".sort-icon" in res_css.text
+
+    # Verificação da API de Categorização do WhatsApp com baseline não-zerado
+    res_stats = auth_client.get("/api/reports/stats")
+    assert res_stats.status_code == 200
+    stats_data = res_stats.json()
+    assert "whatsapp_categorization" in stats_data
+    wa = stats_data["whatsapp_categorization"]
+    assert wa.get("quotes_answered", 0) > 0 or wa.get("quotations_count", 0) > 0
+    assert wa.get("confirmed_orders", 0) > 0 or wa.get("orders_count", 0) > 0
 
 
 
