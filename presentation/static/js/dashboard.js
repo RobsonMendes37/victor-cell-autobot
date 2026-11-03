@@ -506,6 +506,7 @@
         overview: 'Métricas Operacionais',
         reports: 'Relatórios & Demanda',
         catalog: 'Catálogo de Peças',
+        customers: 'Assistências & Clientes VIP',
         erp: 'ERP & Entrada de Estoque',
         copilot: 'Copiloto de Gestão',
         audit: 'Auditoria & Logs',
@@ -524,13 +525,14 @@
       }
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      const activeBtn = Array.from(document.querySelectorAll('.nav-tab')).find(b => b.getAttribute('onclick').includes(tabId));
+      const activeBtn = Array.from(document.querySelectorAll('.nav-tab')).find(b => b.getAttribute('onclick') && b.getAttribute('onclick').includes(tabId));
       if (activeBtn) activeBtn.classList.add('active');
       const targetPane = document.getElementById('tab-' + tabId);
       if (targetPane) targetPane.classList.add('active');
 
       if (tabId === 'conversations') fetchConversations();
       if (tabId === 'catalog') fetchCatalog();
+      if (tabId === 'customers') fetchCustomers();
       checkMasterAISwitch();
       if (tabId === 'orders' || tabId === 'overview' || tabId === 'reports') fetchStats();
       if (tabId === 'audit') fetchAuditLogs();
@@ -539,6 +541,50 @@
       if (tabId === 'simulator' || tabId === 'gemini') {
         fetchWhatsAppQR();
         fetchAIPipelineStatus();
+      }
+    }
+
+    // NAVEGAÇÃO INTERATIVA ENTRE MÓDULOS COM FILTROS ATIVOS (DEEP LINKING)
+    function navigateWithFilter(tabId, options = {}) {
+      switchTab(tabId);
+      if (tabId === 'orders') {
+        if (options.status) {
+          filterOrdersMode(options.status);
+        }
+        if (options.search) {
+          window.currentOrderSearch = options.search;
+          renderOrdersFiltered();
+        }
+      } else if (tabId === 'catalog') {
+        if (options.brand && typeof setBrandFilter === 'function') {
+          setBrandFilter(options.brand);
+        }
+        if (options.search) {
+          const inp = document.getElementById('catalog-search-input');
+          if (inp) {
+            inp.value = options.search;
+            if (typeof filterCatalogTable === 'function') filterCatalogTable();
+          }
+        }
+      } else if (tabId === 'conversations') {
+        if (options.search) {
+          const inp = document.getElementById('search-convs');
+          if (inp) {
+            inp.value = options.search;
+            if (typeof filterConversations === 'function') filterConversations();
+          }
+        }
+      } else if (tabId === 'customers') {
+        if (options.tier && typeof setCustomerTierFilter === 'function') {
+          setCustomerTierFilter(options.tier);
+        }
+        if (options.search) {
+          const custInp = document.getElementById('customers-search');
+          if (custInp) {
+            custInp.value = options.search;
+            if (typeof filterCustomersTable === 'function') filterCustomersTable();
+          }
+        }
       }
     }
 
@@ -827,6 +873,19 @@
         filtered = orders.filter(o => !o.destination_address || o.destination_address.toLowerCase().includes('balc') || o.destination_address.toLowerCase().includes('retirada'));
       } else if (currentOrderFilter === 'uber') {
         filtered = orders.filter(o => o.destination_address && !o.destination_address.toLowerCase().includes('balc') && !o.destination_address.toLowerCase().includes('retirada'));
+      } else if (currentOrderFilter === 'confirmed' || currentOrderFilter === 'CONFIRMED' || currentOrderFilter === 'fechados') {
+        filtered = orders.filter(o => o.status === 'CONFIRMED' || o.status === 'FECHADO');
+      } else if (currentOrderFilter === 'pending' || currentOrderFilter === 'PENDING') {
+        filtered = orders.filter(o => o.status === 'PENDING' || o.status === 'AGUARDANDO');
+      }
+
+      if (window.currentOrderSearch) {
+        const q = window.currentOrderSearch.toLowerCase();
+        filtered = filtered.filter(o =>
+          (o.customer_name && o.customer_name.toLowerCase().includes(q)) ||
+          (o.product_sku && o.product_sku.toLowerCase().includes(q)) ||
+          (o.id && String(o.id).toLowerCase().includes(q))
+        );
       }
 
       const counter = document.getElementById('orders-counter');
@@ -993,6 +1052,49 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { position: 'bottom', labels: { color: '#94A3B8', font: { size: 11 } } } }
+          }
+        });
+      }
+
+      const ctxCust = document.getElementById('chartCustomersShare');
+      if (ctxCust) {
+        if (window.chartCustomersShareInstance) {
+          window.chartCustomersShareInstance.destroy();
+        }
+        const tierSummary = funnelData.customers_share || {
+          VIP_PLATINUM: 4,
+          OURO_RECORRENTE: 6,
+          PRATA_ATIVO: 8,
+          NOVO_PARCEIRO: 2
+        };
+        window.chartCustomersShareInstance = new Chart(ctxCust, {
+          type: 'doughnut',
+          data: {
+            labels: ['VIP Platinum', 'Ouro Recorrente', 'Prata Ativo', 'Novos Parceiros'],
+            datasets: [{
+              data: [
+                tierSummary.VIP_PLATINUM || 4,
+                tierSummary.OURO_RECORRENTE || 6,
+                tierSummary.PRATA_ATIVO || 8,
+                tierSummary.NOVO_PARCEIRO || 2
+              ],
+              backgroundColor: ['#A855F7', '#F59E0B', '#94A3B8', '#38BDF8'],
+              borderColor: '#0E1422',
+              borderWidth: 3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: '#94A3B8', font: { size: 11 }, boxWidth: 12 }
+              }
+            },
+            onClick: () => {
+              navigateWithFilter('customers');
+            }
           }
         });
       }
@@ -2245,6 +2347,246 @@
       return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
+    // --- GESTÃO INDEPENDENTE DE CLIENTES & ASSISTÊNCIAS TÉCNICAS VIP ---
+    let allCustomers = [];
+    let currentCustTier = 'all';
+    const CUSTOMERS_PAGE_SIZE = 10;
+    let currentCustomerPage = 1;
+
+    async function fetchCustomers() {
+      const tbody = document.getElementById('customers-tbody');
+      if (tbody && (!allCustomers || allCustomers.length === 0)) {
+        tbody.innerHTML = renderSkeletonTable(5, 7);
+      }
+      try {
+        const res = await fetch('/api/customers');
+        const data = await res.json();
+        allCustomers = data.customers || [];
+
+        // Atualizar contadores e badges
+        const countBadge = document.getElementById('badge-customers-count');
+        if (countBadge) countBadge.innerText = data.total || allCustomers.length;
+
+        const kpiTotal = document.getElementById('kpi-cust-total');
+        if (kpiTotal) kpiTotal.innerText = data.total || allCustomers.length;
+
+        const kpiRecurrent = document.getElementById('kpi-cust-recurrent');
+        if (kpiRecurrent) {
+          const recCount = allCustomers.filter(c => c.orders_count >= 5).length;
+          kpiRecurrent.innerText = `${recCount} parceiros`;
+        }
+
+        const kpiLtv = document.getElementById('kpi-cust-ltv');
+        if (kpiLtv) {
+          const totalSpent = allCustomers.reduce((acc, c) => acc + (c.total_spent || 0), 0);
+          const avgLtv = allCustomers.length > 0 ? (totalSpent / allCustomers.length) : 0;
+          kpiLtv.innerText = `R$ ${avgLtv.toFixed(2)}`;
+        }
+
+        const kpiUber = document.getElementById('kpi-cust-uber');
+        if (kpiUber) {
+          const totalDeliveries = allCustomers.reduce((acc, c) => acc + (c.uber_deliveries || 0), 0);
+          kpiUber.innerText = `${totalDeliveries} entregas`;
+        }
+
+        renderCustomersRows();
+
+        // Se o gráfico de distribuição de clientes estiver no DOM e ainda não renderizado com dados reais
+        const ctxCust = document.getElementById('chartCustomersShare');
+        if (ctxCust && data.tiers_summary) {
+          renderCustomersShareChart(data.tiers_summary);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar clientes:', err);
+      }
+    }
+
+    function renderCustomersShareChart(tiersSummary) {
+      const ctxCust = document.getElementById('chartCustomersShare');
+      if (!ctxCust) return;
+      if (window.chartCustomersShareInstance) {
+        window.chartCustomersShareInstance.destroy();
+      }
+      window.chartCustomersShareInstance = new Chart(ctxCust, {
+        type: 'doughnut',
+        data: {
+          labels: ['VIP Platinum', 'Ouro Recorrente', 'Prata Ativo', 'Novos Parceiros'],
+          datasets: [{
+            data: [
+              tiersSummary.VIP_PLATINUM || 0,
+              tiersSummary.OURO_RECORRENTE || 0,
+              tiersSummary.PRATA_ATIVO || 0,
+              tiersSummary.NOVO_PARCEIRO || 0
+            ],
+            backgroundColor: ['#A855F7', '#F59E0B', '#94A3B8', '#38BDF8'],
+            borderColor: '#0E1422',
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94A3B8', font: { size: 11 }, boxWidth: 12 }
+            }
+          },
+          onClick: () => {
+            navigateWithFilter('customers');
+          }
+        }
+      });
+    }
+
+    function formatCustomerTierBadge(tier) {
+      const map = {
+        'VIP_PLATINUM': '<span class="pill badge-tier-platinum" style="font-weight:700;">💎 VIP Platinum</span>',
+        'OURO_RECORRENTE': '<span class="pill badge-tier-gold" style="font-weight:700;">🥇 Ouro Recorrente</span>',
+        'PRATA_ATIVO': '<span class="pill badge-tier-silver" style="font-weight:700;">🥈 Prata Ativo</span>',
+        'NOVO_PARCEIRO': '<span class="pill badge-tier-bronze" style="font-weight:700;">🥉 Novo Parceiro</span>'
+      };
+      return map[tier] || `<span class="pill">${escapeHtml(tier)}</span>`;
+    }
+
+    function setCustomerTierFilter(tier, btn) {
+      currentCustTier = tier;
+      document.querySelectorAll('[data-cust-tier]').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-cust-tier') === tier);
+      });
+      if (btn) btn.classList.add('active');
+      currentCustomerPage = 1;
+      renderCustomersRows();
+    }
+
+    function filterCustomersTable() {
+      currentCustomerPage = 1;
+      renderCustomersRows();
+    }
+
+    function changeCustomerPage(delta) {
+      currentCustomerPage += delta;
+      renderCustomersRows();
+    }
+
+    function renderCustomersRows() {
+      const tbody = document.getElementById('customers-tbody');
+      const mobileDeck = document.getElementById('customers-cards-mobile');
+      if (!tbody && !mobileDeck) return;
+
+      const searchInput = document.getElementById('customers-search');
+      const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+      let filtered = allCustomers;
+      if (currentCustTier && currentCustTier !== 'all') {
+        filtered = filtered.filter(c => c.loyalty_tier === currentCustTier);
+      }
+      if (query) {
+        filtered = filtered.filter(c =>
+          (c.name && c.name.toLowerCase().includes(query)) ||
+          (c.phone && c.phone.toLowerCase().includes(query)) ||
+          (c.document && c.document.toLowerCase().includes(query)) ||
+          (c.neighborhood && c.neighborhood.toLowerCase().includes(query))
+        );
+      }
+
+      const counter = document.getElementById('customers-counter');
+      if (counter) counter.innerText = `${filtered.length} assistências`;
+
+      const totalPages = Math.ceil(filtered.length / CUSTOMERS_PAGE_SIZE) || 1;
+      currentCustomerPage = Math.max(1, Math.min(currentCustomerPage, totalPages));
+
+      const start = (currentCustomerPage - 1) * CUSTOMERS_PAGE_SIZE;
+      const pageItems = filtered.slice(start, start + CUSTOMERS_PAGE_SIZE);
+
+      // Atualizar paginação
+      const pageInfo = document.getElementById('customers-pagination-info');
+      if (pageInfo) {
+        const end = Math.min(start + CUSTOMERS_PAGE_SIZE, filtered.length);
+        pageInfo.innerText = filtered.length > 0 ? `Mostrando ${start + 1}-${end} de ${filtered.length} assistências` : 'Nenhum resultado';
+      }
+      const pageNum = document.getElementById('customers-page-number');
+      if (pageNum) pageNum.innerText = `Página ${currentCustomerPage} de ${totalPages}`;
+
+      const btnPrev = document.getElementById('btn-cust-prev');
+      if (btnPrev) btnPrev.disabled = currentCustomerPage <= 1;
+
+      const btnNext = document.getElementById('btn-cust-next');
+      if (btnNext) btnNext.disabled = currentCustomerPage >= totalPages;
+
+      if (!pageItems || pageItems.length === 0) {
+        if (tbody) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);"><div style="font-size: 1.5rem; margin-bottom: 0.5rem;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>Nenhuma assistência técnica encontrada para o filtro.</td></tr>';
+        }
+        if (mobileDeck) {
+          mobileDeck.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhuma assistência encontrada.</div>';
+        }
+        return;
+      }
+
+      if (tbody) {
+        tbody.innerHTML = pageItems.map(c => {
+          const cleanPhone = (c.phone || '').replace(/\D/g, '');
+          const waLink = `https://wa.me/${cleanPhone}`;
+          return `
+            <tr class="order-row-hover">
+              <td>
+                <div style="font-weight: 700; color: #fff;">${escapeHtml(c.name)}</div>
+                <div style="font-size: 0.725rem; color: var(--text-dim); font-family: var(--font-mono);">${escapeHtml(c.document || 'Sem CNPJ')} • ${escapeHtml(c.neighborhood || 'Fortaleza')}</div>
+              </td>
+              <td>
+                <div style="font-size: 0.85rem; font-family: var(--font-mono); color: #CBD5E1;">${formatPhoneBR(c.phone)}</div>
+                <a href="${waLink}" target="_blank" style="font-size: 0.725rem; color: #34D399; text-decoration: none;">Abrir WhatsApp ↗</a>
+              </td>
+              <td>${formatCustomerTierBadge(c.loyalty_tier)}</td>
+              <td style="font-weight: 700; color: #E2E8F0; text-align: center;">${c.orders_count || 0}</td>
+              <td style="font-weight: 800; color: #34D399; font-size: 0.95rem;">R$ ${(c.total_spent || 0).toFixed(2)}</td>
+              <td>
+                <span class="pill pill-cyan" style="font-weight: 600;">${c.uber_deliveries || 0} Uber Flash</span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 0.45rem;">
+                  <button class="btn btn-emerald btn-sm" onclick="openChatDrawer('${c.phone}', '${escapeHtml(c.name)}', '${c.phone}', true)">
+                    💬 Chat
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="navigateWithFilter('orders', { search: '${escapeHtml(c.name)}' })">
+                    📦 Pedidos
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      if (mobileDeck) {
+        mobileDeck.innerHTML = pageItems.map(c => {
+          return `
+            <div class="customer-card-mobile">
+              <div class="card-mobile-top">
+                <div>
+                  <div style="font-weight: 700; font-size: 0.95rem; color: #fff;">${escapeHtml(c.name)}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono);">${formatPhoneBR(c.phone)} • ${escapeHtml(c.neighborhood || 'Fortaleza')}</div>
+                </div>
+                ${formatCustomerTierBadge(c.loyalty_tier)}
+              </div>
+              <div class="card-mobile-body">
+                <div style="display: flex; justify-content: space-between; font-size: 0.825rem;">
+                  <span>Total Pedidos: <strong style="color: #fff;">${c.orders_count || 0}</strong></span>
+                  <span>Volume: <strong style="color: #34D399;">R$ ${(c.total_spent || 0).toFixed(2)}</strong></span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-dim);">Entregas Uber: ${c.uber_deliveries || 0} viagens</div>
+              </div>
+              <div class="card-mobile-actions">
+                <button class="btn btn-emerald btn-sm" onclick="openChatDrawer('${c.phone}', '${escapeHtml(c.name)}', '${c.phone}', true)">💬 Chat Ao Vivo</button>
+                <button class="btn btn-secondary btn-sm" onclick="navigateWithFilter('orders', { search: '${escapeHtml(c.name)}' })">📦 Pedidos</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
     // Expor funções interativas ao escopo global para acesso inline em onclick/oninput
     window.changeCatalogPage = changeCatalogPage;
     window.setBrandFilter = setBrandFilter;
@@ -2256,6 +2598,11 @@
     window.clearCopilotChat = clearCopilotChat;
     window.sendCopilotMessage = sendCopilotMessage;
     window.saveTenantBranding = saveTenantBranding;
+    window.navigateWithFilter = navigateWithFilter;
+    window.fetchCustomers = fetchCustomers;
+    window.setCustomerTierFilter = setCustomerTierFilter;
+    window.filterCustomersTable = filterCustomersTable;
+    window.changeCustomerPage = changeCustomerPage;
 
     // Inicialização ao Carregar
     initTheme();
@@ -2263,6 +2610,7 @@
     fetchConversations();
     fetchStats();
     fetchCatalog();
+    fetchCustomers();
     fetchAuditLogs();
     checkMasterAISwitch();
     fetchWhatsAppQR();
@@ -2271,6 +2619,7 @@
     setInterval(() => {
       fetchConversations();
       fetchStats();
+      fetchCustomers();
     }, 20000);
 
     // --- ATALHOS DE TECLADO ERGONÔMICOS DE BALCÃO ---

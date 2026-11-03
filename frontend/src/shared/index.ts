@@ -6,3 +6,4 @@
 export * from "./components/Pagination.js";
 export * from "./components/ColorPalette.js";
 export * from "./components/StatusBadge.js";
+export * from "./components/CustomerBadge.js";

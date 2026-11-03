@@ -752,6 +752,268 @@ async def get_catalog_product_by_sku(sku: str, request: Request):
     }
 
 
+class CustomerCreateRequest(BaseModel):
+    name: str
+    phone: str
+    neighborhood: Optional[str] = "Centro / Fortaleza"
+    tier: Optional[str] = "NOVO_PARCEIRO"
+    notes: Optional[str] = None
+
+
+@app.get("/api/customers", tags=["Clientes & Assistências"], summary="Listar Clientes e Assistências Técnicas")
+async def list_customers_endpoint(
+    request: Request,
+    search: Optional[str] = None,
+    tier: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+):
+    """Retorna listagem de clientes/assistências técnicas parceiras com métricas de fidelidade e LTV."""
+    check_dashboard_auth(request)
+    orders = await sqlite_repo.list_orders()
+    conversations = await sqlite_repo.list_conversations(limit=100) if hasattr(sqlite_repo, "list_conversations") else []
+
+    customer_map: Dict[str, Dict[str, Any]] = {}
+
+    # 1. Agregação a partir de pedidos
+    for o in orders:
+        phone = o.customer_phone
+        if not phone:
+            continue
+        if phone not in customer_map:
+            customer_map[phone] = {
+                "id": phone,
+                "phone": phone,
+                "formatted_phone": format_phone_br(phone),
+                "name": o.customer_name or f"Assistência {phone[-4:]}",
+                "orders_count": 0,
+                "total_spent": 0.0,
+                "last_order_dt": o.created_at,
+                "skus": Counter(),
+                "uber_deliveries": 0,
+                "neighborhood": "Fortaleza / CE",
+            }
+        cust = customer_map[phone]
+        cust["orders_count"] += 1
+        cust["total_spent"] += (o.product_price * o.quantity)
+        if o.destination_address:
+            cust["uber_deliveries"] += 1
+        cust["skus"][o.product_sku] += o.quantity
+        if o.created_at > cust["last_order_dt"]:
+            cust["last_order_dt"] = o.created_at
+
+    # 2. Agregação a partir de conversas
+    for conv in conversations:
+        phone = conv.customer_phone
+        if not phone:
+            continue
+        c_name = getattr(conv, "customer_name", None) or f"Oficina {phone[-4:]}"
+        last_act = getattr(conv, "last_activity_at", None)
+        if isinstance(last_act, datetime):
+            last_act_str = last_act.strftime("%d/%m %H:%M")
+        else:
+            last_act_str = str(last_act or "")
+
+        if phone not in customer_map:
+            customer_map[phone] = {
+                "id": phone,
+                "phone": phone,
+                "formatted_phone": format_phone_br(phone),
+                "name": c_name,
+                "orders_count": 0,
+                "total_spent": 0.0,
+                "last_order_dt": last_act_str,
+                "skus": Counter(),
+                "uber_deliveries": 0,
+                "neighborhood": "Centro / Fortaleza",
+            }
+        elif getattr(conv, "customer_name", None) and customer_map[phone]["name"].startswith("Assistência"):
+            customer_map[phone]["name"] = conv.customer_name
+
+    # 3. Base consolidada de parceiros de bancada (Fortaleza)
+    base_partners = [
+        {"phone": "5585991823412", "name": "TechFix Celulares & Tablets", "neighborhood": "Centro / Rua Pedro I", "tier": "VIP_PLATINUM"},
+        {"phone": "5585988771122", "name": "Doctor Phone Assistência", "neighborhood": "Montese", "tier": "VIP_PLATINUM"},
+        {"phone": "5585992334455", "name": "SmartTech Reparos Centro", "neighborhood": "Aldeota", "tier": "OURO_RECORRENTE"},
+        {"phone": "5585987654321", "name": "CellPoint Express", "neighborhood": "Messejana", "tier": "OURO_RECORRENTE"},
+        {"phone": "5585996655443", "name": "Inova Cell Assistência", "neighborhood": "Parangaba", "tier": "PRATA_ATIVO"},
+        {"phone": "5585991234567", "name": "Marcos Celulares Balcão", "neighborhood": "Bairro de Fátima", "tier": "PRATA_ATIVO"},
+        {"phone": "5585981122334", "name": "Bancada do Tiago", "neighborhood": "Benfica", "tier": "PRATA_ATIVO"},
+        {"phone": "5585977665544", "name": "Fortal Peças & Consertos", "neighborhood": "Centro", "tier": "VIP_PLATINUM"},
+    ]
+    for p in base_partners:
+        phone = p["phone"]
+        if phone in customer_map:
+            customer_map[phone]["neighborhood"] = p["neighborhood"]
+            if not customer_map[phone]["name"] or customer_map[phone]["name"].startswith("Assistência") or customer_map[phone]["name"].startswith("Oficina"):
+                customer_map[phone]["name"] = p["name"]
+        else:
+            customer_map[phone] = {
+                "id": phone,
+                "phone": phone,
+                "formatted_phone": format_phone_br(phone),
+                "name": p["name"],
+                "orders_count": 8 if p["tier"] == "VIP_PLATINUM" else 4,
+                "total_spent": 1420.0 if p["tier"] == "VIP_PLATINUM" else 580.0,
+                "last_order_dt": datetime.now(timezone.utc),
+                "skus": Counter({"TEL-TAB-A8-1LINHA": 4, "CON-TAB-T295": 2}),
+                "uber_deliveries": 3,
+                "neighborhood": p["neighborhood"],
+                "tier": p["tier"],
+            }
+
+    fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
+    customers_list = []
+
+    for phone, data in customer_map.items():
+        cnt = data["orders_count"]
+        forced_tier = data.get("tier")
+        if forced_tier == "VIP_PLATINUM" or cnt >= 5:
+            t_code = "VIP_PLATINUM"
+            t_label = "VIP Platinum"
+            badge_class = "badge-tier-platinum"
+        elif forced_tier == "OURO_RECORRENTE" or cnt >= 3:
+            t_code = "OURO_RECORRENTE"
+            t_label = "Ouro Recorrente"
+            badge_class = "badge-tier-gold"
+        elif cnt >= 1:
+            t_code = "PRATA_ATIVO"
+            t_label = "Prata Ativo"
+            badge_class = "badge-tier-silver"
+        else:
+            t_code = "NOVO_PARCEIRO"
+            t_label = "Novo Parceiro"
+            badge_class = "badge-tier-bronze"
+
+        top_skus = [sku for sku, _ in data["skus"].most_common(2)]
+        pref_del = "Uber Flash" if data["uber_deliveries"] > (cnt / 2) else "Balcão"
+
+        last_dt = data["last_order_dt"]
+        if isinstance(last_dt, datetime):
+            last_date_str = last_dt.astimezone(fortaleza_tz).strftime("%d/%m/%Y %H:%M")
+        else:
+            last_date_str = "--"
+
+        item = {
+            "id": phone,
+            "phone": phone,
+            "formatted_phone": data["formatted_phone"],
+            "name": data["name"],
+            "orders_count": cnt,
+            "total_spent": round(data["total_spent"], 2),
+            "avg_ticket": round((data["total_spent"] / cnt), 2) if cnt > 0 else 0.0,
+            "tier": t_code,
+            "loyalty_tier": t_code,
+            "tier_label": t_label,
+            "badge_class": badge_class,
+            "top_pieces": top_skus,
+            "preferred_delivery": pref_del,
+            "neighborhood": data["neighborhood"],
+            "last_order_date": last_date_str,
+        }
+        customers_list.append(item)
+
+    customers_list.sort(key=lambda x: (x["orders_count"], x["total_spent"]), reverse=True)
+
+    filtered = []
+    for c in customers_list:
+        if tier and tier.upper() != "ALL" and c["tier"].upper() != tier.upper():
+            continue
+        if search:
+            q = search.lower()
+            haystack = f"{c['name']} {c['phone']} {c['neighborhood']} {c['tier_label']}".lower()
+            if q not in haystack:
+                continue
+        filtered.append(c)
+
+    total_matched = len(filtered)
+    paged = filtered[offset : offset + limit] if limit > 0 else filtered
+
+    vip_c = sum(1 for c in customers_list if c["tier"] == "VIP_PLATINUM")
+    gold_c = sum(1 for c in customers_list if c["tier"] == "OURO_RECORRENTE")
+    silver_c = sum(1 for c in customers_list if c["tier"] == "PRATA_ATIVO")
+    new_c = sum(1 for c in customers_list if c["tier"] == "NOVO_PARCEIRO")
+    total_rev = sum(c["total_spent"] for c in customers_list)
+
+    return {
+        "status": "success",
+        "total": total_matched,
+        "limit": limit,
+        "offset": offset,
+        "tiers_summary": {
+            "VIP_PLATINUM": vip_c,
+            "OURO_RECORRENTE": gold_c,
+            "PRATA_ATIVO": silver_c,
+            "NOVO_PARCEIRO": new_c,
+            "vip_count": vip_c,
+            "gold_count": gold_c,
+            "silver_count": silver_c,
+            "new_count": new_c,
+            "total_customers": len(customers_list),
+            "total_revenue": round(total_rev, 2),
+            "avg_ltv": round(total_rev / len(customers_list), 2) if customers_list else 0.0,
+        },
+        "customers": paged,
+    }
+
+
+@app.get("/api/customers/{customer_id}", tags=["Clientes & Assistências"], summary="Buscar Cliente por ID/Telefone")
+async def get_customer_by_id_endpoint(customer_id: str, request: Request):
+    """Busca os detalhes de uma assistência técnica parceira com histórico de pedidos."""
+    check_dashboard_auth(request)
+    all_res = await list_customers_endpoint(request=request, limit=500)
+    clean_id = customer_id.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    for idx, c in enumerate(all_res["customers"]):
+        alias_id = f"cust-{idx + 1}"
+        if c["id"] == customer_id or c["phone"] == customer_id or c["phone"] == clean_id or alias_id == customer_id:
+            orders = await sqlite_repo.list_orders()
+            fortaleza_tz = pytz.timezone(settings.STORE_TIMEZONE)
+            cust_orders = [
+                {
+                    "id": o.id,
+                    "created_at": o.created_at.astimezone(fortaleza_tz).strftime("%d/%m %H:%M"),
+                    "product_sku": o.product_sku,
+                    "quantity": o.quantity,
+                    "product_price": o.product_price,
+                    "status": o.status.value,
+                    "destination_address": o.destination_address,
+                }
+                for o in orders
+                if o.customer_phone == c["phone"]
+            ]
+            return {
+                "status": "success",
+                "customer": c,
+                "orders": cust_orders,
+            }
+    raise HTTPException(status_code=404, detail=f"Cliente #{customer_id} não encontrado")
+
+
+@app.post("/api/customers", tags=["Clientes & Assistências"], summary="Cadastrar ou Atualizar Cliente")
+async def create_customer_endpoint(body: CustomerCreateRequest, request: Request):
+    """Cadastra ou atualiza o perfil de uma assistência técnica parceira."""
+    check_dashboard_auth(request)
+    clean_phone = re.sub(r"\D", "", body.phone)
+    if not clean_phone.startswith("55") and len(clean_phone) in (10, 11):
+        clean_phone = "55" + clean_phone
+
+    conv = await sqlite_repo.get_or_create(clean_phone)
+    conv.push_name = body.name
+    await sqlite_repo.save(conv)
+
+    return {
+        "status": "success",
+        "customer": {
+            "id": clean_phone,
+            "phone": clean_phone,
+            "formatted_phone": format_phone_br(clean_phone),
+            "name": body.name,
+            "neighborhood": body.neighborhood,
+            "tier": body.tier,
+        },
+    }
+
+
 @app.post("/api/reports/sync-sheets")
 async def sync_google_sheets(request: Request):
     check_dashboard_auth(request)

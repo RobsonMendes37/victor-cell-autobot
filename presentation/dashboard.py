@@ -60,6 +60,11 @@ def render_dashboard_html() -> str:
           <span>Separação & Balcão de Saída</span>
           <span class="tab-badge" id="badge-orders-count">0</span>
         </button>
+        <button class="nav-tab" onclick="switchTab('customers')" title="Assistências & Clientes">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Assistências & Clientes</span>
+          <span class="tab-badge" id="badge-customers-count">0</span>
+        </button>
 
         <!-- GRUPO 2: ESTOQUE & ERP NATIVO -->
         <div class="nav-section-label">Estoque & ERP Nativo</div>
@@ -258,12 +263,134 @@ def render_dashboard_html() -> str:
       </div>
     </div>
 
+    <!-- TAB: ASSISTÊNCIAS TÉCNICAS & CLIENTES (MÓDULO INDEPENDENTE) -->
+    <div class="tab-pane" id="tab-customers">
+      <!-- 4 KPIS DO MÓDULO DE CLIENTES -->
+      <div class="kpi-grid" style="margin-bottom: 1.25rem;">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Total de Assistências</span>
+            <div class="kpi-icon" style="background: rgba(99, 102, 241, 0.12); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.25);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </div>
+          </div>
+          <div class="kpi-val" id="kpi-cust-total" style="color: #818CF8;">0</div>
+          <div class="kpi-sub">Parceiros cadastrados na base</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Alta Recorrência (VIPs)</span>
+            <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.25);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            </div>
+          </div>
+          <div class="kpi-val" id="kpi-cust-recurrent" style="color: #34D399;">0</div>
+          <div class="kpi-sub">Recompra semanal garantida</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">LTV Médio por Oficina</span>
+            <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.25);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            </div>
+          </div>
+          <div class="kpi-val" id="kpi-cust-ltv" style="color: #FBBF24;">R$ 0,00</div>
+          <div class="kpi-sub">Gasto acumulado por parceiro</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Entregas por Uber Flash</span>
+            <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.12); color: #06B6D4; border: 1px solid rgba(6, 182, 212, 0.25);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+            </div>
+          </div>
+          <div class="kpi-val" id="kpi-cust-uber" style="color: #38BDF8;">0</div>
+          <div class="kpi-sub">Despachadas sem deslocamento</div>
+        </div>
+      </div>
+
+      <!-- TABELA DINÂMICA DE CLIENTES & ASSISTÊNCIAS -->
+      <div class="section-card">
+        <div class="section-toolbar" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div class="section-title-group">
+              <h2 class="section-title" style="display: flex; align-items: center; gap: 8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #818CF8;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                Gestão de Assistências Técnicas & Clientes
+              </h2>
+              <span class="badge-count" id="customers-counter">0 assistências</span>
+            </div>
+            <div class="toolbar-actions" style="gap: 0.5rem;">
+              <input type="text" id="customers-search" placeholder="Buscar assistência, telefone ou bairro..." class="search-input" oninput="filterCustomersTable()" style="min-width: 260px;">
+              <button class="btn btn-primary btn-sm" onclick="openNewCustomerModal()" style="display: inline-flex; align-items: center; gap: 5px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                + Nova Assistência
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="fetchCustomers()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Atualizar</button>
+            </div>
+          </div>
+
+          <!-- CHIPS DE FILTRO RÁPIDO DE FIDELIDADE -->
+          <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border-subtle); align-items: center;">
+            <span style="font-size: 0.75rem; color: #94A3B8; font-weight: 600; margin-right: 0.25rem;">Fidelidade:</span>
+            <button class="catalog-filter-btn active" data-cust-tier="all" onclick="setCustomerTierFilter('all', this)">Todas</button>
+            <button class="catalog-filter-btn" data-cust-tier="VIP_PLATINUM" onclick="setCustomerTierFilter('VIP_PLATINUM', this)">👑 VIP Platinum (Recompra Alta)</button>
+            <button class="catalog-filter-btn" data-cust-tier="OURO_RECORRENTE" onclick="setCustomerTierFilter('OURO_RECORRENTE', this)">🥇 Ouro Recorrente</button>
+            <button class="catalog-filter-btn" data-cust-tier="PRATA_ATIVO" onclick="setCustomerTierFilter('PRATA_ATIVO', this)">🥈 Prata Ativo</button>
+            <button class="catalog-filter-btn" data-cust-tier="NOVO_PARCEIRO" onclick="setCustomerTierFilter('NOVO_PARCEIRO', this)">🌱 Novos Parceiros</button>
+          </div>
+        </div>
+
+        <!-- TABELA DE CLIENTES (DESKTOP) -->
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Assistência Técnica / Oficina</th>
+                <th>Localização / Bairro</th>
+                <th>Telefone WhatsApp</th>
+                <th>Nível de Fidelidade</th>
+                <th>Pedidos Fechados</th>
+                <th>Total Comprado</th>
+                <th>Peças Recorrentes</th>
+                <th>Ações de Balcão</th>
+              </tr>
+            </thead>
+            <tbody id="customers-tbody">
+              <tr class="skeleton-table-row"><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td><td><div class="skeleton-table-cell" style="width: 50%;"></div></td><td><div class="skeleton-table-cell" style="width: 40%;"></div></td><td><div class="skeleton-table-cell" style="width: 65%;"></div></td><td><div class="skeleton-table-cell" style="width: 70%;"></div></td><td><div class="skeleton-table-cell" style="width: 60%;"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- PAGINAÇÃO DE CLIENTES (10 POR PÁGINA) -->
+        <div class="pagination-bar" id="customers-pagination-bar">
+          <div style="font-size: 0.8rem; color: var(--text-muted);" id="customers-pagination-info">
+            Mostrando 1 a 10 de 0 assistências
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="pagination-btn" id="btn-cust-prev" onclick="changeCustomerPage(-1)" disabled>
+              ← Anterior
+            </button>
+            <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); padding: 0 0.5rem;" id="customers-page-number">1 / 1</span>
+            <button class="pagination-btn" id="btn-cust-next" onclick="changeCustomerPage(1)" disabled>
+              Próxima →
+            </button>
+          </div>
+        </div>
+
+        <div class="mobile-card-deck" id="customers-cards-mobile"></div>
+      </div>
+    </div>
+
     <!-- TAB 3: VISÃO GERAL & KPIS -->
     <div class="tab-pane" id="tab-overview">
 
       <!-- KPIS PRINCIPAIS (CONSOLIDADOS EM MÉTRICAS & RELATÓRIOS) -->
       <div class="kpi-grid">
-      <div class="kpi-card">
+      <div class="kpi-card clickable-card" onclick="navigateWithFilter('orders', { status: 'CONFIRMED' })" title="Clique para ver Pedidos Confirmados">
         <div class="kpi-header">
           <span class="kpi-title">Faturamento em Pedidos</span>
           <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.25);">
@@ -271,10 +398,10 @@ def render_dashboard_html() -> str:
           </div>
         </div>
         <div class="kpi-val" id="kpi-revenue" style="color: #34D399;">R$ 0,00</div>
-        <div class="kpi-sub"><span style="color: #10B981; font-weight: 700;">● Confirmados</span> no balcão e Uber</div>
+        <div class="kpi-sub"><span style="color: #10B981; font-weight: 700;">● Confirmados</span> no balcão e Uber ↗</div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card clickable-card" onclick="navigateWithFilter('conversations', {})" title="Clique para ver Atendimentos no WhatsApp">
         <div class="kpi-header">
           <span class="kpi-title">Atendimentos no WhatsApp</span>
           <div class="kpi-icon" style="background: rgba(99, 102, 241, 0.12); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.25);">
@@ -282,10 +409,10 @@ def render_dashboard_html() -> str:
           </div>
         </div>
         <div class="kpi-val" id="kpi-active-chats" style="color: #A5B4FC;">0</div>
-        <div class="kpi-sub" id="kpi-ai-status">Atendimento Automático Ativo</div>
+        <div class="kpi-sub" id="kpi-ai-status">Atendimento Automático Ativo ↗</div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card clickable-card" onclick="navigateWithFilter('orders', { status: 'DISPATCHED_UBER' })" title="Clique para ver Entregas Uber Flash">
         <div class="kpi-header">
           <span class="kpi-title">Saídas Balcão & Uber</span>
           <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.25);">
@@ -293,10 +420,10 @@ def render_dashboard_html() -> str:
           </div>
         </div>
         <div class="kpi-val" id="kpi-uber" style="color: #FBBF24;">0%</div>
-        <div class="kpi-sub" id="kpi-uber-count">0 pedidos para entrega</div>
+        <div class="kpi-sub" id="kpi-uber-count">0 pedidos para entrega ↗</div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card clickable-card" onclick="navigateWithFilter('catalog', {})" title="Clique para abrir Catálogo de Peças">
         <div class="kpi-header">
           <span class="kpi-title">Peças no Catálogo</span>
           <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.12); color: #06B6D4; border: 1px solid rgba(6, 182, 212, 0.25);">
@@ -304,7 +431,7 @@ def render_dashboard_html() -> str:
           </div>
         </div>
         <div class="kpi-val" id="kpi-stock-items" style="color: #38BDF8;">0</div>
-        <div class="kpi-sub">Sincronizado c/ Google Sheets</div>
+        <div class="kpi-sub">Sincronizado c/ Google Sheets ↗</div>
       </div>
     </div>
 
@@ -415,15 +542,17 @@ def render_dashboard_html() -> str:
             <canvas id="chartChatFunnel"></canvas>
           </div>
         </div>
-        <div class="chart-card" style="display: flex; flex-direction: column;">
+        <div class="chart-card clickable-card" onclick="navigateWithFilter('customers', {})" style="display: flex; flex-direction: column; cursor: pointer;" title="Clique para abrir o módulo de Assistências & Clientes">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
             <h3 style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #818CF8;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              Top Assistências por Recorrência
+              Distribuição de Clientes & Fidelidade
             </h3>
-            <span class="badge-count" style="font-size: 0.75rem;">Fidelidade & Recompra</span>
+            <span class="badge-count" style="font-size: 0.75rem; color: var(--primary); font-weight: 700;">Ver Lista ↗</span>
           </div>
-          <div id="top-assistencias-list" style="flex: 1; display: flex; flex-direction: column; gap: 0.55rem; justify-content: center;">
+          <div class="chart-canvas-wrapper">
+            <canvas id="chartCustomersShare"></canvas>
+            <div id="top-assistencias-list" style="display: none;"></div>
           </div>
         </div>
       </div>
@@ -546,8 +675,8 @@ def render_dashboard_html() -> str:
       <div class="section-card banner-sheets-gradient" style="margin-bottom: 1.25rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 0.25rem;">
           <div style="display: flex; align-items: center; gap: 0.85rem;">
-            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;">
-
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
             </div>
             <div>
               <h3 style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -563,8 +692,9 @@ def render_dashboard_html() -> str:
             <a href="https://docs.google.com/spreadsheets/d/1N2gigR8MmuiBRSbtO1TDLnS9AFQS3dJYhxYEEUs7kZY/edit" target="_blank" class="btn btn-primary btn-sm" style="text-decoration: none; font-weight: 700; background: #10B981; color: #042F2E;">
               Abrir no Google Sheets ↗
             </a>
-            <button class="btn btn-secondary btn-sm" onclick="syncGoogleSheets()">
-              ⚡ Sincronizar Agora
+            <button class="btn btn-secondary btn-sm" onclick="syncGoogleSheets()" id="btn-sync-sheets" style="display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="sync-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              Sincronizar Agora
             </button>
             <button class="btn btn-secondary btn-sm" id="btn-toggle-sheet-view" onclick="toggleSheetView()">
               Visualizar Planilha
@@ -584,37 +714,48 @@ def render_dashboard_html() -> str:
 
       <!-- KPIS RÁPIDOS DO INVENTÁRIO -->
       <div class="kpi-grid" style="margin-bottom: 1.25rem;">
-        <div class="kpi-card">
-          <div class="kpi-icon-wrapper" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
-          <div class="kpi-body">
-            <div class="kpi-label">Total de Peças Ativas</div>
-            <div class="kpi-value" id="kpi-catalog-total">0</div>
-            <div class="kpi-sub">Sincronizadas com Google Sheets</div>
+        <div class="kpi-card clickable-card" onclick="setBrandFilter('all')" title="Ver todas as peças ativas">
+          <div class="kpi-header">
+            <span class="kpi-title">Total de Peças Ativas</span>
+            <div class="kpi-icon" style="background: rgba(99, 102, 241, 0.12); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.25);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            </div>
           </div>
+          <div class="kpi-val" id="kpi-catalog-total" style="color: #818CF8;">0</div>
+          <div class="kpi-sub">Sincronizadas com Google Sheets ↗</div>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-icon-wrapper" style="background: rgba(16, 185, 129, 0.15); color: #34D399;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <div class="kpi-body">
-            <div class="kpi-label">Disponíveis em Balcão</div>
-            <div class="kpi-value" id="kpi-catalog-healthy" style="color: #34D399;">0</div>
-            <div class="kpi-sub">Pronta entrega imediata</div>
+
+        <div class="kpi-card clickable-card" onclick="filterCatalogStock('in')" title="Filtrar peças com saldo em estoque">
+          <div class="kpi-header">
+            <span class="kpi-title">Disponíveis em Balcão</span>
+            <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.25);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
           </div>
+          <div class="kpi-val" id="kpi-catalog-healthy" style="color: #34D399;">0</div>
+          <div class="kpi-sub">Pronta entrega imediata ↗</div>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-icon-wrapper" style="background: rgba(239, 68, 68, 0.15); color: #F87171;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
-          <div class="kpi-body">
-            <div class="kpi-label">Esgotadas em Loja</div>
-            <div class="kpi-value" id="kpi-catalog-out">0</div>
-            <div class="kpi-sub">Peças Esgotadas (Sem Saldo)</div>
+
+        <div class="kpi-card clickable-card" onclick="filterCatalogStock('out')" title="Filtrar peças esgotadas">
+          <div class="kpi-header">
+            <span class="kpi-title">Esgotadas em Loja</span>
+            <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.25);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            </div>
           </div>
+          <div class="kpi-val" id="kpi-catalog-out" style="color: #F87171;">0</div>
+          <div class="kpi-sub">Peças com saldo zero ↗</div>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-icon-wrapper" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-          <div class="kpi-body">
-            <div class="kpi-label">Overbooking Bloqueado</div>
-            <div class="kpi-value" id="kpi-overbooking-blocked" style="color: #FBBF24;">0</div>
-            <div class="kpi-sub">Proteção transacional ativa</div>
+
+        <div class="kpi-card clickable-card" onclick="navigateWithFilter('audit', { action: 'OVERBOOKING' })" title="Ver logs de proteção contra overbooking">
+          <div class="kpi-header">
+            <span class="kpi-title">Overbooking Bloqueado</span>
+            <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.25);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
           </div>
+          <div class="kpi-val" id="kpi-overbooking-blocked" style="color: #FBBF24;">0</div>
+          <div class="kpi-sub">Proteção transacional ativa ↗</div>
         </div>
       </div>
 

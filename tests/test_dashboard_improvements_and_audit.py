@@ -304,4 +304,97 @@ def test_dashboard_html_palette_and_catalog_pagination(auth_client):
     assert "copilot-chat-container" in html
 
 
+def test_customers_rest_endpoints(auth_client):
+    # 1. Listagem completa e sumário
+    res = auth_client.get("/api/customers")
+    assert res.status_code == 200
+    data = res.json()
+    assert "customers" in data
+    assert "total" in data
+    assert "tiers_summary" in data
+    assert data["total"] >= 15
+    assert "VIP_PLATINUM" in data["tiers_summary"]
+
+    # 2. Filtro por Tier
+    res_vip = auth_client.get("/api/customers?tier=VIP_PLATINUM")
+    assert res_vip.status_code == 200
+    vip_data = res_vip.json()
+    for cust in vip_data["customers"]:
+        assert cust["loyalty_tier"] == "VIP_PLATINUM"
+
+    # 3. Busca por Nome ou Bairro
+    res_search = auth_client.get("/api/customers?search=TechFix")
+    assert res_search.status_code == 200
+    search_data = res_search.json()
+    assert len(search_data["customers"]) >= 1
+    assert "TechFix" in search_data["customers"][0]["name"]
+
+    # 4. Detalhes do Cliente por ID ou Alias
+    first_cust_id = data["customers"][0]["id"]
+    res_detail = auth_client.get(f"/api/customers/{first_cust_id}")
+    assert res_detail.status_code == 200
+    detail_data = res_detail.json()
+    assert detail_data["customer"]["id"] == first_cust_id
+    assert "orders" in detail_data
+
+    res_alias = auth_client.get("/api/customers/cust-1")
+    assert res_alias.status_code == 200
+
+    # 5. Cadastro/Atualização de Parceiro
+    new_customer = {
+        "id": "cust-test-novo",
+        "name": "Nova Era Smart Reparos",
+        "phone": "(85) 99777-4444",
+        "document": "33.444.555/0001-99",
+        "neighborhood": "Fátima",
+        "loyalty_tier": "NOVO_PARCEIRO",
+        "orders_count": 1,
+        "total_spent": 180.0,
+        "uber_deliveries": 1
+    }
+    res_post = auth_client.post("/api/customers", json=new_customer)
+    assert res_post.status_code == 200
+    post_data = res_post.json()
+    assert post_data["status"] == "success"
+    assert post_data["customer"]["name"] == "Nova Era Smart Reparos"
+
+
+def test_dashboard_html_customers_and_catalog_fixes(auth_client):
+    res = auth_client.get("/dashboard")
+    assert res.status_code == 200
+    html = res.text
+
+    # Novo Módulo de Clientes independente
+    assert 'id="tab-customers"' in html
+    assert 'id="customers-tbody"' in html
+    assert 'id="customers-search"' in html
+    assert 'id="customers-pagination-bar"' in html
+    assert 'id="customers-cards-mobile"' in html
+
+    # Gráfico de Distribuição no Overview
+    assert 'id="chartCustomersShare"' in html
+    assert "Distribuição de Clientes & Fidelidade" in html
+
+    # Deep linking interativo
+    assert "clickable-card" in html
+    assert "navigateWithFilter" in html
+
+    # Verificação de remoção de elemento feio no catálogo e sincronização
+    assert "Sincronizar Agora" in html
+    # O botão de sincronizar não deve ter o emoji relâmpago de texto solto
+    assert "⚡ Sincronizar Agora" not in html
+
+    # CSS e JS verificações
+    res_css = auth_client.get("/static/css/dashboard.css")
+    assert ".clickable-card" in res_css.text
+    assert ".kpi-icon-wrapper" in res_css.text
+    assert ".badge-tier-platinum" in res_css.text
+
+    res_js = auth_client.get("/static/js/dashboard.js")
+    assert "fetchCustomers" in res_js.text
+    assert "navigateWithFilter" in res_js.text
+    assert "setCustomerTierFilter" in res_js.text
+    assert "renderCustomersShareChart" in res_js.text
+
+
 
