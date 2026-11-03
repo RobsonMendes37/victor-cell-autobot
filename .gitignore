@@ -25,7 +25,13 @@ data/
 .pytest_cache/
 .ruff_cache/
 .coverage
+coverage.xml
+coverage/
 htmlcov/
+
+# SonarQube Local Cache
+.scannerwork/
+.sonar/
 
 # Logs e IDEs
 *.log

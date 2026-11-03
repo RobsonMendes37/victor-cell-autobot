@@ -3,6 +3,8 @@ name: Deploy PecasBot na Oracle VM
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch: # Permite disparar o deploy manualmente pelo botão no GitHub
 
 jobs:
@@ -66,9 +68,64 @@ jobs:
         run: |
           npm run test
 
+  sonarqube-quality-gate:
+    name: SonarQube Code Quality & Security Scan
+    runs-on: ubuntu-latest
+    needs: [backend-quality-gate, frontend-quality-gate]
+    steps:
+      - name: Checkout com Histórico Completo (Shallow Clone desativado)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python para Cobertura
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar Dependências e Gerar Cobertura Python (XML)
+        env:
+          GEMINI_API_KEY: "demo_test_key"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m pytest tests/ --cov=domain --cov=application --cov=infrastructure --cov=presentation --cov-report=xml:coverage.xml || true
+
+      - name: Configurar Node.js para Cobertura Front-End
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Gerar Cobertura Front-End (LCOV)
+        run: |
+          npm ci
+          npx vitest run --coverage.enabled=true --coverage.reporter=lcov || true
+
+      - name: Executar SonarQube Scanner
+        if: ${{ secrets.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v8.4.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Avaliar SonarQube Quality Gate
+        if: ${{ secrets.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Status de Configuração do SonarQube
+        if: ${{ secrets.SONAR_TOKEN == '' }}
+        run: |
+          echo "::notice ::SonarQube: Para ativar a análise contínua de segurança e débitos técnicos, configure os segredos 'SONAR_TOKEN' e 'SONAR_HOST_URL' no repositório GitHub."
+
   deploy:
     name: Deploy na Oracle Cloud VM
-    needs: [backend-quality-gate, frontend-quality-gate]
+    needs: [backend-quality-gate, frontend-quality-gate, sonarqube-quality-gate]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Conectar na VM e Subir Containers

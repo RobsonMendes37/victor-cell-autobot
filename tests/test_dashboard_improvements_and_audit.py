@@ -417,4 +417,34 @@ def test_dashboard_html_customers_and_catalog_fixes(auth_client):
     assert wa.get("confirmed_orders", 0) > 0 or wa.get("orders_count", 0) > 0
 
 
+def test_sonarqube_cicd_configuration():
+    import os
+
+    # 1. Verifica presença e conteúdo do sonar-project.properties
+    assert os.path.exists("sonar-project.properties"), "Arquivo sonar-project.properties deve existir na raiz"
+    with open("sonar-project.properties", "r", encoding="utf-8") as f:
+        sonar_cfg = f.read()
+
+    assert "sonar.projectKey=victor-cell-pecasbot" in sonar_cfg
+    assert "sonar.sources=" in sonar_cfg
+    assert "sonar.python.coverage.reportPaths=coverage.xml" in sonar_cfg
+    assert "sonar.javascript.lcov.reportPaths=coverage/lcov.info" in sonar_cfg
+
+    # 2. Verifica presença do SonarQube no workflow do GitHub Actions
+    workflow_path = ".github/workflows/deploy.yml"
+    assert os.path.exists(workflow_path), "Workflow do GitHub Actions deve existir"
+    with open(workflow_path, "r", encoding="utf-8") as f:
+        workflow_content = f.read()
+
+    assert "sonarqube-quality-gate" in workflow_content
+    assert "SonarSource/sonarqube-scan-action" in workflow_content
+    assert "SONAR_TOKEN" in workflow_content
+
+    # 3. Verifica requirements.txt com pytest-cov
+    with open("requirements.txt", "r", encoding="utf-8") as f:
+        reqs = f.read()
+    assert "pytest-cov" in reqs
+
+
+
 

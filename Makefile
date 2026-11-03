@@ -3,7 +3,7 @@
 # Standard DevOps & Engineering Quality Commands
 # ==============================================================================
 
-.PHONY: help check test lint format typecheck run docker-up docker-down backup seed hooks ts-typecheck ts-lint ts-test
+.PHONY: help check test lint format typecheck run docker-up docker-down backup seed hooks ts-typecheck ts-lint ts-test sonar
 
 PYTHON ?= .venv/bin/python3
 NODE_BIN_DIR := $(dir $(shell which npm 2>/dev/null || ls -d $(HOME)/.nvm/versions/node/v*/bin/npm 2>/dev/null | sort -V | tail -n 1))
@@ -13,6 +13,7 @@ help:
 	@echo "Comandos disponíveis no PecasBot Enterprise:"
 	@echo "  make check        - Roda todo o Quality Gate (Python + TypeScript + Backup)"
 	@echo "  make test         - Roda a suite de testes automatizados (Pytest)"
+	@echo "  make sonar        - Gera cobertura e executa scanner SonarQube"
 	@echo "  make lint         - Executa análise estática Python com Ruff"
 	@echo "  make format       - Formata o código Python com Ruff"
 	@echo "  make typecheck    - Executa verificação de tipos Python com Mypy"
@@ -49,6 +50,14 @@ ts-lint:
 
 ts-test:
 	@npm run test
+
+sonar:
+	@$(PYTHON) -m pytest tests/ --cov=domain --cov=application --cov=infrastructure --cov=presentation --cov-report=xml:coverage.xml
+	@if command -v sonar-scanner >/dev/null 2>&1; then \
+		sonar-scanner; \
+	else \
+		echo "sonar-scanner CLI não encontrado localmente. No GitHub Actions, ele roda automaticamente com o SonarSource/sonarqube-scan-action."; \
+	fi
 
 
 run:
