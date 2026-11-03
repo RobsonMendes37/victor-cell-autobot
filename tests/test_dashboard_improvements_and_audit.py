@@ -446,5 +446,54 @@ def test_sonarqube_cicd_configuration():
     assert "pytest-cov" in reqs
 
 
+def test_unified_dashboard_overview_bff_endpoint(auth_client):
+    """Testa o endpoint consolidado BFF (/api/dashboard/overview)."""
+    res = auth_client.get("/api/dashboard/overview")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert "kpis" in data
+    assert "stats" in data
+    assert "whatsapp_categorization" in data
+    assert "stock_summary" in data
+    assert "customers_summary" in data
+    assert "pipeline_ai" in data
+    assert "tenant_config" in data
+    assert "recent_orders" in data
+    assert data["kpis"]["total_revenue"] >= 0
+
+
+def test_customers_server_side_sorting_and_recurrence_filtering(auth_client):
+    """Testa se a ordenação e filtros de recorrência são processados pelo servidor."""
+    # 1. Ordenação por recorrência decrescente
+    res_desc = auth_client.get("/api/customers?sort_by=orders_count&sort_dir=desc")
+    assert res_desc.status_code == 200
+    custs_desc = res_desc.json()["customers"]
+    if len(custs_desc) >= 2:
+        assert custs_desc[0]["orders_count"] >= custs_desc[-1]["orders_count"]
+
+    # 2. Ordenação por recorrência crescente
+    res_asc = auth_client.get("/api/customers?sort_by=orders_count&sort_dir=asc")
+    assert res_asc.status_code == 200
+    custs_asc = res_asc.json()["customers"]
+    if len(custs_asc) >= 2:
+        assert custs_asc[0]["orders_count"] <= custs_asc[-1]["orders_count"]
+
+    # 3. Filtro de faixa de recorrência: apenas alta recorrência (5 a 14)
+    res_high = auth_client.get("/api/customers?recurrence_bracket=high")
+    assert res_high.status_code == 200
+    custs_high = res_high.json()["customers"]
+    for c in custs_high:
+        assert 5 <= c["orders_count"] <= 14
+
+    # 4. Filtro por nome alfabético A-Z
+    res_name = auth_client.get("/api/customers?sort_by=name&sort_dir=asc")
+    assert res_name.status_code == 200
+    custs_name = res_name.json()["customers"]
+    if len(custs_name) >= 2:
+        assert custs_name[0]["name"].lower() <= custs_name[-1]["name"].lower()
+
+
+
 
 

@@ -775,8 +775,12 @@
         ordersTbody.innerHTML = renderSkeletonTable(7, 4);
       }
       try {
-        const res = await fetch('/api/reports/stats');
-        const data = await res.json();
+        const res = await fetch('/api/dashboard/overview');
+        const rawData = await res.json();
+        const data = rawData.stats || rawData;
+        if (rawData.customers_summary && rawData.customers_summary.tiers) {
+          renderCustomersShareChart(rawData.customers_summary.tiers);
+        }
 
         // KPIs
         document.getElementById('kpi-revenue').innerText = 'R$ ' + (data.total_revenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -2384,7 +2388,15 @@
         tbody.innerHTML = renderSkeletonTable(5, 7);
       }
       try {
-        const res = await fetch('/api/customers');
+        const params = new URLSearchParams();
+        if (currentCustTier && currentCustTier !== 'all') params.set('tier', currentCustTier);
+        if (currentCustomerSortCol) params.set('sort_by', currentCustomerSortCol);
+        if (currentCustomerSortDir) params.set('sort_dir', currentCustomerSortDir);
+        if (currentCustRecurrenceBracket && currentCustRecurrenceBracket !== 'all') params.set('recurrence_bracket', currentCustRecurrenceBracket);
+        const searchInput = document.getElementById('customers-search');
+        if (searchInput && searchInput.value.trim()) params.set('search', searchInput.value.trim());
+
+        const res = await fetch(`/api/customers?${params.toString()}`);
         const data = await res.json();
         allCustomers = data.customers || [];
 
@@ -2481,7 +2493,7 @@
       });
       if (btn) btn.classList.add('active');
       currentCustomerPage = 1;
-      renderCustomersRows();
+      fetchCustomers();
     }
 
     function toggleCustomerColumnSort(col) {
@@ -2499,7 +2511,7 @@
         else if (col === 'uber_deliveries') sel.value = 'uber_desc';
       }
       currentCustomerPage = 1;
-      renderCustomersRows();
+      fetchCustomers();
     }
 
     function applyCustomerSort(val) {
@@ -2511,18 +2523,18 @@
       else if (val === 'name_desc') { currentCustomerSortCol = 'name'; currentCustomerSortDir = 'desc'; }
       else if (val === 'uber_desc') { currentCustomerSortCol = 'uber_deliveries'; currentCustomerSortDir = 'desc'; }
       currentCustomerPage = 1;
-      renderCustomersRows();
+      fetchCustomers();
     }
 
     function setCustomerRecurrenceBracket(bracket) {
       currentCustRecurrenceBracket = bracket;
       currentCustomerPage = 1;
-      renderCustomersRows();
+      fetchCustomers();
     }
 
     function filterCustomersTable() {
       currentCustomerPage = 1;
-      renderCustomersRows();
+      fetchCustomers();
     }
 
     function changeCustomerPage(delta) {

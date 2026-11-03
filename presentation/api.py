@@ -784,6 +784,9 @@ async def list_customers_endpoint(
     request: Request,
     search: Optional[str] = None,
     tier: Optional[str] = None,
+    sort_by: Optional[str] = "orders_count",
+    sort_dir: Optional[str] = "desc",
+    recurrence_bracket: Optional[str] = "all",
     limit: int = 50,
     offset: int = 0,
 ):
@@ -929,21 +932,46 @@ async def list_customers_endpoint(
             "preferred_delivery": pref_del,
             "neighborhood": data["neighborhood"],
             "last_order_date": last_date_str,
+            "uber_deliveries": int(data.get("uber_deliveries", 0)),
         }
         customers_list.append(item)
-
-    customers_list.sort(key=lambda x: (x["orders_count"], x["total_spent"]), reverse=True)
 
     filtered = []
     for c in customers_list:
         if tier and tier.upper() != "ALL" and c["tier"].upper() != tier.upper():
             continue
+
+        # Filtro de Faixa de Recorrência Server-Side
+        cnt = c["orders_count"]
+        if recurrence_bracket and recurrence_bracket != "all":
+            if recurrence_bracket == "vip_heavy" and cnt < 15:
+                continue
+            elif recurrence_bracket == "high" and not (5 <= cnt <= 14):
+                continue
+            elif recurrence_bracket == "medium" and not (2 <= cnt <= 4):
+                continue
+            elif recurrence_bracket == "new" and cnt != 1:
+                continue
+            elif recurrence_bracket == "zero" and cnt != 0:
+                continue
+
         if search:
             q = search.lower()
             haystack = f"{c['name']} {c['phone']} {c['neighborhood']} {c['tier_label']}".lower()
             if q not in haystack:
                 continue
         filtered.append(c)
+
+    # Ordenação Server-Side Dinâmica
+    reverse_order = (str(sort_dir).lower() != "asc")
+    if sort_by == "name":
+        filtered.sort(key=lambda x: str(x["name"]).lower(), reverse=reverse_order)
+    elif sort_by == "total_spent":
+        filtered.sort(key=lambda x: (float(x["total_spent"]), int(x["orders_count"])), reverse=reverse_order)
+    elif sort_by == "uber_deliveries":
+        filtered.sort(key=lambda x: (x["uber_deliveries"], x["orders_count"]), reverse=reverse_order)
+    else:  # orders_count (default)
+        filtered.sort(key=lambda x: (x["orders_count"], float(x["total_spent"])), reverse=reverse_order)
 
     total_matched = len(filtered)
     paged = filtered[offset : offset + limit] if limit > 0 else filtered
@@ -2177,3 +2205,58 @@ async def create_native_product(payload: CreateNativeProductRequest, request: Re
             "stock_quantity": prod.stock_quantity
         }
     }
+
+
+@app.get("/api/dashboard/overview", tags=["Operações & Despacho"], summary="Dashboard Overview Consolidado (BFF - Único Endpoint de Carga)")
+async def get_dashboard_overview_endpoint(request: Request):
+    """
+    Endpoint BFF (Backend-For-Frontend) unificado:
+    Retorna métricas operacionais, KPIs, estoque, categorização WhatsApp, pipeline de IA,
+    resumo de fidelidade de clientes e configuração visual em uma única requisição.
+    """
+    check_dashboard_auth(request)
+    stats_data = await get_report_stats(request)
+
+    # Resumo consolidado de clientes
+    cust_res = await list_customers_endpoint(request, limit=0)
+    tiers_summary = cust_res.get("tiers_summary", {})
+    total_customers = cust_res.get("total", 0)
+
+    # Configuração do inquilino (White-label & Paleta)
+    tenant_cfg = await get_tenant_config()
+
+    # Status da Pipeline de IA
+    pipeline_status = await get_ai_pipeline_status(request)
+
+    return {
+        "status": "success",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "store_status": {
+            "is_open": settings.is_store_open(),
+            "schedule": settings.get_store_schedule_status(),
+            "timezone": settings.STORE_TIMEZONE,
+        },
+        "stats": stats_data,
+        "kpis": {
+            "total_revenue": stats_data["total_revenue"],
+            "avg_ticket": stats_data["avg_ticket"],
+            "total_orders": stats_data["total_orders"],
+            "uber_percentage": stats_data["uber_percentage"],
+            "overbooking_blocked": stats_data["overbooking_blocked_total"],
+        },
+        "whatsapp_categorization": stats_data["whatsapp_categorization"],
+        "stock_summary": {
+            "total_products": stats_data["total_products"],
+            "top_products": stats_data["top_products"],
+            "category_breakdown": stats_data["category_breakdown"],
+            "quality_breakdown": stats_data["quality_breakdown"],
+        },
+        "customers_summary": {
+            "total": total_customers,
+            "tiers": tiers_summary,
+        },
+        "pipeline_ai": pipeline_status,
+        "tenant_config": tenant_cfg,
+        "recent_orders": stats_data["recent_orders"],
+    }
+
